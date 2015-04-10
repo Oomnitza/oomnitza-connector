@@ -1,0 +1,84 @@
+{
+  "window":
+    {
+      "title": "Oomnitza Connector",
+      "size": [700, 450],
+      "fg_color": "#D1D0CE",
+      "bg_color": "#E8E8E8"
+    },
+  "menu":
+    {
+      "size": [200, 380],
+      "fg_color": "#D1D0CE",
+      "bg_color": "#336699",
+      "logo":
+        {
+          "padding": 15
+        },
+      "tree":
+        {
+          "size": [200, 345],
+          "fg_color": "#D1D0CE",
+          "bg_color": "#336699",
+          "padding": 20
+        },
+      "logo":
+        {
+          "size": [200, 35]
+        }
+    },
+  "content":
+    {
+      "size": [500, 380],
+      "fg_color": "#606060",
+      "bg_color": "#F0F0F0",
+      "padding": 20,
+      "tree":
+        {
+          "size": [200, 200],
+          "fg_color": "#606060",
+          "bg_color": "#F0F0F0",
+          "font_size": 9
+        },
+      "panel":
+        {
+          "size": [484, 380],
+          "fg_color": "#606060",
+          "bg_color": "#F0F0F0"
+        },
+      "sub_panel":
+        {
+          "size": [484, 320],
+          "fg_color": "#606060",
+          "bg_color": "#F0F0F0",
+          "button":
+            {
+              "size": [120, 25]
+            }
+
+        },
+      "button":
+        {
+          "size": [65, 20]
+        },
+      "multitext":
+        {
+          "size": [480, 350],
+          "fg_color": "#606060",
+          "bg_color": "#F0F0F0"
+        }
+    },
+  "bottom":
+    {
+      "button":
+        {
+          "size": [80, 25],
+          "border": 4
+        }
+    },
+  "sizer":
+    {
+      "hgap": 0,
+      "vgap": 0
+    }
+}
