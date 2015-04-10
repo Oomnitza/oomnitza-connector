@@ -1,0 +1,61 @@
+{
+  "menu":
+    {
+      "mobileiron": "MobileIron",
+      "airwatch": "AirWatch",
+      "jasper": "Jasper",
+      "onelogin": "OneLogin",
+      "okta": "Okta",
+      "casper": "Casper",
+      "ldap": "LDAP",
+      "bamboohr": "BambooHR",
+      "zendesk": "Zendesk"
+    },
+  "field_mappings":
+    {
+      "url": "URL",
+      "system_name": "System Name",
+      "username": "User Name",
+      "password": "Password",
+      "api_token": "API Token",
+      "storage": "Storage",
+      "partitions": "Partitions",
+      "name_attr": "Name",
+      "surname_attr": "Surname",
+      "email_attr": "Email",
+      "enable_tls": "Enable TLS",
+      "base_dn": "Base DN",
+      "filter": "Filter",
+      "protocol_version": "Protocol Version",
+      "asset_mapping": "Fields Mapping",
+      "sync_identifier": "Identifier",
+      "custom_extras": "Custom Extras",
+      "enable": "Enable Connector",
+      "is_sso": "SSO",
+      "default_role": "Default Role",
+      "default_position": "Default Position"
+    },
+  "fields_display_order":
+    [
+      "url",
+      "system_name",
+      "username",
+      "password",
+      "api_token",
+      "is_sso",
+      "storage",
+      "partitions",
+      "name_attr",
+      "surname_attr",
+      "email_attr",
+      "enable_tls",
+      "base_dn",
+      "filter",
+      "protocol_version",
+      "sync_identifier",
+      "asset_mapping",
+      "custom_extras",
+      "default_role",
+      "default_position"
+    ]
+}
