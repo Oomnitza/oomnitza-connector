@@ -12,7 +12,7 @@ class Connector(UserConnector):
     Settings = {
         'url':              {'order': 1, 'default': "https://oomnitza1-admin.okta.com"},
         'api_token':        {'order': 2, 'example': "00kS9y1nRuNo1WJAuFixx-BB0K2Yd1RXZcLPuDFJrF"},
-        'default_role':     {'order': 3, 'example': 12, 'type': int},
+        'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
     }
 
@@ -47,7 +47,9 @@ class Connector(UserConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
 
     def _load_records(self, options):
-        url = "{0}/api/v1/users?limit=10000".format(self.settings['url'])
-        response = self.get(url)
-        for user in response.json():
-            yield user['profile']
+        next = "{0}/api/v1/users?limit={1}".format(self.settings['url'], options.get('limit', 100))
+        while next:
+            response = self.get(next)
+            for user in response.json():
+                yield user['profile']
+            next = response.links.get('next', {}).get('url', None)

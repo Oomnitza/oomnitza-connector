@@ -10,6 +10,8 @@ import pprint
 logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 root_logger = logging.getLogger('')
 
+from .httpadapters import AdapterMap
+
 LastInstalledHandler = None
 
 
@@ -47,9 +49,10 @@ class BaseConnector(object):
     FieldMappings = {}
     MappingName = "unnamed"
     OomnitzaBatchSize = 100
+    BuiltinSettings = ('ssl_protocol',)
 
-    TrueValues = ['True', 'true', '1', 'Yes', 'yes']
-    FalseValues = ['False', 'false', '0', 'No', 'no']
+    TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
+    FalseValues = ['False', 'false', '0', 'No', 'no', False]
 
     def __init__(self, settings):
         self.settings = {}
@@ -65,7 +68,7 @@ class BaseConnector(object):
             #     ini_field_mappings[key] = value
             else:
                 # first, simple copy for internal __key__ values
-                if key.startswith('__') and key.endswith('__'):
+                if (key.startswith('__') and key.endswith('__')) or key in self.BuiltinSettings:
                     self.settings[key] = value
                     continue
 
@@ -148,6 +151,19 @@ class BaseConnector(object):
                 settings.append((key, ''))
         return settings
 
+    def _get_session(self):
+        if not self._session:
+            self._session = requests.Session()
+            protocol = self.settings.get('ssl_protocol', "")
+            if protocol:
+                logger.info("Forcing SSL Protocol to: %s", protocol)
+                if protocol.lower() in AdapterMap:
+                    self._session.mount("https://", AdapterMap[protocol.lower()]())
+                else:
+                    raise RuntimeError("Invalid value for ssl_protocol: %r. Valid values are %r.",
+                                       protocol, list(set(AdapterMap.keys())))
+        return self._session
+
     def get(self, url, headers=None, auth=None):
         """
         Performs a HTTP GET against the passed URL using either the standard or passed headers
@@ -156,13 +172,13 @@ class BaseConnector(object):
         :return: the response object
         """
         logger.debug("getting url: %s", url)
-        if not self._session:
-            self._session = requests.Session()
+        session = self._get_session()
+
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
         # logger.debug("headers: %r", headers)
-        response = self._session.get(url, headers=headers, auth=auth,
-                                     verify=self.settings.get('verify_ssl', True) in self.TrueValues)
+        response = session.get(url, headers=headers, auth=auth,
+                                    verify=self.settings.get('verify_ssl', True) in self.TrueValues)
         response.raise_for_status()
         return response
 
@@ -174,14 +190,14 @@ class BaseConnector(object):
         :return: the response object
         """
         logger.debug("posting url: %s", url)
-        if not self._session:
-            self._session = requests.Session()
+        session = self._get_session()
+
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
         # logger.debug("headers: %r", headers)
         # logger.debug("payload = %s", json.dumps(data))
-        response = self._session.post(url, data=json.dumps(data), headers=headers, auth=auth,
-                                      verify=self.settings.get('verify_ssl', True) in self.TrueValues)
+        response = session.post(url, data=json.dumps(data), headers=headers, auth=auth,
+                                     verify=self.settings.get('verify_ssl', True) in self.TrueValues)
         response.raise_for_status()
         return response
 
@@ -236,24 +252,24 @@ class BaseConnector(object):
                     if record_count:
                         record_count -= 1
                         logger.info("Sending record %r to Oomnitza.", converted)
-                        self.send_to_oomnitza(oomnitza_connector, converted)
+                        self.send_to_oomnitza(oomnitza_connector, converted, options)
                     else:
                         logger.info("Done sending limited records to Oomnitza.")
                         return True
                 else:
                     if len(records) >= self.OomnitzaBatchSize:  # ToDo: make this dynamic
                         logger.info("sending %s records to oomnitza...", len(records))
-                        self.send_to_oomnitza(oomnitza_connector, records)
+                        self.send_to_oomnitza(oomnitza_connector, records, options)
                         records = []
 
         # do one final check for records which need to be sent
         if len(records):
             logger.info("sending final %s records to oomnitza...", len(records))
-            self.send_to_oomnitza(oomnitza_connector, records)
+            self.send_to_oomnitza(oomnitza_connector, records, options)
 
         return True
 
-    def send_to_oomnitza(self, oomnitza_connector, data):
+    def send_to_oomnitza(self, oomnitza_connector, data, options):
         """
         Determine which method on the Oomnitza connector to call based on type of data
         :param oomnitza_connector: the Oomnitza connector
@@ -267,7 +283,7 @@ class BaseConnector(object):
                 self.settings["__testmode__"] and '_test_' or ''
             )
         )
-        result = method(data)
+        result = method(data, options)
         # logger.debug("send_to_oomnitza result: %r", result)
         return result
 
@@ -408,13 +424,14 @@ class AssetConnector(BaseConnector):
     def __init__(self, settings):
         super(AssetConnector, self).__init__(settings)
 
-    def send_to_oomnitza(self, oomnitza_connector, record):
+    def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
             "integration_id": self.MappingName,
             "sync_field": self.settings['sync_field'],
-            "assets": record
+            "assets": record,
+            "update_only": self.settings.get('update_only', "False"),
         }
-        return super(AssetConnector, self).send_to_oomnitza(oomnitza_connector, payload)
+        return super(AssetConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
 
 
 class AuditConnector(BaseConnector):
@@ -424,12 +441,13 @@ class AuditConnector(BaseConnector):
     def __init__(self, settings):
         super(AuditConnector, self).__init__(settings)
 
-    def send_to_oomnitza(self, oomnitza_connector, record):
+    def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
             "agent_id": self.MappingName,
             "sync_field": self.settings['sync_field'],
-            "computers": record
+            "computers": record,
+            "update_only": self.settings.get('update_only', "False"),
         }
         # pprint.pprint(record)
-        return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload)
+        return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
 

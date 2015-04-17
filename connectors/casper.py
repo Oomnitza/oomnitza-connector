@@ -17,12 +17,13 @@ SyncTypes = {
 class Connector(AuditConnector):
     MappingName = 'Casper'
     Settings = {
-        'url':        {'order': 1, 'default': "https://apidev.awmdm.com"},
-        'username':   {'order': 2, 'example': "username@example.com"},
-        'password':   {'order': 3, 'example': "qwerty123"},
-        'sync_field': {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-        'sync_type':  {'order': 5, 'default': "computers", 'choices': ("computers", "mobiledevices")},
-        'verify_ssl': {'order': 6, 'default': "True"},
+        'url':         {'order': 1, 'default': "https://apidev.awmdm.com"},
+        'username':    {'order': 2, 'example': "username@example.com"},
+        'password':    {'order': 3, 'example': "qwerty123"},
+        'sync_field':  {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'sync_type':   {'order': 5, 'default': "computers", 'choices': ("computers", "mobiledevices")},
+        'verify_ssl':  {'order': 6, 'default': "True"},
+        'update_only': {'order': 7, 'default': "False"}
     }
     DefaultConverters = {
         "general.report_date":         "date_format",

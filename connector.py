@@ -44,11 +44,11 @@ def main(args):
         return
 
     options = {}
-    if args.datafile:
-        options['datafile'] = os.path.abspath(args.datafile)
-        if not os.path.isfile(options['datafile']):
-            logger.error("Invalid data file. %r does not exist.", options['datafile'])
-            sys.exit(1)
+    # if args.datafile:
+    #     options['datafile'] = os.path.abspath(args.datafile)
+    #     if not os.path.isfile(options['datafile']):
+    #         logger.error("Invalid data file. %r does not exist.", options['datafile'])
+    #         sys.exit(1)
     if args.record_count:
         options['record_count'] = args.record_count
 

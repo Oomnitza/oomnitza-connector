@@ -18,9 +18,9 @@ class Connector(UserConnector):
         'password':         {'order':  3, 'example': "password"},
         'base_dn':          {'order':  4, 'example': "dc=example,dc=com"},
         'protocol_version': {'order':  5, 'default': "3"},
-        'enable_tls':       {'order':  6, 'example': "False"},
+        'enable_tls':       {'order':  6, 'example': "True"},
         'filter':           {'order':  7, 'example': "(objectClass=*)"},
-        'default_role':     {'order':  8, 'example': 12, 'type': int},
+        'default_role':     {'order':  8, 'example': 25, 'type': int},
         'default_position': {'order':  9, 'example': 'Employee'},
     }
 
@@ -65,7 +65,7 @@ class Connector(UserConnector):
                 self.ldap_connection.start_tls_s()
             except ldap.PROTOCOL_ERROR as exp:
                 logger.debug("%s", exp.message)
-                raise AuthenticationError("Error when trying to enable TLS on connection.")
+                raise AuthenticationError("Error when trying to enable TLS on connection. You may need to set enable_tls = False in your config.ini file.")
 
         try:
             if self.settings['password'] in [None, '', ' ']:  # FixMe: test for interactive console? just remove?
