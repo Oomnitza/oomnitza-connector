@@ -84,10 +84,11 @@ def parse_config(args):
                             #         logger.error("Failed to parse json value %s:%s = %r", section, key, value)
                             else:
                                 cfg[key] = value
-                                choices = connector.Settings[key].get('choices', [])
-                                if choices and cfg[key] not in choices:
-                                    errors = True
-                                    logger.error("Invalid value for %s: %r. Value must be one of %r", key, value, choices)
+                                if key in connector.Settings:
+                                    choices = connector.Settings[key].get('choices', [])
+                                    if choices and cfg[key] not in choices:
+                                        errors = True
+                                        logger.error("Invalid value for %s: %r. Value must be one of %r", key, value, choices)
 
                         if 'oomnitza' in connectors:
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]

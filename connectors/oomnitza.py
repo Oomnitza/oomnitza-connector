@@ -54,31 +54,31 @@ class Connector(BaseConnector):
             except ConnectionError as exp:
                 raise AuthenticationError(exp.response)
 
-    def upload_assets(self, assets):
+    def upload_assets(self, assets, options):
         # logger.debug("upload_assets( %r )", assets)
         url = "{url}/api/v2/bulk/assets".format(**self.settings)
         response = self.post(url, assets)
         # logger.debug("response = %r", response.text)
         return response
 
-    def upload_users(self, users):
+    def upload_users(self, users, options):
         # logger.debug("upload_users( %r )", users)
         url = "{url}/api/v2/bulk/users".format(**self.settings)
         response = self.post(url, users)
         # logger.debug("response = %r", response.text)
         return response
 
-    def upload_audit(self, computers):
+    def upload_audit(self, computers, options):
         # logger.debug("upload_users( %r )", users)
         url = "{url}/api/v2/bulk/audit".format(**self.settings)
         response = self.post(url, computers)
         # logger.debug("response = %r", response.text)
         return response
 
-    def _test_upload_assets(self, assets):
+    def _test_upload_assets(self, assets, options):
         logger.warning("upload_assets() = %r", assets)
 
-    def _test_upload_users(self, users):
+    def _test_upload_users(self, users, options):
         if not isinstance(users, list):
             users = [users]
         if not self._test_headers:
@@ -87,7 +87,7 @@ class Connector(BaseConnector):
         for user in users:
             print("\t".join([repr(user[f]) or '""' for f in self._test_headers]))
 
-    def _test_upload_audit(self, computers):
+    def _test_upload_audit(self, computers, options):
         pprint.pprint(computers)
 
     def perform_sync(self, oomnitza_connector, options):

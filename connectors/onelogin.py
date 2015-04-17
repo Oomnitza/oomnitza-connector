@@ -14,7 +14,7 @@ class Connector(UserConnector):
     Settings = {
         'url':              {'order': 1, 'default': "https://app.onelogin.com/api/v2/users.xml"},
         'api_token':        {'order': 2, 'example': "1DKHA4AAAAG5A5BQADQA"},
-        'default_role':     {'order': 3, 'example': 12, 'type': int},
+        'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
     }
 

@@ -13,7 +13,7 @@ class Connector(UserConnector):
         'system_name':      {'order': 1, 'example': "oomnitza"},
         'api_token':        {'order': 2, 'example': "assTrGvyJ0hoXZRTIOCIJniwflkfDm5PHo0wCfyj"},
         'username':         {'order': 3, 'example': "person.name@example.com"},
-        'default_role':     {'order': 4, 'example': 12, 'type': int},
+        'default_role':     {'order': 4, 'example': 25, 'type': int},
         'default_position': {'order': 5, 'example': 'Employee'},
     }
 
