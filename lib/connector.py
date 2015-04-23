@@ -321,6 +321,7 @@ class BaseConnector(object):
         :return: the outgoing record as a dict
         """
         outgoing_record = {}
+        missing_fields = set()
         # subrecords = {}
 
         for field, specs in field_mappings.items():
@@ -356,13 +357,17 @@ class BaseConnector(object):
                 incoming_value = f_type(incoming_value)
 
             if specs.get('required', False) in self.TrueValues and not incoming_value:
-                logger.info("Record missing %r, skipping: %r", field, incoming_record, incoming_record)
-                return None
+                logger.debug("Record missing %r. Record = %r", field, incoming_record)
+                missing_fields.add(field)
 
             outgoing_record[field] = incoming_value
 
         # if subrecords:
         #     outgoing_record.update(subrecords)
+
+        if missing_fields:
+            logger.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
+            return None
 
         return outgoing_record
 

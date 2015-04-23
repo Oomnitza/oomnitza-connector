@@ -25,8 +25,8 @@ class Connector(UserConnector):
     }
 
     FieldMappings = {
-        'USER':           {'source': "uid", 'required': True},
-        'FIRST_NAME':     {'source': "givenName", 'required': True,},
+        'USER':           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
+        'FIRST_NAME':     {'source': "givenName", 'required': True},
         'LAST_NAME':      {'source': "sn", 'required': True},
         'EMAIL':          {'source': "mail", 'required': True},
         'PERMISSIONS_ID': {'setting': "default_role"},
@@ -36,7 +36,7 @@ class Connector(UserConnector):
     def __init__(self, settings):
         super(Connector, self).__init__(settings)
         self.ldap_connection = None
-        self.ldap_query_fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]))
+        self.ldap_query_fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]+['sAMAccountName']))
 
     def authenticate(self):
         # ldap.set_option(ldap.OPT_DEBUG_LEVEL,1)

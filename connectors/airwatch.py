@@ -7,14 +7,23 @@ from lib.connector import AssetConnector
 
 logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 
+"""
+Curl Auth Test:
+curl -v --user [USERNAME]:[PASSWORD] \
+        --header "aw-tenant-code: [API-TOKEN]" \
+        --header "Accept: application/json" \
+        https://[HOST]/api/v1/help
+"""
+
 
 class Connector(AssetConnector):
     MappingName = 'AirWatch'
     Settings = {
-        'url':       {'order': 1, 'default': "https://apidev.awmdm.com"},
-        'username':  {'order': 2, 'example': "username@example.com"},
-        'password':  {'order': 3, 'example': "qwerty123"},
-        'api_token': {'order': 4, 'example': "1DKHA4AAAAG5A5BQADQA"},
+        'url':        {'order': 1, 'default': "https://apidev.awmdm.com"},
+        'username':   {'order': 2, 'example': "username@example.com"},
+        'password':   {'order': 3, 'example': "qwerty123"},
+        'api_token':  {'order': 4, 'example': "1DKHA4AAAAG5A5BQADQA"},
+        'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     def __init__(self, settings):
@@ -41,7 +50,6 @@ class Connector(AssetConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
         except HTTPError as exp:
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
-
 
     def _load_records(self, options):
         page = options.get('start_page', 0)
