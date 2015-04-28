@@ -6,7 +6,7 @@ import xmltodict
 logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 
 
-def converter(field, record, value):
+def converter(field, record, value, params):
     """
     Converts a Apple SN into a nice Model
 

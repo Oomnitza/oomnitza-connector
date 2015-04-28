@@ -1,6 +1,6 @@
 
 
-def converter(field, record, value):
+def converter(field, record, value, params):
     """
     A user in Uber's LDAP system is a contractor or employee based on email address.
 

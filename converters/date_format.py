@@ -3,7 +3,7 @@ import time
 import datetime
 
 
-def converter(field, record, value):
+def converter(field, record, value, params):
     """
     Converts a date field to epoch time.
 

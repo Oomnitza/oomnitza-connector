@@ -350,7 +350,7 @@ class BaseConnector(object):
 
             converter = specs.get('converter', None)
             if converter:
-                incoming_value = self.apply_converter(converter, field, incoming_record, incoming_value)
+                incoming_value = self.apply_converter(converter, source or field, incoming_record, incoming_value)
 
             f_type = specs.get('type', None)
             if f_type:
@@ -406,13 +406,24 @@ class BaseConnector(object):
 
     @classmethod
     def apply_converter(cls, converter_name, field, record, value):
+        params = {}
+        if ':' in converter_name:
+            converter_name, args = converter_name.split(':', 1)
+            for arg in args.split('|'):
+                if '=' in arg:
+                    k, v = arg.split('=', 1)
+                else:
+                    k, v = arg, True
+                params[k] = v
+
         converter = cls.Converters.get(converter_name, None)
         if not converter:
             # the converter has not been loaded yet, so load it and save it into cls.Converters
             mod = importlib.import_module("converters.{0}".format(converter_name))
             converter = mod.converter
             cls.Converters[converter_name] = converter
-        return converter(field, record, value)
+
+        return converter(field, record, value, params)
 
 
 class UserConnector(BaseConnector):

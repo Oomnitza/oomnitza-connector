@@ -1,6 +1,6 @@
 
 
-def converter(field, record, value):
+def converter(field, record, value, params):
     """
     Splits a field on ' ' and returns the last part.
 
