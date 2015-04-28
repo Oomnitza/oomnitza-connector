@@ -70,8 +70,8 @@ def parse_config(args):
                                     cfg[key] = json.loads(value)
                                 except ValueError:
                                     # if the value is just a string, it is the name of the source field, convert to dict
-                                    if isinstance(cfg[key], basestring):
-                                        cfg[key] = {'source': cfg[key]}
+                                    if isinstance(value, basestring):
+                                        cfg[key] = {'source': value}
                                     else:
                                         errors = True
                                         logger.error("Failed to parse json field mapping %s:%s = %r", section, key, value)
@@ -93,6 +93,7 @@ def parse_config(args):
                         if 'oomnitza' in connectors:
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
                         cfg["__testmode__"] = args.testmode
+                        cfg["__save_data__"] = args.save_data
                         cfg["__name__"] = module
                         cfg["__connector__"] = connector(cfg)
 

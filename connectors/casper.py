@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import errno
 
 from requests import ConnectionError, HTTPError
 from lib.connector import AuditConnector
@@ -92,8 +93,14 @@ class Connector(AuditConnector):
         url = self.url_template.format("{}/id/{}".format(self.sync_type['path'], str(id)))
         details = self.get(url).json()[self.sync_type['data']]
 
-        if self.settings.get("save_data", False):
-            os.makedirs("./saved_data", exist_ok=True)
+        if self.settings.get("__save_data__", False):
+            try:
+                os.makedirs("./saved_data")
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                    pass
+                else:
+                    raise
             with open("./saved_data/{}.json".format(str(id)), "w") as save_file:
                 save_file.write(json.dumps(details))
 

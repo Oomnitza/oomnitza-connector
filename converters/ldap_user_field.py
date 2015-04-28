@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__file__)
 
 
-def converter(field, record, value):
+def converter(field, record, value, params):
     """
     Attempts to load the value from the defined field. Falls back to sAMAccountName if no value.
 
