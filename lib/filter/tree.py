@@ -176,7 +176,7 @@ class Or(Statement):
 
 class Converter(Statement):
     EnabledConverters = {
-        'casper_extension_attribute',
+        'casper_extension_attribute': True,
     }
 
     def __init__(self, converter_name, params={}):
