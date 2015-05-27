@@ -1,30 +1,25 @@
-import wx
 import os
 import json
 import sys
-import time
 import datetime
 import platform
 import plistlib
-import argparse
-import shlex
-import subprocess
 import threading
-import thread
+import wx
 import wx.lib.masked
-from Queue import Queue
-from lib import config
+
 from lib.config import parse_config
-from lib.connector import run_connector
-from connector_gui.utils.create_task_xml import create_task_xml
-from connector_gui.utils.relative_path import relative_path
+from lib.connector import run_connector, stop_connector
+from utils.create_task_xml import create_task_xml
+from utils.relative_path import relative_path
+from utils.relative_path import relative_app_path
+from utils.utilize_connector import utilize_connector
 from connector_gui.widgets.frame import Frame
 from connector_gui.widgets.panel import Panel
 from connector_gui.widgets.image import Image
 from connector_gui.widgets.button import Button
 from connector_gui.widgets.text import Text
 from connector_gui.widgets.listbox import ListBox
-from connector_gui.widgets.listctrl import ListCtrl
 from connector_gui.widgets.multitext import MultiText
 from connector_gui.widgets.data_viewer import DataViewer
 from connector_gui.widgets.tabbed_window import TabbedWindow
@@ -32,9 +27,6 @@ from connector_gui.widgets.scrolled_window import ScrolledWindow
 from connector_gui.widgets.tabbed_panel import TabbedPanel
 from connector_gui.widgets.login_dialog import LoginDialog
 
-
-uppath = lambda _path, n: os.sep.join(_path.split(os.sep)[:-n])
-base_dir = {'Darwin': uppath(os.path.abspath(sys.executable), 4), 'Windows': os.path.dirname(sys.executable), 'Linux': os.path.dirname(sys.executable)}
 
 class ConfigView:
 
@@ -60,8 +52,7 @@ class ConfigView:
 
         self.app = wx.App()
         self.frame = Frame()
-        #favicon = wx.Icon(relative_path('connector_gui/images/connector.ico'), wx.BITMAP_TYPE_ICO, 16, 16)
-        favicon = wx.Icon(relative_path('connector.ico'), wx.BITMAP_TYPE_ICO, 16, 16)
+        favicon = wx.Icon(relative_path('connector_gui/images/connector.ico'), wx.BITMAP_TYPE_ICO, 16, 16)
         self.frame.SetIcon(favicon)
         self.frame.SetMaxSize(self.style['window']['size'])
         self.frame.SetMinSize(self.style['window']['size'])
@@ -102,8 +93,7 @@ class ConfigView:
         button_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         # Create a image control to show up oomnitza logo in left side menu
-        #logo = Image(menu, relative_path('connector_gui/images/oomnitza_logo.png'), 1, 1)
-        logo = Image(menu, relative_path('oomnitza_logo.png'), 1, 1)
+        logo = Image(menu, relative_path('connector_gui/images/oomnitza_logo.png'), 1, 1)
 
         menu_mappings = self.load_style('metadata')['menu']
         menu_connectors = self.model.get_config()
@@ -145,27 +135,22 @@ class ConfigView:
 
         # Arrange items with using sizer
         self.main_sizer.Add(menu, pos=(0, 0))
-        self.main_sizer.Add(content_sizer, pos=(0, 1), span=(1, 5), flag=wx.EXPAND)
-        self.main_sizer.Add(self.cancel_btn, pos=(1, 2), flag=wx.TOP,
-                            border=self.style['bottom']['button']['border'])
-        self.main_sizer.Add(self.apply_btn, pos=(1, 3), flag=wx.TOP,
-                            border=self.style['bottom']['button']['border'])
-        self.main_sizer.Add(button_sizer, pos=(1, 4), flag=wx.TOP,
-                            border=self.style['bottom']['button']['border'])
-        self.main_sizer.Add(self.ok_btn, pos=(1, 5), flag=wx.TOP,
-                            border=self.style['bottom']['button']['border'])
-        self.main_sizer.AddGrowableCol(1)
-        self.main_sizer.AddGrowableRow(1)
+        self.main_sizer.Add(content_sizer, pos=(0, 1), flag=wx.EXPAND)
+        self.main_sizer.Add(button_sizer, pos=(1, 0), span=(1, 2), flag=wx.ALIGN_RIGHT | wx.RIGHT, border=self.style['bottom']['border'])
 
         content_sizer.Add(self.init_page, 1, wx.EXPAND)
         content_sizer.Add(self.setting_page, 1, wx.EXPAND)
 
-        button_sizer.Add(self.stop_btn, 1, wx.EXPAND)
-        button_sizer.Add(self.run_btn, 1, wx.EXPAND)
+        button_sizer.Add(self.cancel_btn, 1, wx.EXPAND | wx.TOP, border=self.style['bottom']['button']['border'])
+        button_sizer.Add(self.apply_btn, 1, wx.EXPAND | wx.TOP, border=self.style['bottom']['button']['border'])
+        button_sizer.Add(self.stop_btn, 1, wx.EXPAND | wx.TOP, border=self.style['bottom']['button']['border'])
+        button_sizer.Add(self.run_btn, 1, wx.EXPAND | wx.TOP, border=self.style['bottom']['button']['border'])
+        button_sizer.Add(self.ok_btn, 1, wx.EXPAND | wx.TOP, border=self.style['bottom']['button']['border'])
 
         menu_sizer.Add(logo, flag=wx.LEFT | wx.TOP | wx.BOTTOM,
-                       border=20)
-        menu_sizer.Add(self.data_viewer, 1, flag=wx.EXPAND | wx.LEFT, border=15)
+                       border=self.style['menu']['logo']['padding'])
+        menu_sizer.Add(self.data_viewer, 1, flag=wx.EXPAND | wx.LEFT,
+                       border=self.style['menu']['tree']['padding'])
 
         # Associate container and sizer
         self.frame.SetSizer(self.main_sizer)
@@ -244,20 +229,7 @@ class ConfigView:
                         for item in config[field]:
                             if item != "":
                                 listbox.Append(str(item))
-                        rows += 1
-                    elif type(config[field]) == dict:
-                        label = wx.StaticText(sub_panel, -1, field_mappings[field])
-                        listctrl = ListCtrl(sub_panel, field_mappings[field], config[field])
-                        sub_sizer.Add(label, pos=(rows, cols))
-                        sub_sizer.Add(listctrl, pos=(rows, cols+1))
-                        sub_sizer.Add(listctrl.get_add_btn(), pos=(rows, cols+2))
-                        copy_fields_mapping = {v: k for k, v in field_mappings.items()}
-                        self.frame.Bind(wx.EVT_BUTTON, lambda evt, listctrl=listctrl.item, \
-                            index=listctrl.index: self.on_add_row(evt, listctrl, index), listctrl.add_btn)
-                        self.frame.Bind(wx.EVT_LIST_END_LABEL_EDIT, lambda evt, listctrl=listctrl.item, \
-                            title=copy_fields_mapping[label.GetLabel()], \
-                            selected=selected: self.on_end_label_edit(evt, listctrl, title, selected), listctrl.item)
-                        rows += 1
+                        rows += 4
                     else:
                         if field in ["default_role", "default_position"]:
                             text = Text(sub_panel, field_mappings[field])
@@ -267,7 +239,7 @@ class ConfigView:
                                 text = wx.ComboBox(sub_panel, choices=['True', 'False'])
                                 text.SetValue(field_mappings[field].title())
                                 self.frame.Bind(wx.EVT_COMBOBOX, lambda evt, field=field, selected=\
-                                                selected:self.dropdown_changed_event(evt, field, selected), text)
+                                                selected: self.dropdown_changed_event(evt, field, selected), text)
                             else:
                                 text = Text(sub_panel, field_mappings[field])
                         label = wx.StaticText(sub_panel, -1, field_mappings[field])
@@ -547,6 +519,7 @@ class ConfigView:
         if ret_code == wx.ID_OK:
             username = dlg.get_username()
             password = dlg.get_password()
+            dlg.Destroy()
             period = ""
             if not username or not password:
                 wx.MessageBox('User name and password are required!', 'Scheduled Unsuccessful',
@@ -569,7 +542,6 @@ class ConfigView:
                 start_time = start_time.strftime("%H:%M:%S")
 
                 options['start_time'] = '%sT%s' % (start_date, start_time)
-                print options['start_time']
 
                 for period_set in time_widgets['period']:
                     if period_set[1].GetValue():
@@ -616,6 +588,8 @@ class ConfigView:
                 else:
                     wx.MessageBox('Scheduled failure!\nPlease check your user name and password.', 'Scheduled Unsuccessful',
                                   wx.OK | wx.ICON_INFORMATION)
+        else:
+            dlg.Destroy()
 
     def scheduler_selection(self, event, panel, selected):
         selected_widgets = []
@@ -653,29 +627,32 @@ class ConfigView:
 
                 arguments = []
                 arguments.append(sys.executable)
-                # connector_path = relative_path("connector.py")
-                # arguments.append(connector_path)
                 arguments.append('upload')
                 arguments.append(selected)
 
                 filename = 'com.oomnitza.%s' % (selected)
                 filepath = '/tmp/' + filename + '.plist'
-                plist = {'ProgramArguments': arguments, 'KeepAlive': {'SuccessfulExit': False},
-                         'Label': filename, 'Minute': minute, 'Hour': hour, 'Day': day,
-                         'Month': month, 'Weekday': weekday}
+                plist = {'Label': filename, 'ProgramArguments': arguments, 'StartCalendarInterval': {'Minute': minute, 'Hour': hour, 'Day': day,
+                         'Month': month, 'Weekday': weekday}}
                 with open(filepath, "wb") as f:
                     plistlib.writePlist(plist, f)
 
-                command = "echo %s sudo -S mv " % (password) + filepath + " /Library/LaunchDaemons/" + filename + ".plist"
-                args = shlex.split(command)
-
-                status = subprocess.call(args)
+                command = "echo %s | sudo -S chown root:wheel %s" % (password, filepath)
+                os.system(command)
+                command = "echo %s | sudo -S mv " % (password) + filepath + " /Library/LaunchDaemons/" + filename + ".plist"
+                os.system(command)
+                command = "echo %s | sudo -S launchctl unload " + "/Library/LaunchDaemons/" + filename + ".plist"
+                os.system(command)
+                command = "echo %s | sudo -S launchctl load -w " + "/Library/LaunchDaemons/" + filename + ".plist"
+                status = os.system(command)
                 if status == 0:
                     wx.MessageBox('Task is scheduled.', 'Scheduled Successful',
                                   wx.OK | wx.ICON_INFORMATION)
                 else:
                     wx.MessageBox('Scheduled failure!\nPlease check your user name and password.', 'Scheduled Unsuccessful',
                                   wx.OK | wx.ICON_INFORMATION)
+        else:
+            dlg.Destroy()
 
     def create_log_view(self, panel, selected):
         sizer = wx.GridBagSizer(hgap=self.style['sizer']['hgap'],
@@ -705,8 +682,7 @@ class ConfigView:
 
         logs = ""
         try:
-            #log_file = open(relative_path('{0}.log'.format(selected)), "r")
-            log_file = open(os.path.join(base_dir[platform.system()], '{0}.log'.format(selected)), "r")
+            log_file = open(relative_app_path('{0}.log'.format(selected)), "r")
             for line in log_file.readlines():
                 if line != "\n" and line != "":
                     logs += line
@@ -738,8 +714,7 @@ class ConfigView:
         if (dlg.ShowModal() == wx.ID_YES):
             for child in panel.GetChildren():
                 if child.GetId() == multitext_id:
-                    #open(relative_path("{0}.log".format(selected)), "w").close()
-                    open(os.path.join(base_dir[platform.system()], '{0}.log'.format(selected)), "w").close()
+                    open(relative_app_path("{0}.log".format(selected)), "w").close()
                     event.GetEventObject().Disable()
                     self.reload_log(event, panel, multitext_id,
                                     event.GetEventObject(), selected)
@@ -749,8 +724,7 @@ class ConfigView:
         for child in panel.GetChildren():
             if child.GetId() == multitext_id:
                 logs = ""
-                #log_file = open(relative_path("{0}.log".format(selected)), "r")
-                log_file = open(os.path.join(base_dir[platform.system()], '{0}.log'.format(selected)), "r")
+                log_file = open(relative_app_path("{0}.log".format(selected)), "r")
                 for line in log_file.readlines():
                     if line != "\n" and line != "":
                         logs += line
@@ -765,6 +739,7 @@ class ConfigView:
 
     def menu_selection(self, event):
         selected = self.data_viewer.GetItemText(event.GetItem()).lower()
+        self.data_viewer.set_focused_item(selected)
         if selected == "oomnitza connection":
             self.on_setting_page('oomnitza')
         elif selected == "connectors":
@@ -906,10 +881,21 @@ class ConfigView:
 
     def perform_syncing(self, oomnitza_connector, connector, options, selected, run_btn, stop_btn):
         run_connector(oomnitza_connector, connector, options)
-        self.running_status[selected] = True
-        run_btn.Show()
-        stop_btn.Hide()
-        self.frame.GetSizer().Layout()
+        if selected in self.running_status:
+            self.running_status[selected] = True
+        if "all_" in selected:
+            flag = True
+            for selected in self.running_status:
+                if "all_" in selected and not self.running_status[selected]:
+                    flag = False
+            if flag:
+                run_btn.Show()
+                stop_btn.Hide()
+                self.frame.GetSizer().Layout()
+        else:
+            run_btn.Show()
+            stop_btn.Hide()
+            self.frame.GetSizer().Layout()
 
     def run(self, event, selected, stop_btn, panel=None, mode='all'):
         run_btn = event.GetEventObject()
@@ -917,41 +903,48 @@ class ConfigView:
         ret_code = dlg.ShowModal()
 
         if ret_code == wx.ID_OK:
+            dlg.Destroy()
             if not selected is None:
-                stop_btn.Show()
-                run_btn.Hide()
+                try:
+                    connectors = utilize_connector(target=parse_config)
+                    oomnitza_connector = connectors.pop('oomnitza')["__connector__"]
+                    options = {}
 
-                parser = argparse.ArgumentParser()
-                parser.add_argument("action", nargs='?', default='gui', choices=['gui', 'upload', 'generate-ini'], help="Action to perform.")
-                parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
-                parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
-                parser.add_argument('--ini', type=str, default=os.path.join(os.path.dirname(sys.executable), "config.ini"), help="Config file to use.")
-                #parser.add_argument('--ini', type=str, default=os.path.join(config.ROOT, "config.ini"), help="Config file to use.")
-                parser.add_argument('--logging-config', type=str, default="USE_DEFAULT", help="Use to override logging config file to use.")
+                    if mode == 'all':
+                        selected = []
+                        config = self.model.get_config()
 
-                args = parser.parse_args()
+                        for select in config:
+                            if 'enable' in config[select] and config[select]['enable'] in ["True", "true"]:
+                                selected.append(select)
 
-                connectors = parse_config(args)
-                oomnitza_connector = connectors.pop('oomnitza')["__connector__"]
-                options = {}
-
-                if mode == 'all':
-                    for select in selected:
-                        self.running_status['all_' + select] = False
-                        t = threading.Thread(target=self.perform_syncing, args=(oomnitza_connector, connectors[select], options, 'all_' + select, run_btn, stop_btn,))
-                        self.threads['all_' + select] = t
+                        for select in selected:
+                            self.running_status['all_' + select] = False
+                            t = threading.Thread(target=self.perform_syncing, args=(oomnitza_connector, connectors[select], options, 'all_' + select, run_btn, stop_btn,))
+                            self.threads['all_' + select] = [t, connectors[select]]
+                            t.daemon = True
+                            t.start()
+                    else:
+                        self.running_status[selected] = False
+                        t = threading.Thread(target=self.perform_syncing, args=(oomnitza_connector, connectors[selected], options, selected, run_btn, stop_btn,))
+                        self.threads[selected] = [t, connectors[selected]]
                         t.daemon = True
                         t.start()
-                else:
-                    self.running_status[selected] = False
-                    t = threading.Thread(target=self.perform_syncing, args=(oomnitza_connector, connectors[selected], options, selected, run_btn, stop_btn,))
-                    self.threads[selected] = t
-                    t.daemon = True
-                    t.start()
 
-                self.frame.GetSizer().Layout()
-                if not panel is None:
-                    panel.GetSizer().Layout()
+                    stop_btn.Show()
+                    run_btn.Hide()
+                    self.frame.GetSizer().Layout()
+                    if not panel is None:
+                        panel.GetSizer().Layout()
+                except:
+                    if mode == 'all':
+                        for select in selected:
+                            self.running_status['all_' + select] = True
+                    else:
+                        self.running_status[selected] = True
+                    dlg = wx.MessageDialog(None, "Please check Oomnitza Connection and connector connection.", "Error", wx.OK)
+                    dlg.ShowModal()
+                    dlg.Destroy()
 
     def on_stop(self, event, run_btn, selected, panel=None, mode=None):
         stop_btn = event.GetEventObject()
@@ -959,13 +952,15 @@ class ConfigView:
         ret_code = dlg.ShowModal()
 
         if ret_code == wx.ID_OK:
+            dlg.Destroy()
             if mode == 'all':
                 for select in self.running_status:
                     if 'all_' in select:
                         self.running_status[select] = True
+                        stop_connector(self.threads[select][1])
             else:
                 self.running_status[selected] = True
-                self.threads[selected].join()
+                stop_connector(self.threads[selected][1])
             stop_btn.Hide()
             run_btn.Show()
             self.frame.Layout()
@@ -976,17 +971,20 @@ class ConfigView:
         """
         Stop the task queue, terminate processes and close the window.
         """
-        #flag = True
-        #for key in self.running_status:
-        #    if self.running_status[key] is False:
-        #        flag = False
-        #        break
-        #if not flag:
-        #    wx.MessageBox('Please stop the process of uploading before closing application!', 'Warning',
-        #            wx.OK | wx.ICON_INFORMATION)
+        flag = True
+        for key in self.running_status:
+            if self.running_status[key] is False:
+                flag = False
+                break
+        if not flag:
+            wx.MessageBox('Please stop the process of uploading before closing application!', 'Warning',
+                    wx.OK | wx.ICON_INFORMATION)
 
-        #else:
-        self.frame.Destroy()
+        else:
+            self.frame.Destroy()
+            for select in self.threads:
+                self.threads[select][0].join()
+
 
     def on_add(self, event, listbox, field, selected):
         text = wx.GetTextFromUser('Enter a new item', 'Insert dialog')
@@ -997,33 +995,6 @@ class ConfigView:
     def on_add_row(self, event, listctrl, index):
         new_index = listctrl.InsertStringItem(index, "Please Insert Key...")
         listctrl.SetStringItem(new_index, 1, "Please Insert Value...")
-
-    def on_end_label_edit(self, event, listctrl, field, selected, field_mappings):
-        edit_col = event.GetItem().GetColumn()
-        edit_text = event.GetItem().GetText()
-        if edit_col == 0:
-            exist = False
-            copy_fields_mapping = {v: k for k, v in field_mappings.items()}
-            compare_value = listctrl.GetItem(event.GetItem().GetId(), 1).GetText()
-            if edit_text:
-                for value in copy_fields_mapping:
-                    if value == compare_value:
-                        #self.top_frame.config[selected][field] = self.top_frame.config[selected][field].pop(edit_text)
-                        #self.top_frame.config[selected][field][edit_text] = compare_value
-                        exist = True
-                if not exist:
-                    pass
-                    #self.top_frame.config[selected][field][edit_text] = compare_value
-        elif edit_col == 1:
-            exist = False
-            compare_key = listctrl.GetItem(event.GetItem().GetId(), 0).GetText()
-            for key in field_mappings:
-                if key == compare_key:
-                    #self.top_frame.config[selected][field][compare_key] = edit_text
-                    exist = True
-            if not exist and compare_key:
-                pass
-                #self.top_frame.config[selected][field][compare_key] = edit_text
 
     def on_rename(self, event, listbox, field, selected):
         sel = listbox.GetSelection()
@@ -1070,17 +1041,7 @@ class ConfigView:
 
     def test_connection(self, event, selected):
         try:
-            parser = argparse.ArgumentParser()
-            parser.add_argument("action", nargs='?', default='gui', choices=['gui', 'upload', 'generate-ini'], help="Action to perform.")
-            parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
-            parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
-            parser.add_argument('--ini', type=str, default=os.path.join(os.path.dirname(sys.executable), "config.ini"), help="Config file to use.")
-            #parser.add_argument('--ini', type=str, default=os.path.join(config.ROOT, "config.ini"), help="Config file to use.")
-            parser.add_argument('--logging-config', type=str, default="USE_DEFAULT", help="Use to override logging config file to use.")
-
-            args = parser.parse_args()
-
-            connectors = parse_config(args)
+            connectors = utilize_connector(parse_config)
             connector = connectors[selected]['__connector__']
             response = connector.test_connection({})
 
@@ -1095,8 +1056,7 @@ class ConfigView:
                           wx.OK | wx.ICON_INFORMATION)
 
     def load_style(self, type):
-        path = relative_path('%s.json' % (type))
-        #path = relative_path('connector_gui/styles/%s.json' % (type))
+        path = relative_path('connector_gui/styles/%s.json' % (type))
 
         with open(path) as json_file:
             style = json.load(json_file)

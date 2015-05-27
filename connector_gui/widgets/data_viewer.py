@@ -1,5 +1,6 @@
 import wx
-from connector_gui.utils.relative_path import relative_path
+
+from utils.relative_path import relative_path
 
 
 class DataViewer(wx.TreeCtrl):
@@ -13,6 +14,7 @@ class DataViewer(wx.TreeCtrl):
 
         self.SetForegroundColour(fg_color)
         self.SetBackgroundColour(bg_color)
+        self.tree_nodes_mappings = {}
 
         icon_list = wx.ImageList(16, 16)
         self.enabled_icon_id = icon_list.Add(wx.Bitmap(relative_path('connector_gui/images/enabled.png')))
@@ -20,24 +22,24 @@ class DataViewer(wx.TreeCtrl):
         self.disabled_icon_id = icon_list.Add(wx.Bitmap(relative_path('connector_gui/images/disabled.png')))
         self.expanded_icon_id = icon_list.Add(wx.Bitmap(relative_path('connector_gui/images/expanded.png')))
         self.collapsed_icon_id = icon_list.Add(wx.Bitmap(relative_path('connector_gui/images/collapsed.png')))
-        #self.enabled_icon_id = icon_list.Add(wx.Bitmap(relative_path('enabled.png')))
-        #self.scheduled_icon_id = icon_list.Add(wx.Bitmap(relative_path('scheduled.png')))
-        #self.disabled_icon_id = icon_list.Add(wx.Bitmap(relative_path('disabled.png')))
-        #self.expanded_icon_id = icon_list.Add(wx.Bitmap(relative_path('expanded.png')))
-        #self.collapsed_icon_id = icon_list.Add(wx.Bitmap(relative_path('collapsed.png')))
         self.AssignImageList(icon_list)
 
-        root = self.AddRoot('')
-        self.connectors = self.AppendItem(root, 'Connectors')
+        self.root = self.AddRoot('')
+        self.connectors = self.AppendItem(self.root, 'Connectors')
+        self.tree_nodes_mappings['connectors'] = self.connectors
+        self.SetFocusedItem(self.connectors)
         self.SetItemImage(self.connectors, self.expanded_icon_id,
                           wx.TreeItemIcon_Normal)
-        self.AppendItem(root, 'Oomnitza Connection')
+        self.oomnitza = self.AppendItem(self.root, 'Oomnitza Connection')
+        self.tree_nodes_mappings['oomnitza connection'] = self.oomnitza
 
         for connector in sorted(connectors.keys()):
             if connector in mappings:
                 item = self.AppendItem(self.connectors, mappings[connector])
+                self.tree_nodes_mappings[mappings[connector].lower()] = item
             else:
                 item = self.AppendItem(self.connectors, connector)
+                self.tree_nodes_mappings[connector.lower()] = item
 
             if 'enable' in connectors[connector] and \
                             connectors[connector]['enable'].lower() == 'true':
@@ -67,3 +69,12 @@ class DataViewer(wx.TreeCtrl):
             else:
                 self.SetItemImage(child, self.disabled_icon_id, wx.TreeItemIcon_Normal)
             child, cookie = self.GetNextChild(self.connectors, cookie)
+
+    def set_focused_item(self, item_label):
+        self.SetFocusedItem(self.get_item_by_label(item_label))
+
+    def get_item_by_label(self, search_label):
+        return self.tree_nodes_mappings[search_label]
+
+
+

@@ -17,7 +17,7 @@
       "stream": "ext://sys.stdout"
     },
     "info_file_handler": {
-      "class": "logging.handlers.RotatingFileHandler",
+      "class": "lib.config.RotateHandler",
       "formatter": "file",
       "level": "DEBUG",
       "filename": "info.log",
@@ -26,7 +26,7 @@
       "encoding": "utf8"
     },
     "error_file_handler": {
-      "class": "logging.handlers.RotatingFileHandler",
+      "class": "lib.config.RotateHandler",
       "level": "ERROR",
       "formatter": "file",
       "filename": "errors.log",

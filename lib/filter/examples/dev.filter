@@ -1,0 +1,32 @@
+    # cea( attr="ext_attr" ) == "Hello World"; # This checks an extension attribute
+    # cea( general.other ) == "EA Other";
+    # OR {
+    #     general.field == "FooBar";
+    #     general.other == "other";
+    # }
+    # number(value=hardware.software.0.version) <= 5.0;
+    # foo *= "ba[rfd]";
+# -- testing
+#   1 == 1;
+#   1 < 2;
+#   1 <= 2;
+#   1 >= 0;
+#   1 == "1";
+#    number(value=1.0) == number(value=1);
+#   number('1.0') == number(value='1');
+#     set foo = "bar";
+#     foo == "bar";
+#     set ver = number(value=hardware.software.0.version);
+#     set Foo = foo;
+     set tmp.foo = "testing";
+    # if( Foo == foo ) { set is_true = True; }
+    # if( foo == 'foo' ) {
+    #     general.field == "other";
+    # } else {
+    #     general.other == "FooBar";
+    # }
+     if( foo == 'foo' ) {
+        set result.field = "other";
+    } else {
+        set result.field = "FooBar";
+    }

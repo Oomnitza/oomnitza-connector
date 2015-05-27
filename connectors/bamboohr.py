@@ -12,8 +12,8 @@ class Connector(UserConnector):
     MappingName = 'BambooHR'
     Settings = {
         'url':          {'order': 1, 'default': "https://api.bamboohr.com/api/gateway.php"},
-        'system_name':  {'order': 2, 'example': "oomnitzasf"},
-        'api_token':    {'order': 3, 'example': "ffb86eeabad3d7295b42797c2f003d33dec3cae7"},
+        'system_name':  {'order': 2, 'example': "YOUR BambooHR SYSTEM NAME"},
+        'api_token':    {'order': 3, 'example': "YOUR BambooHR API TOKEN"},
         'default_role': {'order': 4, 'example': '25'},
     }
 

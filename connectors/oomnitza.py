@@ -2,8 +2,9 @@
 import base64
 import logging
 import pprint
+from socket import gaierror
 
-from requests import ConnectionError
+from requests import RequestException
 
 from lib.connector import BaseConnector, AuthenticationError
 
@@ -25,6 +26,9 @@ class Connector(BaseConnector):
         self._auth_token = None
         self.authenticate()
         self._test_headers = []
+
+    def _test_site_connection(self):
+        pass
 
     def get_field_mappings(self, extra_mappings):
         """ Override base to always return an empty mapping set.
@@ -48,11 +52,23 @@ class Connector(BaseConnector):
             ).strip()  # Weird, but it was adding a \n to the end of the string, which kinda breaks HTTP.
         else:
             try:
-                auth_url = "{url}/api/request_token?login={username}&password={password}".format(**self.settings)
-                response = self.get(auth_url)
+                auth_url = "{url}/api/request_token".format(**self.settings)
+                response = self.post(
+                    auth_url,
+                    {'login': self.settings['username'],
+                     'password': self.settings['password']},
+                    post_as_json=False,
+                )
                 self._auth_token = response.json()["token"]
-            except ConnectionError as exp:
-                raise AuthenticationError(exp.response)
+            except RequestException as exp:
+                if isinstance(exp.message, basestring):
+                    raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
+                if isinstance(exp.message.args[1], gaierror):
+                    msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
+                    if exp.message.args[1].errno == 8:
+                        msg = "Unable to get address for {}.".format(self.settings['url'])
+                    raise AuthenticationError(msg)
+                raise AuthenticationError(str(exp))
 
     def upload_assets(self, assets, options):
         # logger.debug("upload_assets( %r )", assets)

@@ -9,7 +9,8 @@
       "casper": "Casper",
       "ldap": "LDAP",
       "bamboohr": "BambooHR",
-      "zendesk": "Zendesk"
+      "zendesk": "Zendesk",
+      "sccm": "SCCM"
     },
   "field_mappings":
     {
@@ -33,7 +34,13 @@
       "enable": "Enable Connector",
       "is_sso": "SSO",
       "default_role": "Default Role",
-      "default_position": "Default Position"
+      "default_position": "Default Position",
+      "sync_field": "Sync Field",
+      "sync_type": "Sync Type",
+      "verify_ssl": "Verify SSL",
+      "server": "Server",
+      "database": "Database",
+      "authentication": "Authentication"
     },
   "fields_display_order":
     [
@@ -44,7 +51,6 @@
       "api_token",
       "is_sso",
       "storage",
-      "partitions",
       "name_attr",
       "surname_attr",
       "email_attr",
@@ -56,6 +62,13 @@
       "asset_mapping",
       "custom_extras",
       "default_role",
-      "default_position"
+      "default_position",
+      "sync_field",
+      "sync_type",
+      "verify_ssl",
+      "partitions",
+      "server",
+      "database",
+      "authentication"
     ]
 }

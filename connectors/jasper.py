@@ -15,17 +15,11 @@ class Connector(AssetConnector):
 
     Settings = {
         'wsdl_path':  {'order': 1, 'default': "http://api.jasperwireless.com/ws/schema/Terminal.wsdl"},
-        'username':   {'order': 2, 'example': "username"},
-        'password':   {'order': 3, 'example': "qwerty123"},
-        'api_token':  {'order': 4, 'example': "220c9a8c-8e62-4b83-8a28-fc5b99674246"},
+        'username':   {'order': 2, 'example': "username@example.com"},
+        'password':   {'order': 3, 'example': "change-me"},
+        'api_token':  {'order': 4, 'example': "YOUR Jasper API TOKEN"},
         'storage':    {'order': 4, 'default': "storage.db"},
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-    }
-
-    FieldMappings = {
-        '24DCF85294E411E38A52066B556BA4EE': {'source': 'iccid'},
-        '1F331776A68911E4912606283F60DC81': {'source': "ratePlan"},
-        '2992C6E4A68911E496C506283F60DC81': {'source': 'imei'},
     }
 
     def __init__(self, settings):

@@ -1,6 +1,8 @@
 
 import base64
 import logging
+import time
+import math
 
 from requests import ConnectionError, HTTPError
 from lib.connector import AssetConnector
@@ -10,27 +12,19 @@ logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 
 class Connector(AssetConnector):
     MappingName = 'MobileIron'
+    RetryCount = 10
 
     Settings = {
         'url':        {'order': 1, 'default': "https://na1.mobileiron.com"},
-        'username':   {'order': 2, 'example': "trent.seed@oomnitza.com"},
-        'password':   {'order': 3, 'example': "a1S2d3F490"},
+        'username':   {'order': 2, 'example': "username@example.com"},
+        'password':   {'order': 3, 'example': "change-me"},
         'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True},
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
-    FieldMappings = {
-        '24DCF85294E411E38A52066B556BA4EE': {'source': 'serialNumber'},
-        'EB4CEBD0A68811E49E5C06283F60DC81': {'source': "currentCarrierNetwork"},
-        '2992C6E4A68911E496C506283F60DC81': {'source': 'imei'},
-        '384AFD88A68811E4912606283F60DC81': {'source': 'deviceModel'},
-        '2814A3A6A68811E4912606283F60DC81': {'source': 'manufacturer'},
-        'D2F821EEA68811E4B01E06283F60DC81': {'source': 'wifiMacAddress'},
-        '82BA283E970E11E28A24525400385B84': {'source': 'platformType'},
-    }
-
     def __init__(self, settings):
         super(Connector, self).__init__(settings)
+        self._retry_counter = 0
 
     def get_headers(self):
         auth_string = self.settings['username'] + ":" + self.settings['password']
@@ -86,14 +80,24 @@ class Connector(AssetConnector):
         start = -1
         total_count = 0
         while start < total_count:
+            if self._retry_counter > Connector.RetryCount:
+                logger.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
+                break
             if start == -1:
                 start = 0
-            response = self.get(url.format(self.settings['url'], partition_id, rows, start))
-            response.raise_for_status()
-            result = response.json()['result']
-            if total_count == 0:
-                total_count = result['totalCount']
+            try:
+                response = self.get(url.format(self.settings['url'], partition_id, rows, start))
+                response.raise_for_status()
+                result = response.json()['result']
+                if total_count == 0:
+                    total_count = result['totalCount']
 
-            logger.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
-            yield result['searchResults']
-            start += len(result['searchResults'])
+                logger.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
+                yield result['searchResults']
+                start += len(result['searchResults'])
+            except:
+                logger.exception("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
+                self._retry_counter += 1
+                sleep_secs = math.pow(2, min(self._retry_counter, 8))
+                logger.warning("Sleeping for %s seconds.", sleep_secs)
+                time.sleep(sleep_secs)
