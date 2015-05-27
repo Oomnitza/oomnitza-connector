@@ -15,7 +15,7 @@ class Connector(UserConnector):
     Settings = {
         'url':              {'order':  1, 'example': "ldap://ldap.forumsys.com:389"},
         'username':         {'order':  2, 'example': "cn=read-only-admin,dc=example,dc=com"},
-        'password':         {'order':  3, 'example': "password"},
+        'password':         {'order':  3, 'example': "change-me"},
         'base_dn':          {'order':  4, 'example': "dc=example,dc=com"},
         'protocol_version': {'order':  5, 'default': "3"},
         'enable_tls':       {'order':  6, 'example': "True"},
@@ -63,7 +63,7 @@ class Connector(UserConnector):
         if self.settings['enable_tls'] in self.TrueValues and self.settings['protocol_version'] == '3':
             try:
                 self.ldap_connection.start_tls_s()
-            except ldap.PROTOCOL_ERROR as exp:
+            except ldap.LDAPError as exp:
                 logger.debug("%s", exp.message)
                 raise AuthenticationError("Error when trying to enable TLS on connection. You may need to set enable_tls = False in your config.ini file.")
 
@@ -86,6 +86,8 @@ class Connector(UserConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
         except ldap.SERVER_DOWN as exp:
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message['desc'])}
+        except Exception as exp:
+            return {'result': False, 'error': 'Connection Failed: %s' % exp}
 
     def _load_records(self, options):
         assert self.settings['protocol_version'] in ['2', '3'], \

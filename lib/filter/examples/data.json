@@ -1,0 +1,18 @@
+{
+    "foo": "baf",
+    "general": {
+        "specific": 123.34,
+        "field": "FooBarNo",
+        "other": "other"
+    },
+    "extension_attributes": [
+        {"name": "test", "value": "test"},
+        {"name": "ext_attr", "value": "Hello World"},
+        {"name": "other", "value": "EA Other"}
+    ],
+    "hardware": {
+        "software": [
+            {"version": 5.5}
+        ]
+    }
+}

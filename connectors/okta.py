@@ -1,4 +1,6 @@
-
+import os
+import errno
+import json
 import logging
 
 from requests import ConnectionError, HTTPError
@@ -10,8 +12,8 @@ logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 class Connector(UserConnector):
     MappingName = 'Okta'
     Settings = {
-        'url':              {'order': 1, 'default': "https://oomnitza1-admin.okta.com"},
-        'api_token':        {'order': 2, 'example': "00kS9y1nRuNo1WJAuFixx-BB0K2Yd1RXZcLPuDFJrF"},
+        'url':              {'order': 1, 'default': "https://example-admin.okta.com"},
+        'api_token':        {'order': 2, 'example': "YOUR Okta API TOKEN"},
         'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
     }
@@ -48,8 +50,21 @@ class Connector(UserConnector):
 
     def _load_records(self, options):
         next = "{0}/api/v1/users?limit={1}".format(self.settings['url'], options.get('limit', 100))
+        index = 0
         while next:
             response = self.get(next)
             for user in response.json():
+                if self.settings.get("__save_data__", False):
+                    try:
+                        os.makedirs("./saved_data")
+                    except OSError as exc:
+                        if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                            pass
+                        else:
+                            raise
+                    with open("./saved_data/{}.json".format(str(index)), "w") as save_file:
+                        save_file.write(json.dumps(user['profile']))
+                index += 1
                 yield user['profile']
+
             next = response.links.get('next', {}).get('url', None)

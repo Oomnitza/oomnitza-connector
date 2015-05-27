@@ -1,0 +1,6 @@
+
+
+class ConfigError(RuntimeError):
+    pass
+
+

@@ -13,6 +13,7 @@
       "bg_color": "#336699",
       "logo":
         {
+          "size": [200, 35],
           "padding": 15
         },
       "tree":
@@ -21,10 +22,6 @@
           "fg_color": "#D1D0CE",
           "bg_color": "#336699",
           "padding": 20
-        },
-      "logo":
-        {
-          "size": [200, 35]
         }
     },
   "content":
@@ -63,7 +60,7 @@
         },
       "multitext":
         {
-          "size": [480, 350],
+          "size": [450, 300],
           "fg_color": "#606060",
           "bg_color": "#F0F0F0"
         }
@@ -74,7 +71,8 @@
         {
           "size": [80, 25],
           "border": 4
-        }
+        },
+      "border": 20
     },
   "sizer":
     {

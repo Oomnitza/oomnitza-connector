@@ -4,13 +4,18 @@ import sys
 import requests
 import json
 import logging
-import importlib
 import pprint
+
+from requests.exceptions import HTTPError
+
+from utils.relative_path import relative_app_path
 
 logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 root_logger = logging.getLogger('')
 
+from .error import ConfigError
 from .httpadapters import AdapterMap
+from .converters import Converter
 
 LastInstalledHandler = None
 
@@ -19,24 +24,36 @@ def run_connector(oomnitza_connector, connector, options):
     global LastInstalledHandler
     if LastInstalledHandler:
         root_logger.removeHandler(LastInstalledHandler)
-    LastInstalledHandler = logging.FileHandler("{}.log".format(connector['__name__']))
+    LastInstalledHandler = logging.FileHandler(relative_app_path("{}.log".format(connector['__name__'])))
     LastInstalledHandler.setLevel(logging.INFO)
     root_logger.addHandler(LastInstalledHandler)
 
     conn = connector["__connector__"]
-    try:
-        conn.authenticate()
-    except AuthenticationError as exp:
-        logger.error("Authentication failure: %s", exp.message)
-        return
-    except requests.HTTPError:
-        logger.exception("Error connecting to %s service.", connector['__name__'])
-        return
 
     try:
-        conn.perform_sync(oomnitza_connector, options)
-    except requests.HTTPError:
-        logger.exception("Error syncing data for %s service.", connector['__name__'])
+        try:
+            conn.authenticate()
+        except AuthenticationError as exp:
+            logger.error("Authentication failure: %s", exp)
+            return
+        except requests.HTTPError:
+            logger.exception("Error connecting to %s service.", connector['__name__'])
+            return
+
+        try:
+            conn.perform_sync(oomnitza_connector, options)
+        except requests.HTTPError:
+            logger.exception("Error syncing data for %s service.", connector['__name__'])
+    except:  # pylint:disable=broad-except
+        logger.exception("Unhandled error in run_connector for %s", connector['__name__'])
+
+
+def stop_connector(connector):
+    try:
+        conn = connector["__connector__"]
+        conn.stop_sync()
+    except Exception as ex:
+        logger.exception(str(ex))
 
 
 class AuthenticationError(RuntimeError):
@@ -56,7 +73,9 @@ class BaseConnector(object):
 
     def __init__(self, settings):
         self.settings = {}
+        self.keep_going = True
         ini_field_mappings = {}
+        self.__filter__ = None
 
         for key, value in settings.items():
             if key.startswith('mapping.'):
@@ -66,6 +85,8 @@ class BaseConnector(object):
                 ini_field_mappings[field_name] = value
             # elif key.startswith('subrecord.'):
             #     ini_field_mappings[key] = value
+            elif key == '__filter__':
+                self.__filter__ = value
             else:
                 # first, simple copy for internal __key__ values
                 if (key.startswith('__') and key.endswith('__')) or key in self.BuiltinSettings:
@@ -182,7 +203,7 @@ class BaseConnector(object):
         response.raise_for_status()
         return response
 
-    def post(self, url, data, headers=None, auth=None):
+    def post(self, url, data, headers=None, auth=None, post_as_json=True):
         """
         Performs a HTTP GET against the passed URL using either the standard or passed headers
         :param url: the full url to retrieve.
@@ -196,8 +217,10 @@ class BaseConnector(object):
         auth = auth or self.get_auth()
         # logger.debug("headers: %r", headers)
         # logger.debug("payload = %s", json.dumps(data))
-        response = session.post(url, data=json.dumps(data), headers=headers, auth=auth,
-                                     verify=self.settings.get('verify_ssl', True) in self.TrueValues)
+        if post_as_json:
+            data = json.dumps(data)
+        response = session.post(url, data=data, headers=headers, auth=auth,
+                                verify=self.settings.get('verify_ssl', True) in self.TrueValues)
         response.raise_for_status()
         return response
 
@@ -217,6 +240,9 @@ class BaseConnector(object):
         :return: Nothing
         """
         logger.warning("Unable to test authentication for %s", self.__class__.__module__)
+
+    def stop_sync(self):
+        self.keep_going = False
 
     def perform_sync(self, oomnitza_connector, options):
         """
@@ -242,6 +268,12 @@ class BaseConnector(object):
                 record = [record]
 
             for rec in record:
+                if not self.keep_going:
+                    break  # break out of "for rec in record"
+
+                if not(self.__filter__ is None or self.__filter__(rec)):
+                    logger.info("Skipping record because it did not pass the filter.")
+                    continue
                 converted = self.convert_record(rec)
                 if converted:
                     records.append(converted)
@@ -261,6 +293,10 @@ class BaseConnector(object):
                         logger.info("sending %s records to oomnitza...", len(records))
                         self.send_to_oomnitza(oomnitza_connector, records, options)
                         records = []
+
+            if not self.keep_going:
+                logger.warning("Upload process has been terminated forcibly.")
+                break  # break out of "for record in self._load_records(options)"
 
         # do one final check for records which need to be sent
         if len(records):
@@ -416,14 +452,7 @@ class BaseConnector(object):
                     k, v = arg, True
                 params[k] = v
 
-        converter = cls.Converters.get(converter_name, None)
-        if not converter:
-            # the converter has not been loaded yet, so load it and save it into cls.Converters
-            mod = importlib.import_module("converters.{0}".format(converter_name))
-            converter = mod.converter
-            cls.Converters[converter_name] = converter
-
-        return converter(field, record, value, params)
+        return Converter.run_converter(converter_name, field, record, value, params)
 
 
 class UserConnector(BaseConnector):
@@ -456,6 +485,11 @@ class AuditConnector(BaseConnector):
 
     def __init__(self, settings):
         super(AuditConnector, self).__init__(settings)
+
+        if self.settings['sync_field'] not in self.field_mappings:
+            raise ConfigError("Sync field %r is not included in the %s mappings." % (
+                self.settings['sync_field'], self.MappingName
+            ))
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {

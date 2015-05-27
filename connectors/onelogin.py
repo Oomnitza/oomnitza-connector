@@ -13,7 +13,7 @@ class Connector(UserConnector):
     MappingName = 'OneLogin'
     Settings = {
         'url':              {'order': 1, 'default': "https://app.onelogin.com/api/v2/users.xml"},
-        'api_token':        {'order': 2, 'example': "1DKHA4AAAAG5A5BQADQA"},
+        'api_token':        {'order': 2, 'example': "YOUR OneLogin API TOKEN"},
         'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
     }

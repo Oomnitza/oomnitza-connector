@@ -1,12 +1,12 @@
 import os
-import sys
 import xml.dom.minidom
-from relative_path import relative_path
+
+from utils.relative_path import relative_path
+
 
 def create_task_xml(period, options):
     try:
-        #file = relative_path('connector_gui/templates/task_scheduler.xml')
-        file = relative_path('task_scheduler.xml')
+        file = relative_path('connector_gui/templates/task_scheduler.xml')
 
         if not os.path.exists(file):
             return {'result': '', 'error': 'File task_scheduler.xml doesn\'t exist.'}
@@ -86,8 +86,7 @@ def create_task_xml(period, options):
             sched_month.appendChild(months)
             cal_trig.appendChild(sched_month)
 
-        #temp_xml_path = relative_path('temp.xml')
-        temp_xml_path = os.path.join(os.path.dirname(sys.executable), 'temp.xml')
+        temp_xml_path = relative_path('temp.xml')
 
         with open(temp_xml_path, 'w') as xml_file:
             xml_file.write(dom.toxml())

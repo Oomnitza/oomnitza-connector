@@ -21,8 +21,8 @@ class Connector(AssetConnector):
     Settings = {
         'url':        {'order': 1, 'default': "https://apidev.awmdm.com"},
         'username':   {'order': 2, 'example': "username@example.com"},
-        'password':   {'order': 3, 'example': "qwerty123"},
-        'api_token':  {'order': 4, 'example': "1DKHA4AAAAG5A5BQADQA"},
+        'password':   {'order': 3, 'example': "change-me"},
+        'api_token':  {'order': 4, 'example': "YOUR AirWatch API TOKEN"},
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
