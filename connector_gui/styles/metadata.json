@@ -40,7 +40,8 @@
       "verify_ssl": "Verify SSL",
       "server": "Server",
       "database": "Database",
-      "authentication": "Authentication"
+      "authentication": "Authentication",
+      "update_only": "Update Only"
     },
   "fields_display_order":
     [
@@ -69,6 +70,7 @@
       "partitions",
       "server",
       "database",
-      "authentication"
+      "authentication",
+      "update_only"
     ]
 }

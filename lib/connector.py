@@ -239,7 +239,7 @@ class BaseConnector(object):
         Perform authentication to target service, if needed. Many APIs don't really support this.
         :return: Nothing
         """
-        logger.warning("Unable to test authentication for %s", self.__class__.__module__)
+        logger.debug("Unable to test authentication for %s", self.__class__.__module__)
 
     def stop_sync(self):
         self.keep_going = False
@@ -468,6 +468,11 @@ class AssetConnector(BaseConnector):
 
     def __init__(self, settings):
         super(AssetConnector, self).__init__(settings)
+
+        if self.settings['sync_field'] not in self.field_mappings:
+            raise ConfigError("Sync field %r is not included in the %s mappings." % (
+                self.settings['sync_field'], self.MappingName
+            ))
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {

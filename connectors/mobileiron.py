@@ -7,7 +7,7 @@ import math
 from requests import ConnectionError, HTTPError
 from lib.connector import AssetConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+LOG = logging.getLogger(__name__)
 
 
 class Connector(AssetConnector):
@@ -47,11 +47,11 @@ class Connector(AssetConnector):
 
     def _load_records(self, options):
         for partition in self.fetch_all_partitions():
-            if partition['name'] in self.settings['partitions']:
+            if self.settings['partitions'] == "All" or partition['name'] in self.settings['partitions']:
                 for device in self.fetch_all_devices_for_partition(partition['id']):
                     yield device
             else:
-                logger.debug("Skipping partition %r", partition)
+                LOG.debug("Skipping partition %r", partition)
 
     def fetch_all_partitions(self):
         """
@@ -76,12 +76,15 @@ class Connector(AssetConnector):
 
         /api/v1/device?dmPartitionId=X
         """
-        url = "{0}/api/v1/device?dmPartitionId={1}&rows={2}&start={3}&sortFields[0].name=id&sortFields[0].order=ASC"
+        url = "{0}/api/v1/device?dmPartitionId={1}&rows={2}&start={3}&sortFields[0].name=lastCheckin&sortFields[0].order=DESC"
         start = -1
         total_count = 0
+        cutoff = int((time.time()-(60*60*24*1.5))*1000)  # 60*60*24*3 is 1.5 days in seconds.
+
+        LOG.info("cutoff has been set to: %s", cutoff)
         while start < total_count:
             if self._retry_counter > Connector.RetryCount:
-                logger.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
+                LOG.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
                 break
             if start == -1:
                 start = 0
@@ -92,12 +95,19 @@ class Connector(AssetConnector):
                 if total_count == 0:
                     total_count = result['totalCount']
 
-                logger.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
-                yield result['searchResults']
+                LOG.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
+                # yield result['searchResults']
+                results = [r for r in result['searchResults'] if r['lastCheckin'] >= cutoff]
+                if results:
+                    LOG.info("yield %s results", len(results))
+                    yield results
+                else:
+                    LOG.info("No more records found after cutoff date.")
+                    break  # we have run out of records to process. The rest will be before the cutoff date.
                 start += len(result['searchResults'])
             except:
-                logger.exception("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
+                LOG.exception("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
                 self._retry_counter += 1
                 sleep_secs = math.pow(2, min(self._retry_counter, 8))
-                logger.warning("Sleeping for %s seconds.", sleep_secs)
+                LOG.warning("Sleeping for %s seconds.", sleep_secs)
                 time.sleep(sleep_secs)

@@ -240,6 +240,8 @@ class ConfigView:
                                 text.SetValue(field_mappings[field].title())
                                 self.frame.Bind(wx.EVT_COMBOBOX, lambda evt, field=field, selected=\
                                                 selected: self.dropdown_changed_event(evt, field, selected), text)
+                            elif field in ['password']:
+                                text = Text(sub_panel, field_mappings[field], True)
                             else:
                                 text = Text(sub_panel, field_mappings[field])
                         label = wx.StaticText(sub_panel, -1, field_mappings[field])
@@ -312,15 +314,15 @@ class ConfigView:
 
             # Create combobox controls for cron job setting
             min_label = wx.StaticText(sub_panel, -1, "Minutes")
-            min_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(60)]+['/',',','*','-'])
+            min_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(60)]+['*'])
             hour_label = wx.StaticText(sub_panel, -1, "Hours")
-            hour_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(24)]+['/',',','*','-'])
+            hour_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(24)]+['*'])
             day_label = wx.StaticText(sub_panel, -1, "Day of Month")
-            day_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(1,32)]+['/',',','*','-','?','L'])
+            day_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(1,32)]+['*'])
             month_label = wx.StaticText(sub_panel, -1, "Month")
-            month_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(1,13)]+['/',',','*','-'])
+            month_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(1,13)]+['*'])
             weekday_label = wx.StaticText(sub_panel, -1, "Day of Week")
-            weekday_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(7)]+['/',',','*','-','?','L'])
+            weekday_combobox = wx.ComboBox(sub_panel, choices=[str(x) for x in range(8)]+['*'])
 
             time_labels = [min_label, hour_label, day_label,
                            month_label, weekday_label]
@@ -841,6 +843,8 @@ class ConfigView:
                         text.SetValue(config[selected][field].title())
                         self.frame.Bind(wx.EVT_COMBOBOX, lambda evt, field=field, selected=\
                                         selected:self.dropdown_changed_event(evt, field, selected), text)
+                    elif field in ['password']:
+                        text = Text(self.setting_page, str(config[selected][field]), True)
                     else:
                         text = Text(self.setting_page, str(config[selected][field]))
                     sizer.Add(label, pos=(rows, cols), flag=wx.LEFT,
