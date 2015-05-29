@@ -38,7 +38,7 @@ AdapterMap = {
     'tls1': Tlsv1HttpAdapter,
 }
 
-if ssl._SSLv2_IF_EXISTS:
+if getattr(ssl, '_SSLv2_IF_EXISTS', False):
     class Sslv2HttpAdapter(BaseHttpAdapter):
         """"Transport adapter" that allows us to force protocol to SSLv2."""
         Protocol = ssl.PROTOCOL_SSLv2

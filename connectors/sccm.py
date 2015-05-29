@@ -11,15 +11,18 @@ logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
 class Connector(AuditConnector):
     MappingName = 'SCCM'
     Settings = {
-        'sync_field':        {'order': 2, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-        'server':            {'order': 3, 'default': 'sccm.leverx.ru'},
-        'database':          {'order': 4, 'default': 'CM_DCT'},
+        'server':            {'order': 1, 'example': 'server.example.com'},
+        'database':          {'order': 2, 'default': 'CM_DCT'},
+        'username':          {'order': 3, 'example': 'change-me'},
+        'password':          {'order': 4, 'example': 'change-me'},
         'authentication':    {'order': 5, 'default': "SQL Server", 'choices': ("SQL Server", "Windows")},
-        'username':          {'order': 6, 'default': 'lx'},
-        'password':          {'order': 7, 'default': 'leverx'},
+        'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
     DefaultConverters = {
         # FORMAT: "{source field}": "{converter to be applied by default}",
+    }
+    FieldMappings = {
+        'APPLICATIONS':      {'source': "software"},
     }
 
     def __init__(self, settings):
@@ -108,6 +111,7 @@ class Connector(AuditConnector):
                 "model": system_info.get('Model0'),
                 "os_version": os_info.get('Caption0'),
                 "platform": system_info.get('SystemType0'),
+                "resource_id": resource_id,
                 "serial_number": enclosure_info.get('SerialNumber0'),
                 "user_name": system_info.get('UserName0')
             },
