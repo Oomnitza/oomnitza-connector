@@ -1,6 +1,6 @@
 
 # import logging
-# logger = logging.getLogger(__file__)
+# logger = logging.getLogger("converters/casper_ext_attr")
 
 
 def converter(field, record, value, params):

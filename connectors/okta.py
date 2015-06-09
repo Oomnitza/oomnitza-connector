@@ -6,7 +6,7 @@ import logging
 from requests import ConnectionError, HTTPError
 from lib.connector import UserConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/okta")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -28,8 +28,8 @@ class Connector(UserConnector):
         'POSITION':       {'setting': "default_position"},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
 
     def get_headers(self):
         return {
@@ -37,7 +37,7 @@ class Connector(UserConnector):
             'Authorization': 'SSWS %s' % self.settings['api_token']
         }
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             url = "{0}/api/v1/users?limit=1".format(self.settings['url'])
             response = self.get(url)

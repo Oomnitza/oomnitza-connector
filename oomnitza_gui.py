@@ -7,11 +7,7 @@ from utils.utilize_connector import utilize_connector
 from utils.relative_path import relative_app_path
 
 
-def main(args=None):
-    if not os.path.exists(relative_app_path('config.ini')):
-        utilize_connector(target=generate_ini_file)
+def main(args):
     config_model = ConfigModel()
     ConfigController(config_model)
 
-if __name__ == '__main__':
-    main()

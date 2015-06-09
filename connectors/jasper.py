@@ -7,7 +7,7 @@ from suds.wsse import Security, UsernameToken
 
 from lib.connector import AssetConnector, AuthenticationError
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/jasper")  # pylint:disable=invalid-name
 
 
 class Connector(AssetConnector):
@@ -22,12 +22,12 @@ class Connector(AssetConnector):
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.url_temlate = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['wsdl_path']
         self.jasper_client = None
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             self.authenticate()
             return {'result': True, 'error': ''}

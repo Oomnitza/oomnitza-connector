@@ -6,7 +6,7 @@ import xmltodict
 from requests import ConnectionError, HTTPError
 from lib.connector import UserConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -28,8 +28,8 @@ class Connector(UserConnector):
         'POSITION':       {'setting': "default_position"},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.url_template = "{0}?from_id=%s".format(self.settings['url'])
 
     def get_headers(self):
@@ -37,7 +37,7 @@ class Connector(UserConnector):
             'Authorization': "Basic %s" % base64.standard_b64encode(self.settings['api_token']+":x")
         }
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             url = self.url_template % 1
             response = self.get(url)

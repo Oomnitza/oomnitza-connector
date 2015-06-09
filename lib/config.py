@@ -11,11 +11,20 @@ import pprint
 
 from utils.relative_path import relative_path
 from utils.relative_path import relative_app_path
-from lib.connector import AuthenticationError
+from lib.error import AuthenticationError
 
-LOG = logging.getLogger(__name__)  # pylint:disable=invalid-name
+LOG = logging.getLogger("lib/config")  # pylint:disable=invalid-name
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# ToDo: When should this be turned on?
+try:
+    import keyring
+    __USE_KEYRING = True
+except ImportError:
+    keyring = None
+    __USE_KEYRING = False  # getattr(sys, 'frozen', False)
+
 
 from .filter import parse_filter
 from .converters import Converter
@@ -31,7 +40,7 @@ def generate_ini_file(args):
     with open(args.ini, 'w') as ini_file:
         ini_file.write(get_default_ini())
 
-    print "{0} has been generated.".format(args.ini)
+    LOG.info("{0} has been generated.".format(args.ini))
 
 
 class FilterConverter(object):
@@ -60,7 +69,8 @@ def parse_config(args):
         config = ConfigParser.SafeConfigParser()
         if not os.path.isfile(args.ini):
             # The config file does not yet exist, so generate it.
-            generate_ini_file(args)
+            # generate_ini_file(args)
+            raise ConfigError("Error: unable to open ini file: %r" % args.ini)
 
         config.read(args.ini)
         for section in config.sections():
@@ -108,18 +118,28 @@ def parse_config(args):
                             #     except ValueError:
                             #         raise ConfigError("Failed to parse json value %s:%s = %r", section, key, value)
                             else:
-                                cfg[key] = value
                                 if key in connector.Settings:
-                                    choices = connector.Settings[key].get('choices', [])
-                                    if choices and cfg[key] not in choices:
-                                        raise ConfigError("Invalid value for %s: %r. Value must be one of %r", key, value, choices)
+                                    setting = connector.Settings[key]
+                                elif key in connector.CommonSettings:
+                                    setting = connector.CommonSettings[key]
+                                else:
+                                    raise ConfigError("Invalid setting in %r section: %r." % (section, key))
+
+                                if key == "password" and __USE_KEYRING:
+                                    cfg[key] = get_keyring_password(section, key)
+                                else:
+                                    cfg[key] = value
+
+                                choices = setting.get('choices', [])
+                                if choices and cfg[key] not in choices:
+                                    raise ConfigError("Invalid value for %s: %r. Value must be one of %r", key, value, choices)
 
                         if 'oomnitza' in connectors:
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
                         cfg["__name__"] = module
-                        cfg["__connector__"] = connector(cfg)
+                        cfg["__connector__"] = connector(section, cfg)
 
                         connectors[section] = cfg
                     except ConfigError:
@@ -189,7 +209,13 @@ def format_sections_for_ini(sections):
         parts.append('[{0}]'.format(section))
         for key, value in sections[section]:
             if value:
-                parts.append("{0} = {1}".format(key, value))
+                if not isinstance(value, basestring):
+                    value = json.dumps(value)
+
+                tpl = "{0} = {1}"
+                if '\n' in value:
+                    tpl = "{0}:\n{1}"
+                parts.append(tpl.format(key, value))
             else:
                 parts.append("{0}".format(key))
         parts.append('')
@@ -230,3 +256,32 @@ def setup_logging(args):
             sys.stderr.write("Error opening logging.json!\n")
         sys.exit(1)
 
+
+
+
+def get_keyring_password(section, field):
+    if not __USE_KEYRING:
+        raise ConfigError("Can't get password from keyring. It has not been enabled!")
+
+    return keyring.get_password(
+        "{}.{}".format("OomnitzaConnector", section),
+        field
+    )
+
+def set_keyring_password(section, field, value):
+    if not __USE_KEYRING:
+        raise ConfigError("Can't store password in keyring. It has not been enabled!")
+
+    keyring.set_password(
+        "{}.{}".format("OomnitzaConnector", section),
+        field,
+        value
+    )
+
+
+def use_keyring():
+    return __USE_KEYRING
+
+def disable_keyring():
+    global __USE_KEYRING
+    __USE_KEYRING = False

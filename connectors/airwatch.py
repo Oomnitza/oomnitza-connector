@@ -5,7 +5,7 @@ import logging
 from requests import ConnectionError, HTTPError
 from lib.connector import AssetConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
 
 """
 Curl Auth Test:
@@ -26,8 +26,8 @@ class Connector(AssetConnector):
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.url_template = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['url']
 
     def get_headers(self):
@@ -38,7 +38,7 @@ class Connector(AssetConnector):
             'aw-tenant-code': self.settings['api_token']
         }
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             page = options.get('start_page', 0)
             rows = options.get('rows_per_page', 1)

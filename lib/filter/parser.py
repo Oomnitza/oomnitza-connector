@@ -7,7 +7,7 @@ from token import tok_name
 import operator
 import inspect
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("lib/filter/parser")
 
 from .tokenizer import tokenize
 from .tree import Bool, And, Or, Set, If, FunctionCall, Literal, Field, RegEx

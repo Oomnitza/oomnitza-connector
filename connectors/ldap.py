@@ -1,13 +1,16 @@
 from __future__ import absolute_import
 
+import os
 import logging
 import ldap
 import ldapurl
 
 from ldap.controls import SimplePagedResultsControl
 from lib.connector import UserConnector, AuthenticationError
+from lib.error import ConfigError
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+
+LOG = logging.getLogger("connectors/ldap")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -18,7 +21,6 @@ class Connector(UserConnector):
         'password':         {'order':  3, 'example': "change-me"},
         'base_dn':          {'order':  4, 'example': "dc=example,dc=com"},
         'protocol_version': {'order':  5, 'default': "3"},
-        'enable_tls':       {'order':  6, 'example': "True"},
         'filter':           {'order':  7, 'example': "(objectClass=*)"},
         'default_role':     {'order':  8, 'example': 25, 'type': int},
         'default_position': {'order':  9, 'example': 'Employee'},
@@ -33,13 +35,13 @@ class Connector(UserConnector):
         'POSITION':       {'setting': "default_position"},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.ldap_connection = None
         self.ldap_query_fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]+['sAMAccountName']))
 
     def authenticate(self):
-        # ldap.set_option(ldap.OPT_DEBUG_LEVEL,1)
+        # ldap.set_option(ldap.OPT_DEBUG_LEVEL, 1)
         ldap.set_option(ldap.OPT_REFERRALS, 0)
         ldap.set_option(ldap.OPT_NETWORK_TIMEOUT, 30)
 
@@ -48,7 +50,7 @@ class Connector(UserConnector):
             ldap.set_option(ldap.OPT_PROTOCOL_VERSION, ldap.VERSION2)
         else:
             if self.settings['protocol_version'] != '3':
-                logger.warning("Unrecognized Protocol Version '%s', setting to '3'.", self.settings['protocol_version'])
+                LOG.warning("Unrecognized Protocol Version '%s', setting to '3'.", self.settings['protocol_version'])
                 self.settings['protocol_version'] = '3'
             ldap.set_option(ldap.OPT_PROTOCOL_VERSION, ldap.VERSION3)
 
@@ -59,13 +61,28 @@ class Connector(UserConnector):
                                       "Check config examples at https://github.com/Oomnitza.")  # FixMe: get new url
         self.ldap_connection = ldap.initialize(parsed_url.unparse())
 
+        cacert_file = self.settings.get('cacert_file', '')
+        if cacert_file:
+            cacert_file = os.path.abspath(cacert_file)
+            if not os.path.isfile(cacert_file):
+                raise ConfigError("%s is not a valid file!" % cacert_file)
+            LOG.info("Setting CACert File to: %r.", cacert_file)
+            ldap.set_option(ldap.OPT_X_TLS_CACERTFILE, cacert_file)
+        cacert_dir = self.settings.get('cacert_dir', '')
+        if cacert_dir:
+            cacert_dir = os.path.abspath(cacert_dir)
+            if not os.path.isdir(cacert_dir):
+                raise ConfigError("%s is not a valid directory!" % cacert_dir)
+            LOG.info("Setting CACert Dir to: %r.", cacert_dir)
+            ldap.set_option(ldap.OPT_X_TLS_CACERTDIR, cacert_dir)
+
         # check for tls
-        if self.settings['enable_tls'] in self.TrueValues and self.settings['protocol_version'] == '3':
-            try:
-                self.ldap_connection.start_tls_s()
-            except ldap.LDAPError as exp:
-                logger.debug("%s", exp.message)
-                raise AuthenticationError("Error when trying to enable TLS on connection. You may need to set enable_tls = False in your config.ini file.")
+        # if self.settings['enable_tls'] in self.TrueValues and self.settings['protocol_version'] == '3':
+        if self.settings.get('verify_ssl', True) in self.TrueValues:
+            ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
+        else:
+            LOG.info("setting ldap.OPT_X_TLS_REQUIRE_CERT = ldap.OPT_X_TLS_ALLOW (no SSL certificate validation).")
+            ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_ALLOW)
 
         try:
             if self.settings['password'] in [None, '', ' ']:  # FixMe: test for interactive console? just remove?
@@ -78,7 +95,7 @@ class Connector(UserConnector):
                                       "Check the 'username', 'password' and 'dn' options "
                                       "in the config file in the '[ldap]' section.")
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             self.authenticate()
             return {'result': True, 'error': ''}
@@ -126,7 +143,7 @@ class Connector(UserConnector):
         first_pass = True
         pg_ctrl = SimplePagedResultsControl(criticality, page_size, cookie)
 
-        logger.debug("self.ldap_query_fields = %r", self.ldap_query_fields)
+        LOG.debug("self.ldap_query_fields = %r", self.ldap_query_fields)
         while first_pass or pg_ctrl.cookie:
             first_pass = False
             msgid = self.ldap_connection.search_ext(

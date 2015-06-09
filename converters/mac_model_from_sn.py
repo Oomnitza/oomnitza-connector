@@ -3,7 +3,7 @@ import logging
 import urllib2
 import xmltodict
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("converters/mac_model_from_sn")  # pylint:disable=invalid-name
 
 
 def converter(field, record, value, params):
