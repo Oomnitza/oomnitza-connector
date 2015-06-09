@@ -8,6 +8,9 @@ import threading
 import wx
 import wx.lib.masked
 
+import logging
+LOG = logging.getLogger("views/config")
+
 from lib.config import parse_config
 from lib.connector import run_connector, stop_connector
 from utils.create_task_xml import create_task_xml
@@ -268,7 +271,7 @@ class ConfigView:
         else:
             test_btn.Disable()
             run_btn.Disable()
-            
+
         if selected in self.running_status:
             if self.running_status[selected] is True:
                 run_btn.Show()
@@ -451,7 +454,7 @@ class ConfigView:
             monthly_setting_sizer.Add(monthly_months_label, pos=(0, 0), flag=wx.LEFT, border=10)
             monthly_setting_sizer.Add(monthly_days_label, pos=(1, 0), flag=wx.LEFT, border=10)
             months = ['January', 'February', 'March', 'April', 'May', 'June',
-                      'July', 'August', 'September', 'October', 'November', 
+                      'July', 'August', 'September', 'October', 'November',
                       'December']
             monthly_months_dropdown = wx.CheckListBox(monthly_panel, -1, size=(100, 50), choices=months)
             monthly_days_dropdown = wx.CheckListBox(monthly_panel, -1, size=(100, 50), choices=[str((x + 1)) for x in range(31)])
@@ -773,7 +776,7 @@ class ConfigView:
         init_page_menu.SetBackgroundColour(self.style['content']['tree']['bg_color'])
         init_page_menu.SetForegroundColour(self.style['content']['tree']['fg_color'])
         root = init_page_menu.AddRoot("")
-        menu_font = wx.Font(self.style['content']['tree']['font_size'], 
+        menu_font = wx.Font(self.style['content']['tree']['font_size'],
                             wx.DEFAULT, wx.NORMAL, wx.BOLD, True)
 
         config = self.model.get_config()
@@ -940,13 +943,13 @@ class ConfigView:
                     self.frame.GetSizer().Layout()
                     if not panel is None:
                         panel.GetSizer().Layout()
-                except:
+                except Exception as exp:
                     if mode == 'all':
                         for select in selected:
                             self.running_status['all_' + select] = True
                     else:
                         self.running_status[selected] = True
-                    dlg = wx.MessageDialog(None, "Please check Oomnitza Connection and connector connection.", "Error", wx.OK)
+                    dlg = wx.MessageDialog(None, str(exp), "Error", wx.OK)
                     dlg.ShowModal()
                     dlg.Destroy()
 
@@ -1050,13 +1053,15 @@ class ConfigView:
             response = connector.test_connection({})
 
             if response['error']:
-                wx.MessageBox('Connection failure (%s)!\nPlease verify your settings.' %(response['error']), 'Test Unsuccessful',
+                label = self.load_style('metadata').get('menu', {}).get(selected, selected)
+                wx.MessageBox('%s!\nPlease verify your %s settings.' %(response['error'], label), 'Test Unsuccessful',
                           wx.OK | wx.ICON_INFORMATION)
             else:
                 wx.MessageBox('Connection is established.', 'Test Successful',
                           wx.OK | wx.ICON_INFORMATION)
-        except:
-            wx.MessageBox('Connection failure!\nPlease verify your settings.', 'Test Unsuccessful',
+        except Exception as exp:
+            LOG.exception("Uncaught exception running %s.test_connection()." % selected)
+            wx.MessageBox(str(exp), 'Test Unsuccessful',
                           wx.OK | wx.ICON_INFORMATION)
 
     def load_style(self, type):

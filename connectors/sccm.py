@@ -5,7 +5,7 @@ import json
 import pyodbc
 from lib.connector import AuditConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
 
 
 class Connector(AuditConnector):
@@ -25,11 +25,11 @@ class Connector(AuditConnector):
         'APPLICATIONS':      {'source': "software"},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.db = self.perform_connect()
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             self.perform_connect()
             return {'result': True, 'error': ''}
@@ -144,8 +144,8 @@ class Connector(AuditConnector):
         for software in results:
             try:
                 installed_software.append({
-                    "display_name": software.get("DisplayName0"),
-                    "display_version": software.get("Version0"),
+                    "name": software.get("DisplayName0"),
+                    "version": software.get("Version0"),
                     "publisher": software.get("Publisher0"),
                     "path": None
                 })
@@ -166,8 +166,8 @@ class Connector(AuditConnector):
         for software in results:
             try:
                 installed_software_x64.append({
-                    "display_name": software.get("DisplayName0"),
-                    "display_version": software.get("Version0"),
+                    "name": software.get("DisplayName0"),
+                    "version": software.get("Version0"),
                     "publisher": software.get("Publisher0"),
                     "path": None
                 })

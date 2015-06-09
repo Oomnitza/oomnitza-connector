@@ -5,7 +5,7 @@ import logging
 from requests import ConnectionError, HTTPError
 from lib.connector import UserConnector
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/bamboohr")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -27,8 +27,8 @@ class Connector(UserConnector):
         'PERMISSIONS_ID': {'setting': "default_role"},
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self.url_temlate = "%s/%s/{0}" % (self.settings['url'], self.settings['system_name'])
 
     def get_headers(self):
@@ -38,7 +38,7 @@ class Connector(UserConnector):
             'Accept': 'application/json'
         }
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             url = self.url_temlate.format("v1/employees/0")
             response = self.get(url)

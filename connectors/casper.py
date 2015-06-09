@@ -5,8 +5,9 @@ import errno
 
 from requests import ConnectionError, HTTPError
 from lib.connector import AuditConnector
+from lib.error import ConfigError
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
 
 
 SyncTypes = {
@@ -23,8 +24,7 @@ class Connector(AuditConnector):
         'password':    {'order': 3, 'example': "change-me"},
         'sync_field':  {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'sync_type':   {'order': 5, 'default': "computers", 'choices': ("computers", "mobiledevices")},
-        'verify_ssl':  {'order': 6, 'default': "True"},
-        'update_only': {'order': 7, 'default': "False"}
+        'update_only': {'order': 6, 'default': "False"}
     }
     DefaultConverters = {
         "general.report_date":         "date_format",
@@ -36,8 +36,14 @@ class Connector(AuditConnector):
         # "hardware.model":              "mac_model_from_sn",
     }
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
+
+        # ensure URL does not end with a trailing '/'
+        if self.settings['url'].endswith('/'):
+            logger.warning("Casper URL should not end with a '/'.")
+            self.settings['url'] = self.settings['url'][:-1]
+
         self.url_template = "%s/{0}" % self.settings['url']
         sync_type = self.settings.get('sync_type', 'computers')
         self.sync_type = SyncTypes[sync_type]
@@ -55,7 +61,7 @@ class Connector(AuditConnector):
     def get_auth(self):
         return self.settings['username'], self.settings['password']
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         try:
             url = self.url_template.format("JSSResource/computers")
             response = self.get(url)

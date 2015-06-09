@@ -1,0 +1,12 @@
+syntax: glob
+*.log
+*.ini
+.idea
+*.bak
+testing
+*.pyc
+codereview.py
+*.orig
+.DS_Store
+saved_data
+test accounts.txt

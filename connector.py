@@ -19,12 +19,14 @@ import logging
 import logging.config
 
 import requests
+import urllib3.contrib.pyopenssl
+urllib3.contrib.pyopenssl.inject_into_urllib3()
 
 from lib import config
 from lib import connector
 from utils.relative_path import relative_app_path
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("connector.py")
 root_logger = logging.getLogger("")
 
 
@@ -69,7 +71,7 @@ def main(args):
 
 if __name__ == "__main__":
     action_default = None
-    action_nargs = 1
+    action_nargs = None
     if getattr(sys, 'frozen', False):
         action_default = 'gui'
         action_nargs = '?'
@@ -84,6 +86,10 @@ if __name__ == "__main__":
     parser.add_argument('--logging-config', type=str, default="USE_DEFAULT", help="Use to override logging config file to use.")
     parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
     # parser.add_argument('--datafile', type=str, default=None, help="Data file to use for connector in place of live request.")
+    if config.keyring:
+        parser.add_argument('--show-keyring-cfg', action='store_true', dest='keyring_config', help="Show keyring config info.")
+        parser.add_argument('--no-keyring', action='store_false', dest='keyring', help="Disable use of keyring for password storage.")
+
     args = parser.parse_args()
 
     config.setup_logging(args)
@@ -91,12 +97,33 @@ if __name__ == "__main__":
     if args.testmode:
         LOG.info("Connector started in Test Mode.")
 
+    if config.keyring:
+        if not args.keyring:
+            LOG.info("Use of keyring has been disabled.")
+            config.disable_keyring()
+
+        if args.keyring_config:
+            import keyring.util.platform_
+            LOG.info("keyring config: %r", os.path.join(
+                keyring.util.platform_.config_root(),
+                'keyringrc.cfg'
+            ))
+            LOG.info("keyring data dir: %r", keyring.util.platform_.data_root())
+            LOG.info("="*80)
+            LOG.info("For more information, see: https://pypi.python.org/pypi/keyring")
+            exit()
+
     if args.action == 'generate-ini':
         config.generate_ini_file(args)
+        exit()
 
     elif args.action == 'gui':
         try:
             from oomnitza_gui import main
+
+            if not os.path.exists(args.ini):
+                config.generate_ini_file(args)
+
             main(args)
         except ImportError:
             LOG.exception("Error loading gui.")

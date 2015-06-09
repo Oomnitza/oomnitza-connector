@@ -4,7 +4,7 @@ import logging
 import re
 import functools
 
-LOG = logging.getLogger(__name__)  # pylint:disable=invalid-name
+LOG = logging.getLogger("lib/filter/tree")  # pylint:disable=invalid-name
 
 from .. import converters
 

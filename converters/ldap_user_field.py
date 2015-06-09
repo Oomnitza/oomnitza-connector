@@ -1,6 +1,6 @@
 
 import logging
-logger = logging.getLogger(__file__)
+logger = logging.getLogger("converters/ldap_user_field")
 
 
 def converter(field, record, value, params):

@@ -7,25 +7,26 @@ from socket import gaierror
 from requests import RequestException
 
 from lib.connector import BaseConnector, AuthenticationError
+from lib.error import ConfigError
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 
 
 class Connector(BaseConnector):
     Settings = {
-        'url':      {'order': 1, 'example': "https://example.oomnitza.com"},
-        'username': {'order': 2, 'example': "python"},
-        'password': {'order': 3, 'example': "ThePassword"},
-        'is_sso':   {'order': 4, 'default': "False"},
+        'url':       {'order': 1, 'example': "https://example.oomnitza.com"},
+        'api_token': {'order': 2, 'example': "ZZZZXXXXCCCCC", 'default': ""},
+        'username':  {'order': 3, 'example': "oomnitza-sa", 'default': ""},
+        'password':  {'order': 4, 'example': "ThePassword", 'default': ""},
+
     }
     # no FieldMappings for oomnitza connector
     FieldMappings = {}
 
-    def __init__(self, settings):
-        super(Connector, self).__init__(settings)
-        self._auth_token = None
-        self.authenticate()
+    def __init__(self, section, settings):
+        super(Connector, self).__init__(section, settings)
         self._test_headers = []
+        self.authenticate()
 
     def _test_site_connection(self):
         pass
@@ -38,37 +39,38 @@ class Connector(BaseConnector):
         return {}
 
     def get_headers(self):
-        if self.settings['is_sso'] in self.TrueValues:
-            return {'contentType': 'application/json', 'Authorization1': self._auth_token}
-        return {'contentType': 'application/json', 'Authorization2': self._auth_token}
+        # LOG.debug("get_headers(): self.settings['api_token'] = %r", self.settings['api_token'])
+        return {'contentType': 'application/json', 'Authorization2': self.settings['api_token']}
 
     def authenticate(self):
-        if self._auth_token:
-            return
-        if self.settings['is_sso'] in self.TrueValues:
-            logger.info("No Oomnitza Authentication with is_sso = True.")
-            self._auth_token = "Basic " + base64.encodestring(
-                "{0}:{1}".format(self.settings['username'], self.settings['password'])
-            ).strip()  # Weird, but it was adding a \n to the end of the string, which kinda breaks HTTP.
-        else:
-            try:
-                auth_url = "{url}/api/request_token".format(**self.settings)
-                response = self.post(
-                    auth_url,
-                    {'login': self.settings['username'],
-                     'password': self.settings['password']},
-                    post_as_json=False,
-                )
-                self._auth_token = response.json()["token"]
-            except RequestException as exp:
-                if isinstance(exp.message, basestring):
-                    raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
-                if isinstance(exp.message.args[1], gaierror):
-                    msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
-                    if exp.message.args[1].errno == 8:
-                        msg = "Unable to get address for {}.".format(self.settings['url'])
-                    raise AuthenticationError(msg)
-                raise AuthenticationError(str(exp))
+        # LOG.debug("authenticate(0): self.settings['api_token'] = %r", self.settings['api_token'])
+        if not self.settings['api_token']:
+            if not self.settings['username'] or not self.settings['password']:
+                raise ConfigError("Oomnitza section needs either: api_token or username & password.")
+
+        try:
+            if self.settings['api_token']:
+                self.get("{url}/api/v2/mappings?name=AuthTest".format(**self.settings))
+                return
+
+            auth_url = "{url}/api/request_token".format(**self.settings)
+            response = self.post(
+                auth_url,
+                {'login': self.settings['username'],
+                 'password': self.settings['password']},
+                post_as_json=False,
+            )
+            self.settings['api_token'] = response.json()["token"]
+        except RequestException as exp:
+            if isinstance(exp.message, basestring):
+                raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
+            if isinstance(exp.message.args[1], gaierror):
+                msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
+                if exp.message.args[1].errno == 8:
+                    msg = "Unable to get address for {}.".format(self.settings['url'])
+                raise AuthenticationError(msg)
+            raise AuthenticationError(str(exp))
+        # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
     def upload_assets(self, assets, options):
         # logger.debug("upload_assets( %r )", assets)
@@ -92,7 +94,7 @@ class Connector(BaseConnector):
         return response
 
     def _test_upload_assets(self, assets, options):
-        logger.warning("upload_assets() = %r", assets)
+        LOG.warning("upload_assets() = %r", assets)
 
     def _test_upload_users(self, users, options):
         if not isinstance(users, list):
@@ -109,9 +111,9 @@ class Connector(BaseConnector):
     def perform_sync(self, oomnitza_connector, options):
         raise RuntimeError("Can't call perform_sync on Oomnitza connector.")
 
-    def test_connection(self, options):
+    def do_test_connection(self, options):
         self.authenticate()
-        assert self._auth_token, "Failed to get auth_token."
+        assert self.settings['api_token'], "Failed to get api_token."
 
     @classmethod
     def example_ini_settings(cls):

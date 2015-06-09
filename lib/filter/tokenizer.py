@@ -5,7 +5,7 @@ from token import tok_name
 import tokenize as _tokenize
 import cStringIO
 
-LOG = logging.getLogger(__name__)
+LOG = logging.getLogger("lib/filter/tokenizer")
 
 
 def tokenize(filter_str):

@@ -6,16 +6,17 @@ import json
 import logging
 import pprint
 
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, RequestException
 
 from utils.relative_path import relative_app_path
 
-logger = logging.getLogger(__name__)  # pylint:disable=invalid-name
+LOG = logging.getLogger("lib/connector")
 root_logger = logging.getLogger('')
 
-from .error import ConfigError
+from .error import ConfigError, AuthenticationError
 from .httpadapters import AdapterMap
 from .converters import Converter
+from .config import get_keyring_password, use_keyring
 
 LastInstalledHandler = None
 
@@ -34,18 +35,20 @@ def run_connector(oomnitza_connector, connector, options):
         try:
             conn.authenticate()
         except AuthenticationError as exp:
-            logger.error("Authentication failure: %s", exp)
+            LOG.error("Authentication failure: %s", exp.message)
             return
         except requests.HTTPError:
-            logger.exception("Error connecting to %s service.", connector['__name__'])
+            LOG.exception("Error connecting to %s service.", connector['__name__'])
             return
 
         try:
             conn.perform_sync(oomnitza_connector, options)
+        except ConfigError as exp:
+            LOG.error(exp.message)
         except requests.HTTPError:
-            logger.exception("Error syncing data for %s service.", connector['__name__'])
+            LOG.exception("Error syncing data for %s service.", connector['__name__'])
     except:  # pylint:disable=broad-except
-        logger.exception("Unhandled error in run_connector for %s", connector['__name__'])
+        LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
 
 
 def stop_connector(connector):
@@ -53,15 +56,11 @@ def stop_connector(connector):
         conn = connector["__connector__"]
         conn.stop_sync()
     except Exception as ex:
-        logger.exception(str(ex))
-
-
-class AuthenticationError(RuntimeError):
-    pass
+        LOG.exception(str(ex))
 
 
 class BaseConnector(object):
-    CaCert = os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
+    # CaCert = os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
     Converters = {}
     FieldMappings = {}
     MappingName = "unnamed"
@@ -70,8 +69,14 @@ class BaseConnector(object):
 
     TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
     FalseValues = ['False', 'false', '0', 'No', 'no', False]
+    CommonSettings = {
+        'verify_ssl':  {'order': 0, 'default': "True"},
+        'cacert_file': {'order': 1, 'default': ""},
+        'cacert_dir':  {'order': 2, 'default': ""},
+    }
 
-    def __init__(self, settings):
+    def __init__(self, section, settings):
+        self.section = section
         self.settings = {}
         self.keep_going = True
         ini_field_mappings = {}
@@ -93,24 +98,27 @@ class BaseConnector(object):
                     self.settings[key] = value
                     continue
 
-                try:
-                    # grab the setting, which gets us the default for later
-                    # but also makes sure we are not passed extra fields....
+                if key in self.Settings:
                     setting = self.Settings[key]
-                except KeyError:
-                    raise RuntimeError("Unknown setting %s." % key)
+                elif key in self.CommonSettings:
+                    setting = self.CommonSettings[key]
+                else:
+                    raise ConfigError("Invalid setting %r." % key)
 
-                if value:
+                LOG.debug("USE_KEYRING = %r, valuye=%r", use_keyring(), value)
+                if key == "password" and use_keyring():
+                    self.settings[key] = get_keyring_password(self.section, key)
+                elif value:
                     self.settings[key] = value
 
         # loop over settings definitions, setting default values
         for key, setting in self.Settings.items():
             if not self.settings.get(key, None):
                 default = setting.get('default', None)
-                if default:
-                    self.settings[key] = default
-                else:
+                if default is None:
                     raise RuntimeError("Missing setting value for %s." % key)
+                else:
+                    self.settings[key] = default
 
         self.field_mappings = self.get_field_mappings(ini_field_mappings)
         if hasattr(self, "DefaultConverters"):
@@ -153,7 +161,6 @@ class BaseConnector(object):
 
         return default_mappings
 
-
     @classmethod
     def example_ini_settings(cls):
         """
@@ -177,7 +184,7 @@ class BaseConnector(object):
             self._session = requests.Session()
             protocol = self.settings.get('ssl_protocol', "")
             if protocol:
-                logger.info("Forcing SSL Protocol to: %s", protocol)
+                LOG.info("Forcing SSL Protocol to: %s", protocol)
                 if protocol.lower() in AdapterMap:
                     self._session.mount("https://", AdapterMap[protocol.lower()]())
                 else:
@@ -192,14 +199,14 @@ class BaseConnector(object):
         :param headers: optional headers to override the headers from get_headers()
         :return: the response object
         """
-        logger.debug("getting url: %s", url)
+        LOG.debug("getting url: %s", url)
         session = self._get_session()
 
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        # logger.debug("headers: %r", headers)
+        # LOG.debug("headers: %r", headers)
         response = session.get(url, headers=headers, auth=auth,
-                                    verify=self.settings.get('verify_ssl', True) in self.TrueValues)
+                               verify=self.get_verification())
         response.raise_for_status()
         return response
 
@@ -210,19 +217,34 @@ class BaseConnector(object):
         :param headers: optional headers to override the headers from get_headers()
         :return: the response object
         """
-        logger.debug("posting url: %s", url)
+        LOG.debug("posting url: %s", url)
         session = self._get_session()
 
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        # logger.debug("headers: %r", headers)
-        # logger.debug("payload = %s", json.dumps(data))
+        # LOG.debug("headers: %r", headers)
+        # LOG.debug("payload = %s", json.dumps(data))
         if post_as_json:
             data = json.dumps(data)
         response = session.post(url, data=data, headers=headers, auth=auth,
-                                verify=self.settings.get('verify_ssl', True) in self.TrueValues)
+                                verify=self.get_verification())
         response.raise_for_status()
         return response
+
+    def get_verification(self):
+        """
+        Returns the value of verification.
+        :return: True (Path_to_cacert in binary) / False
+        """
+        verify_ssl = self.settings.get('verify_ssl', True) in self.TrueValues
+        if verify_ssl:
+            if getattr(sys, 'frozen', False):
+                return os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
+            else:
+                return True
+        else:
+            return False
+
 
     def get_headers(self):
         """
@@ -239,7 +261,7 @@ class BaseConnector(object):
         Perform authentication to target service, if needed. Many APIs don't really support this.
         :return: Nothing
         """
-        logger.debug("Unable to test authentication for %s", self.__class__.__module__)
+        LOG.debug("%s has no authenticate() method.", self.__class__.__module__)
 
     def stop_sync(self):
         self.keep_going = False
@@ -254,56 +276,59 @@ class BaseConnector(object):
         try:
             self.authenticate()
         except AuthenticationError as exp:
-            logger.error("Authentication failed: %r.", exp.message)
+            LOG.error("Authentication failed: %r.", exp.message)
             return False
         except requests.exceptions.ConnectionError as exp:
-            logger.exception("Authentication Failed: %r.", exp.message)
+            LOG.exception("Authentication Failed: %r.", exp.message)
             return False
 
         record_count = options.get('record_count', None)
         limit_records = bool(record_count)
         records = []
-        for record in self._load_records(options):
-            if not isinstance(record, list):
-                record = [record]
+        try:
+            for record in self._load_records(options):
+                if not isinstance(record, list):
+                    record = [record]
 
-            for rec in record:
-                if not self.keep_going:
-                    break  # break out of "for rec in record"
+                for rec in record:
+                    if not self.keep_going:
+                        break  # break out of "for rec in record"
 
-                if not(self.__filter__ is None or self.__filter__(rec)):
-                    logger.info("Skipping record because it did not pass the filter.")
-                    continue
-                converted = self.convert_record(rec)
-                if converted:
-                    records.append(converted)
-                else:
-                    logger.debug("Skipping record: %r", rec)
-
-                if limit_records:
-                    if record_count:
-                        record_count -= 1
-                        logger.info("Sending record %r to Oomnitza.", converted)
-                        self.send_to_oomnitza(oomnitza_connector, converted, options)
+                    if not(self.__filter__ is None or self.__filter__(rec)):
+                        LOG.info("Skipping record because it did not pass the filter.")
+                        continue
+                    converted = self.convert_record(rec)
+                    if converted:
+                        records.append(converted)
                     else:
-                        logger.info("Done sending limited records to Oomnitza.")
-                        return True
-                else:
-                    if len(records) >= self.OomnitzaBatchSize:  # ToDo: make this dynamic
-                        logger.info("sending %s records to oomnitza...", len(records))
-                        self.send_to_oomnitza(oomnitza_connector, records, options)
-                        records = []
+                        LOG.debug("Skipping record: %r", rec)
 
-            if not self.keep_going:
-                logger.warning("Upload process has been terminated forcibly.")
-                break  # break out of "for record in self._load_records(options)"
+                    if limit_records:
+                        if record_count:
+                            record_count -= 1
+                            LOG.info("Sending record %r to Oomnitza.", converted)
+                            self.send_to_oomnitza(oomnitza_connector, converted, options)
+                        else:
+                            LOG.info("Done sending limited records to Oomnitza.")
+                            return True
+                    else:
+                        if len(records) >= self.OomnitzaBatchSize:  # ToDo: make this dynamic
+                            LOG.info("sending %s records to oomnitza...", len(records))
+                            self.send_to_oomnitza(oomnitza_connector, records, options)
+                            records = []
 
-        # do one final check for records which need to be sent
-        if len(records):
-            logger.info("sending final %s records to oomnitza...", len(records))
-            self.send_to_oomnitza(oomnitza_connector, records, options)
+                if not self.keep_going:
+                    LOG.warning("Upload process has been terminated forcibly.")
+                    break  # break out of "for record in self._load_records(options)"
 
-        return True
+            # do one final check for records which need to be sent
+            if len(records):
+                LOG.info("sending final %s records to oomnitza...", len(records))
+                self.send_to_oomnitza(oomnitza_connector, records, options)
+
+            return True
+        except RequestException as exp:
+            raise ConfigError("Error loading records from %s: %s" % (self.MappingName, exp.message))
 
     def send_to_oomnitza(self, oomnitza_connector, data, options):
         """
@@ -320,7 +345,7 @@ class BaseConnector(object):
             )
         )
         result = method(data, options)
-        # logger.debug("send_to_oomnitza result: %r", result)
+        # LOG.debug("send_to_oomnitza result: %r", result)
         return result
 
     def test_connection(self, options):
@@ -329,6 +354,13 @@ class BaseConnector(object):
         :param options: currently always {}
         :return: Nothing
         """
+        try:
+            return self.do_test_connection(options)
+        except Exception as exp:
+            LOG.exception("Exception running %s.test_connection()." % self.MappingName)
+            return {'result': False, 'error': 'Test Connection Failed: %s' % exp.message}
+
+    def do_test_connection(self, options):
         raise NotImplemented
 
     def _load_records(self, options):
@@ -346,7 +378,7 @@ class BaseConnector(object):
         :param incoming_record: the incoming record
         :return: the outgoing record
         """
-        # logger.debug("incoming_record = %r", incoming_record)
+        # LOG.debug("incoming_record = %r", incoming_record)
         return self._convert_record(incoming_record, self.field_mappings)
 
     def _convert_record(self, incoming_record, field_mappings):
@@ -362,9 +394,9 @@ class BaseConnector(object):
 
         for field, specs in field_mappings.items():
             # First, check if this is a subrecord. If so, re-enter _convert_record
-            # logger.debug("%%%% %r: %r", field, specs)
+            # LOG.debug("%%%% %r: %r", field, specs)
             # if field.startswith('subrecord.'):
-            #     logger.debug("**** processing subrecord %s: %r", field, specs)
+            #     LOG.debug("**** processing subrecord %s: %r", field, specs)
             #     name = field.split('.', 1)[-1]
             #     if specs['source'] in incoming_record:
             #         subrecords[name] = self._convert_record(incoming_record[specs['source']], specs['mappings'])
@@ -379,7 +411,7 @@ class BaseConnector(object):
                     incoming_value = self.get_setting_value(setting)
                 else:
                     hardcoded = specs.get('hardcoded', None)
-                    if hardcoded:
+                    if hardcoded is not None:
                         incoming_value = hardcoded
                     else:
                         raise RuntimeError("Field %s is not configured correctly.", field)
@@ -393,7 +425,7 @@ class BaseConnector(object):
                 incoming_value = f_type(incoming_value)
 
             if specs.get('required', False) in self.TrueValues and not incoming_value:
-                logger.debug("Record missing %r. Record = %r", field, incoming_record)
+                LOG.debug("Record missing %r. Record = %r", field, incoming_record)
                 missing_fields.add(field)
 
             outgoing_record[field] = incoming_value
@@ -402,7 +434,7 @@ class BaseConnector(object):
         #     outgoing_record.update(subrecords)
 
         if missing_fields:
-            logger.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
+            LOG.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
             return None
 
         return outgoing_record
@@ -458,21 +490,23 @@ class BaseConnector(object):
 class UserConnector(BaseConnector):
     RecordType = 'users'
 
-    def __init__(self, settings):
-        super(UserConnector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(UserConnector, self).__init__(section, settings)
 
 
 class AssetConnector(BaseConnector):
     RecordType = 'assets'
     MappingName = None
 
-    def __init__(self, settings):
-        super(AssetConnector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(AssetConnector, self).__init__(section, settings)
 
         if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings." % (
-                self.settings['sync_field'], self.MappingName
-            ))
+            logging.error("Sync field %r is not included in the %s mappings. No records can be synced.",
+                          self.settings['sync_field'], self.MappingName)
+            self.field_mappings[self.settings['sync_field']] = {
+                'hardcoded': ""
+            }
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
@@ -488,13 +522,15 @@ class AuditConnector(BaseConnector):
     RecordType = 'audit'
     OomnitzaBatchSize = 10
 
-    def __init__(self, settings):
-        super(AuditConnector, self).__init__(settings)
+    def __init__(self, section, settings):
+        super(AuditConnector, self).__init__(section, settings)
 
         if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings." % (
-                self.settings['sync_field'], self.MappingName
-            ))
+            logging.error("Sync field %r is not included in the %s mappings. No records can be synced.",
+                          self.settings['sync_field'], self.MappingName)
+            self.field_mappings[self.settings['sync_field']] = {
+                'hardcoded': ""
+            }
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
