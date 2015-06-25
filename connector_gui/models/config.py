@@ -5,8 +5,6 @@ import ConfigParser
 from lib.config import format_sections_for_ini
 from utils.relative_path import relative_app_path
 
-from lib.config import use_keyring, get_keyring_password, set_keyring_password
-
 path = relative_app_path('config.ini')
 
 
@@ -78,17 +76,14 @@ class ConfigModel:
         for section in config_parser.sections():
             config[section] = {}
             for option in config_parser.options(section):
-                if option == "password" and use_keyring():
-                    config[section][option] = get_keyring_password(section, option)
-                else:
-                    try:
-                        config[section][option] = json.loads(config_parser.get(section, option))
-                        if isinstance(config[section][option], list):
-                            if len(config[section][option]) >= 1 and \
-                                    isinstance(config[section][option][0], int):
-                                config[section][option] = config_parser.get(section, option)
-                    except:
-                        config[section][option] = config_parser.get(section, option)
+                try:
+                    config[section][option] = json.loads(config_parser.get(section, option))
+                    if isinstance(config[section][option], list):
+                        if len(config[section][option]) >= 1 and \
+                                isinstance(config[section][option][0], int):
+                            config[section][option] = config_parser.get(section, option)
+                except:
+                    config[section][option] = config_parser.get(section, option)
 
         return config
 
@@ -101,11 +96,7 @@ class ConfigModel:
         for section in self.config:
             section_config[section] = []
             for field in self.config[section]:
-                if field == "password" and use_keyring():
-                    set_keyring_password(section, field, self.config[section].get(field, ""))
-                    section_config[section].append((field, "[keyring]"))
-                else:
-                    section_config[section].append((field, self.config[section][field]))
+                section_config[section].append((field, self.config[section][field]))
 
         dynamic_config = self.parse_config()
         for section in dynamic_config:

@@ -16,22 +16,22 @@ root_logger = logging.getLogger('')
 from .error import ConfigError, AuthenticationError
 from .httpadapters import AdapterMap
 from .converters import Converter
-from .config import get_keyring_password, use_keyring
 
 LastInstalledHandler = None
 
 
 def run_connector(oomnitza_connector, connector, options):
     global LastInstalledHandler
-    if LastInstalledHandler:
-        root_logger.removeHandler(LastInstalledHandler)
-    LastInstalledHandler = logging.FileHandler(relative_app_path("{}.log".format(connector['__name__'])))
-    LastInstalledHandler.setLevel(logging.INFO)
-    root_logger.addHandler(LastInstalledHandler)
-
-    conn = connector["__connector__"]
 
     try:
+        if LastInstalledHandler:
+            root_logger.removeHandler(LastInstalledHandler)
+        LastInstalledHandler = logging.FileHandler(relative_app_path("{}.log".format(connector['__name__'])))
+        LastInstalledHandler.setLevel(logging.INFO)
+        root_logger.addHandler(LastInstalledHandler)
+
+        conn = connector["__connector__"]
+
         try:
             conn.authenticate()
         except AuthenticationError as exp:
@@ -60,7 +60,6 @@ def stop_connector(connector):
 
 
 class BaseConnector(object):
-    # CaCert = os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
     Converters = {}
     FieldMappings = {}
     MappingName = "unnamed"
@@ -70,9 +69,10 @@ class BaseConnector(object):
     TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
     FalseValues = ['False', 'false', '0', 'No', 'no', False]
     CommonSettings = {
-        'verify_ssl':  {'order': 0, 'default': "True"},
-        'cacert_file': {'order': 1, 'default': ""},
-        'cacert_dir':  {'order': 2, 'default': ""},
+        'verify_ssl':   {'order': 0, 'default': "True"},
+        'cacert_file':  {'order': 1, 'default': ""},
+        'cacert_dir':   {'order': 2, 'default': ""},
+        'env_password': {'order': 3, 'default': ""}
     }
 
     def __init__(self, section, settings):
@@ -103,13 +103,11 @@ class BaseConnector(object):
                 elif key in self.CommonSettings:
                     setting = self.CommonSettings[key]
                 else:
-                    raise ConfigError("Invalid setting %r." % key)
+                    # raise ConfigError("Invalid setting %r." % key)
+                    LOG.warning("Invalid setting in %r section: %r." % (section, key))
+                    continue
 
-                LOG.debug("USE_KEYRING = %r, valuye=%r", use_keyring(), value)
-                if key == "password" and use_keyring():
-                    self.settings[key] = get_keyring_password(self.section, key)
-                elif value:
-                    self.settings[key] = value
+                self.settings[key] = value
 
         # loop over settings definitions, setting default values
         for key, setting in self.Settings.items():
@@ -238,7 +236,12 @@ class BaseConnector(object):
         """
         verify_ssl = self.settings.get('verify_ssl', True) in self.TrueValues
         if verify_ssl:
+            # 'frozen' is added by PyInstaller which is necessary to learn at run-time
+            # whether the app is running from source or part of bundle
+            # Please refer to http://pythonhosted.org/PyInstaller/#adapting-to-being-frozen
             if getattr(sys, 'frozen', False):
+                # '_MEIPASS' is added by PyInstaller which is the path variable to temp directory at run-time
+                # and cacert.pem (Certified Authority) is included in building binary time (defined in PyInstaller spec)
                 return os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
             else:
                 return True

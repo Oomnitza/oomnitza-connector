@@ -1023,9 +1023,16 @@ class ConfigView:
         self.controller.edit_config(field, selected, listbox.GetStrings())
 
     def save(self, event):
-        self.controller.save_config()
-        self.data_viewer.update_status(self.model.get_config())
-        self.apply_btn.Disable()
+        try:
+            self.controller.save_config()
+            self.data_viewer.update_status(self.model.get_config())
+            self.apply_btn.Disable()
+        except Exception as e:
+            LOG.exception("Uncaught exception saving config.ini file.")
+            wx.MessageBox(
+                str(e),
+                'Error saving config.ini',
+                wx.OK | wx.ICON_INFORMATION)
 
     def save_and_close(self, event):
         self.save(event)

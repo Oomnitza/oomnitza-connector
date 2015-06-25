@@ -88,49 +88,53 @@ class Connector(AuditConnector):
         Creates an audit object using several related tables in SCCM.
         :return: Dictionary
         """
-        # lookup resource values
-        disk_info = self.get_disk_info(resource_id)
-        enclosure_info = self.get_system_enclosure_info(resource_id)
-        memory_info = self.get_memory_info(resource_id)
-        net_adapter_info = self.get_net_adapter_info(resource_id)
-        os_info = self.get_os_info(resource_id)
-        processor_info = self.get_processor_info(resource_id)
-        system_info = self.get_system_info(resource_id)
+        try:
+            # lookup resource values
+            disk_info = self.get_disk_info(resource_id)
+            enclosure_info = self.get_system_enclosure_info(resource_id)
+            memory_info = self.get_memory_info(resource_id)
+            net_adapter_info = self.get_net_adapter_info(resource_id)
+            os_info = self.get_os_info(resource_id)
+            processor_info = self.get_processor_info(resource_id)
+            system_info = self.get_system_info(resource_id)
 
-        # prepare audit structure
-        audit = {
-            "hardware": {
-                "cpu": processor_info.get('Name0'),
-                "computer_name": system_info.get('Name0'),
-                "domain_name": system_info.get('Domain0'),
-                "hdd_total_mb": disk_info.get('Size0'),
-                "ipv4_address": net_adapter_info.get('IPAddress0'),
-                "mac_address": net_adapter_info.get('MACAddress0'),
-                "make": system_info.get('Manufacturer0'),
-                "memory_total_kb": memory_info.get("TotalPhysicalMemory0"),
-                "model": system_info.get('Model0'),
-                "os_version": os_info.get('Caption0'),
-                "platform": system_info.get('SystemType0'),
-                "resource_id": resource_id,
-                "serial_number": enclosure_info.get('SerialNumber0'),
-                "user_name": system_info.get('UserName0')
-            },
-            "software": self.get_installed_software(resource_id) +
-                        self.get_installed_software_x64(resource_id)
-        }
+            # prepare audit structure
+            audit = {
+                "hardware": {
+                    "cpu": processor_info.get('Name0'),
+                    "computer_name": system_info.get('Name0'),
+                    "domain_name": system_info.get('Domain0'),
+                    "hdd_total_mb": disk_info.get('Size0'),
+                    "ipv4_address": net_adapter_info.get('IPAddress0'),
+                    "mac_address": net_adapter_info.get('MACAddress0'),
+                    "make": system_info.get('Manufacturer0'),
+                    "memory_total_kb": memory_info.get("TotalPhysicalMemory0"),
+                    "model": system_info.get('Model0'),
+                    "os_version": os_info.get('Caption0'),
+                    "platform": system_info.get('SystemType0'),
+                    "resource_id": resource_id,
+                    "serial_number": enclosure_info.get('SerialNumber0'),
+                    "user_name": system_info.get('UserName0')
+                },
+                "software": self.get_installed_software(resource_id) +
+                            self.get_installed_software_x64(resource_id)
+            }
 
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-            with open("./saved_data/{}.json".format(str(resource_id)), "w") as save_file:
-                save_file.write(json.dumps(audit))
+            if self.settings.get("__save_data__", False):
+                try:
+                    os.makedirs("./saved_data")
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                        pass
+                    else:
+                        raise
+                with open("./saved_data/{}.json".format(str(resource_id)), "w") as save_file:
+                    save_file.write(json.dumps(audit))
 
-        return audit
+            return audit
+        except Exception as e:
+            logger.exception("Unhandled exception in build audit")
+            return None
 
     def get_installed_software(self, resource_id):
         """
@@ -143,8 +147,11 @@ class Connector(AuditConnector):
         """, resource_id)
         for software in results:
             try:
+                software_name = software.get('DisplayName0')
+                if software_name in [None, ""]:
+                    continue
                 installed_software.append({
-                    "name": software.get("DisplayName0"),
+                    "name": software_name,
                     "version": software.get("Version0"),
                     "publisher": software.get("Publisher0"),
                     "path": None
@@ -165,8 +172,11 @@ class Connector(AuditConnector):
         """, resource_id)
         for software in results:
             try:
+                software_name = software.get('DisplayName0')
+                if software_name in [None, ""]:
+                    continue
                 installed_software_x64.append({
-                    "name": software.get("DisplayName0"),
+                    "name": software_name,
                     "version": software.get("Version0"),
                     "publisher": software.get("Publisher0"),
                     "path": None
@@ -181,9 +191,12 @@ class Connector(AuditConnector):
         https://technet.microsoft.com/en-us/library/dd334659.aspx
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_DISK where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_memory_info(self, resource_id):
         """
@@ -191,28 +204,37 @@ class Connector(AuditConnector):
         https://technet.microsoft.com/en-us/library/dd334659.aspx
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_X86_PC_MEMORY where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_os_info(self, resource_id):
         """
         Fetches the resource's operating system information.
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_OPERATING_SYSTEM where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_net_adapter_info(self, resource_id):
         """
         Fetches the resource's network adapter information.
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_NETWORK_ADAPTER_CONFIGURATION
             where ResourceID=? and MACAddress0 is not null and IPAddress0 is not null;
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_processor_info(self, resource_id):
         """
@@ -220,9 +242,12 @@ class Connector(AuditConnector):
         https://technet.microsoft.com/en-us/library/dd334659.aspx
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_PROCESSOR where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_system_info(self, resource_id):
         """
@@ -230,9 +255,12 @@ class Connector(AuditConnector):
         https://technet.microsoft.com/en-us/library/dd334659.aspx
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_COMPUTER_SYSTEM where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
 
     def get_system_enclosure_info(self, resource_id):
         """
@@ -241,6 +269,9 @@ class Connector(AuditConnector):
         :param resource_id:
         :return: Dictionary
         """
-        return self.query(u"""
+        info = self.query(u"""
             select * from dbo.v_GS_SYSTEM_ENCLOSURE where ResourceID=?
-        """, resource_id)[0]
+        """, resource_id)
+        if len(info) > 1:
+            return info[0]
+        return {}
