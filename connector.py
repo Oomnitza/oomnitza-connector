@@ -19,16 +19,30 @@ import logging
 import logging.config
 
 import requests
-import urllib3.contrib.pyopenssl
-urllib3.contrib.pyopenssl.inject_into_urllib3()
+# I think something like the following is required to fully secure SSL connections.
+# However, it does not seem to want to install correctly (it seems to be missing dependancies).
+# ToDo: turn this back on.
+# import urllib3.contrib.pyopenssl
+# urllib3.contrib.pyopenssl.inject_into_urllib3()
 
 from lib import config
 from lib import connector
-from utils.relative_path import relative_app_path
+from utils.relative_path import relative_app_path, relative_path
 
 LOG = logging.getLogger("connector.py")
 root_logger = logging.getLogger("")
 
+try:
+    from oomnitza_gui import main as gui_main
+    HAVE_GUI = True
+except ImportError:
+    LOG.debug("Looks like wxPython is not installed.")
+    HAVE_GUI = False
+
+
+# The import below needs to be enabled when building the binary!!!
+# This is s a holding comment until this is resolved as part of the build automation process.
+# import ldap, suds, pyodbc  # number 2
 
 def main(args):
     """
@@ -51,11 +65,6 @@ def main(args):
         return
 
     options = {}
-    # if args.datafile:
-    #     options['datafile'] = os.path.abspath(args.datafile)
-    #     if not os.path.isfile(options['datafile']):
-    #         logger.error("Invalid data file. %r does not exist.", options['datafile'])
-    #         sys.exit(1)
     if args.record_count:
         options['record_count'] = args.record_count
 
@@ -76,19 +85,23 @@ if __name__ == "__main__":
         action_default = 'gui'
         action_nargs = '?'
 
+    actions = [
+        'upload',      # action which pulls data from remote system and push to Oomnitza.
+        'generate-ini' # action which generates an example config.ini file.
+    ]
+    if HAVE_GUI:
+        # action which runs the gui.
+        actions.append('gui')
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", default=action_default, nargs=action_nargs, choices=['gui', 'upload', 'generate-ini'], help="Action to perform.")
+    parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
     parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
     parser.add_argument('--save_data', action='store_true', help="Saves the data loaded from other system.")
     parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
-    parser.add_argument('--logging-config', type=str, default="USE_DEFAULT", help="Use to override logging config file to use.")
+    parser.add_argument('--logging-config', type=str, default=relative_path('logging.json'), help="Use to override logging config file to use.")
     parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
-    # parser.add_argument('--datafile', type=str, default=None, help="Data file to use for connector in place of live request.")
-    if config.keyring:
-        parser.add_argument('--show-keyring-cfg', action='store_true', dest='keyring_config', help="Show keyring config info.")
-        parser.add_argument('--no-keyring', action='store_false', dest='keyring', help="Disable use of keyring for password storage.")
 
     args = parser.parse_args()
 
@@ -97,37 +110,13 @@ if __name__ == "__main__":
     if args.testmode:
         LOG.info("Connector started in Test Mode.")
 
-    if config.keyring:
-        if not args.keyring:
-            LOG.info("Use of keyring has been disabled.")
-            config.disable_keyring()
-
-        if args.keyring_config:
-            import keyring.util.platform_
-            LOG.info("keyring config: %r", os.path.join(
-                keyring.util.platform_.config_root(),
-                'keyringrc.cfg'
-            ))
-            LOG.info("keyring data dir: %r", keyring.util.platform_.data_root())
-            LOG.info("="*80)
-            LOG.info("For more information, see: https://pypi.python.org/pypi/keyring")
-            exit()
-
     if args.action == 'generate-ini':
         config.generate_ini_file(args)
-        exit()
-
-    elif args.action == 'gui':
-        try:
-            from oomnitza_gui import main
-
-            if not os.path.exists(args.ini):
-                config.generate_ini_file(args)
-
-            main(args)
-        except ImportError:
-            LOG.exception("Error loading gui.")
-
+    elif args.action == 'gui' and HAVE_GUI:
+        if not os.path.exists(args.ini):
+            # ensure the gui has a config.ini file to load. Generate it if missing.
+            config.generate_ini_file(args)
+        gui_main(args)
     else:
         if not args.connectors:
             LOG.error("No connectors specified.")
