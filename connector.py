@@ -81,9 +81,12 @@ def main(args):
 if __name__ == "__main__":
     action_default = None
     action_nargs = None
+    logging_setting_path = relative_app_path('logging.json')
+
     if getattr(sys, 'frozen', False):
         action_default = 'gui'
         action_nargs = '?'
+        logging_setting_path = relative_path('logging.json')
 
     actions = [
         'upload',      # action which pulls data from remote system and push to Oomnitza.
@@ -100,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
     parser.add_argument('--save_data', action='store_true', help="Saves the data loaded from other system.")
     parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
-    parser.add_argument('--logging-config', type=str, default=relative_path('logging.json'), help="Use to override logging config file to use.")
+    parser.add_argument('--logging-config', type=str, default=logging_setting_path, help="Use to override logging config file to use.")
     parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
 
     args = parser.parse_args()
