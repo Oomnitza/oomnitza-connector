@@ -147,7 +147,10 @@ class BaseConnector(object):
         """
         # Connector mappings are stored in Oomnitza, so get them.
         default_mappings = self.FieldMappings.copy()
-        server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+        server_mappings = self.settings['__oomnitza_connector__'].get_mappings(
+            # If '.' is in self.section, it is something like 'Casper.MDM', so use the section name to pull in the maps.
+            '.' in self.section and self.section or self.MappingName
+        )
 
         for source, fields in server_mappings.items():
             if isinstance(fields, basestring):
