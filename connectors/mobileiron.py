@@ -5,12 +5,12 @@ import time
 import math
 
 from requests import ConnectionError, HTTPError
-from lib.connector import AssetConnector
+from lib.connector import AuditConnector
 
 LOG = logging.getLogger("connectors/mobileiron")
 
 
-class Connector(AssetConnector):
+class Connector(AuditConnector):
     MappingName = 'MobileIron'
     RetryCount = 10
 

@@ -1,9 +1,11 @@
-
+import os
 import base64
 import logging
+import errno
+import json
 
 from requests import ConnectionError, HTTPError
-from lib.connector import AssetConnector
+from lib.connector import AuditConnector
 
 logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
 
@@ -16,7 +18,7 @@ curl -v --user [USERNAME]:[PASSWORD] \
 """
 
 
-class Connector(AssetConnector):
+class Connector(AuditConnector):
     MappingName = 'AirWatch'
     Settings = {
         'url':        {'order': 1, 'default': "https://apidev.awmdm.com"},
@@ -29,6 +31,14 @@ class Connector(AssetConnector):
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
         self.url_template = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['url']
+        self.network_url_template = "%s/api/v1/mdm/devices/macaddress/{mac}/network" % self.settings['url']
+
+        self.__load_network_data = False
+        for key, value in self.field_mappings.items():
+            if 'network.' in value.get('source', ''):
+                self.__load_network_data = True
+                logger.info("Network data request.")
+                break
 
     def get_headers(self):
         auth_string = self.settings['username'] + ":" + self.settings['password']
@@ -65,7 +75,33 @@ class Connector(AssetConnector):
                 total_device_count = response['Total']
             devices = response['Devices']
             for device in devices:
+                if self.__load_network_data:
+                    device['network'] = self._load_network_information(device['MacAddress'])
+
                 processed_device_count += 1
+                if self.settings.get("__save_data__", False):
+                    try:
+                        os.makedirs("./saved_data")
+                    except OSError as exc:
+                        if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                            pass
+                        else:
+                            raise
+                    with open("./saved_data/{}.json".format(str(processed_device_count)), "w") as save_file:
+                        save_file.write(json.dumps(device))
                 yield device
 
             page += 1
+
+    def _load_network_information(self, mac_address):
+        try:
+            mac_address = mac_address.strip()
+            if not mac_address:
+                return {}
+
+            url = self.network_url_template.format(mac=mac_address)
+            response = self.get(url).json()
+            return response
+        except Exception as e:
+            logger.exception("Error trying to load network details for device: %s", url)
+            return {}

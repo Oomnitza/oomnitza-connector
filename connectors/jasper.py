@@ -5,21 +5,22 @@ import logging
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
 
-from lib.connector import AssetConnector, AuthenticationError
+from lib.connector import AuditConnector, AuthenticationError
 
 logger = logging.getLogger("connectors/jasper")  # pylint:disable=invalid-name
 
 
-class Connector(AssetConnector):
+class Connector(AuditConnector):
     MappingName = 'Jasper'
 
     Settings = {
-        'wsdl_path':  {'order': 1, 'default': "http://api.jasperwireless.com/ws/schema/Terminal.wsdl"},
-        'username':   {'order': 2, 'example': "username@example.com"},
-        'password':   {'order': 3, 'example': "change-me"},
-        'api_token':  {'order': 4, 'example': "YOUR Jasper API TOKEN"},
-        'storage':    {'order': 4, 'default': "storage.db"},
-        'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'wsdl_path':   {'order': 1, 'default': "http://api.jasperwireless.com/ws/schema/Terminal.wsdl"},
+        'username':    {'order': 2, 'example': "username@example.com"},
+        'password':    {'order': 3, 'example': "change-me"},
+        'api_token':   {'order': 4, 'example': "YOUR Jasper API TOKEN"},
+        'storage':     {'order': 4, 'default': "storage.db"},
+        'sync_field':  {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'update_only': {'order': 6, 'default': "False"},
     }
 
     def __init__(self, section, settings):

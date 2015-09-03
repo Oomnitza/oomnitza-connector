@@ -14,4 +14,4 @@ def converter(field, record, value, params):
     if value:
         return value
 
-    return record.get('sAMAccountName', [None])[0]
+    return record.get('sAMAccountName', None)

@@ -16,6 +16,7 @@ root_logger = logging.getLogger('')
 from .error import ConfigError, AuthenticationError
 from .httpadapters import AdapterMap
 from .converters import Converter
+from .filter import DynamicException
 
 LastInstalledHandler = None
 
@@ -47,6 +48,8 @@ def run_connector(oomnitza_connector, connector, options):
             LOG.error(exp.message)
         except requests.HTTPError:
             LOG.exception("Error syncing data for %s service.", connector['__name__'])
+    except DynamicException as exp:
+        LOG.error("Error running filter for %s: %s", connector['__name__'], exp)
     except:  # pylint:disable=broad-except
         LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
 
@@ -72,7 +75,8 @@ class BaseConnector(object):
         'verify_ssl':   {'order': 0, 'default': "True"},
         'cacert_file':  {'order': 1, 'default': ""},
         'cacert_dir':   {'order': 2, 'default': ""},
-        'env_password': {'order': 3, 'default': ""}
+        'env_password': {'order': 3, 'default': ""},
+        'ssl_protocol': {'order': 4, 'default': ""},
     }
 
     def __init__(self, section, settings):
@@ -338,7 +342,11 @@ class BaseConnector(object):
 
     def send_to_oomnitza(self, oomnitza_connector, data, options):
         """
-        Determine which method on the Oomnitza connector to call based on type of data
+        Determine which method on the Oomnitza connector to call based on type of data.
+        Can call:
+            oomnitza_connector.(_test_)upload_assets
+            oomnitza_connector.(_test_)upload_users
+            oomnitza_connector.(_test_)upload_audit
         :param oomnitza_connector: the Oomnitza connector
         :param data: the data to send (either single object or list)
         :return: the results of the Oomnitza method call

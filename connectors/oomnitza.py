@@ -15,7 +15,7 @@ LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 class Connector(BaseConnector):
     Settings = {
         'url':       {'order': 1, 'example': "https://example.oomnitza.com"},
-        'api_token': {'order': 2, 'example': "ZZZZXXXXCCCCC", 'default': ""},
+        'api_token': {'order': 2, 'example': "", 'default': ""},
         'username':  {'order': 3, 'example': "oomnitza-sa", 'default': ""},
         'password':  {'order': 4, 'example': "ThePassword", 'default': ""},
 
@@ -27,9 +27,6 @@ class Connector(BaseConnector):
         super(Connector, self).__init__(section, settings)
         self._test_headers = []
         self.authenticate()
-
-    def _test_site_connection(self):
-        pass
 
     def get_field_mappings(self, extra_mappings):
         """ Override base to always return an empty mapping set.
@@ -109,6 +106,11 @@ class Connector(BaseConnector):
         pprint.pprint(computers)
 
     def perform_sync(self, oomnitza_connector, options):
+        """
+        Can't call perform_sync on Oomnitza connector because perform_sync in the
+        other connectors is what is called to sync to oomnitza. Calling this would
+        basically be asking: 'please sync the oomnitza data with oomnitza.'
+        """
         raise RuntimeError("Can't call perform_sync on Oomnitza connector.")
 
     def do_test_connection(self, options):

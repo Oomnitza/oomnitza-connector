@@ -1,6 +1,6 @@
 
-# import logging
-# logger = logging.getLogger("converters/casper_ext_attr")
+import logging
+logger = logging.getLogger("converters/split")
 
 
 def converter(field, record, value, params):
@@ -15,9 +15,12 @@ def converter(field, record, value, params):
     """
 #    logger.warn("converter(%r, %r, %r, %r)", field, record, value, params)
 
-    attributes = record.get('extension_attributes', [])
-    split_on = params.get('on', None)
-    index = int(params.get('index', 0))
+    try:
+        split_on = params.get('on', None)
+        index = int(params.get('index', 0))
 
-    return value.split(split_on)[index]
+        return value.split(split_on)[index]
+    except:
+        logger.exception("Error running split() converter on %r.", value)
+        return value
 

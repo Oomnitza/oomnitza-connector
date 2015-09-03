@@ -1,4 +1,3 @@
-
 import base64
 import logging
 import xmltodict
@@ -30,7 +29,7 @@ class Connector(UserConnector):
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        self.url_template = "{0}?from_id=%s".format(self.settings['url'])
+        self.url_template = "%s?from_id={0}" % self.settings['url']
 
     def get_headers(self):
         return {
@@ -39,7 +38,7 @@ class Connector(UserConnector):
 
     def do_test_connection(self, options):
         try:
-            url = self.url_template % 1
+            url = self.url_template.format(1)
             response = self.get(url)
             response.raise_for_status()
             return {'result': True, 'error': ''}
@@ -57,8 +56,10 @@ class Connector(UserConnector):
                     # If the OneLogin API returns one result users won't
                     # be in a list, there will just be one OrderedDict
                     users = [users['user']]
-                else:
+                elif isinstance(users['user'], list):
                     users = users['user']
+                else:
+                    raise RuntimeError("Unexpected response from OneLogin. Got type: %s" % type(users['user']))
                 for user in users:
                     if isinstance(user['phone'], dict) and '@nil' in user['phone']:
                         user['phone'] = None
@@ -68,10 +69,9 @@ class Connector(UserConnector):
 
         # The OneLogin API returns 100 results at a time. We'll start at 0 and
         # set the from_id parameter to the max_id for each subsequent request.
-        max_id = 0
-        more_records = True
-        while more_records:
-            url = self.url_template % max_id
+        last_id = 0
+        while True:
+            url = self.url_template.format(last_id)
             response = self.get(url)
             response.raise_for_status()
 
@@ -79,21 +79,21 @@ class Connector(UserConnector):
             if 'users' not in response:
                 # The 'users' key doesn't exist.
                 # We've likely gotten all the users we're going to get
-                users = None
-                more_records = False
+                break
             else:
-                # FixMe: the logic below needs to be tests against the real API.
                 users = response['users']
                 if isinstance(users['user'], dict):
                     # If the OneLogin API returns one result users won't
                     # be in a list, there will just be one OrderedDict
                     users = [users['user']]
-                else:
+                elif isinstance(users['user'], list):
                     users = users['user']
+                else:
+                    raise RuntimeError("Unexpected response from OneLogin. Got type: %s" % type(users['user']))
 
                 for user in users:
                     if isinstance(user['phone'], dict) and '@nil' in user['phone']:
                         user['phone'] = None
-                    max_id = user['id']
+                    last_id = user['id']
                     yield user
 
