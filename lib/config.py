@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-import ConfigParser
+from ConfigParser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
 import importlib
 import pkgutil
 import shutil
@@ -13,14 +13,107 @@ from utils.relative_path import relative_path
 from utils.relative_path import relative_app_path
 from lib.error import AuthenticationError
 
-LOG = logging.getLogger("lib/config")  # pylint:disable=invalid-name
+LOG = logging.getLogger("lib/config")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-from .filter import parse_filter
-from .converters import Converter
+from .filter import DynamicConverter, parse_filter
 from .error import ConfigError
+
+
+class SpecialConfigParser(SafeConfigParser):
+    def _read(self, fp, fpname):
+        """Parse a sectioned setup file.
+
+        The sections in setup file contains a title line at the top,
+        indicated by a name in square brackets (`[]'), plus key/value
+        options lines, indicated by `name: value' format lines.
+        Continuations are represented by an embedded newline then
+        leading whitespace.  Blank lines, lines beginning with a '#',
+        and just about everything else are ignored.
+        """
+        cursect = None                        # None, or a dictionary
+        optname = None
+        lineno = 0
+        e = None                              # None, or an exception
+        while True:
+            line = fp.readline()
+            if not line:
+                break
+            lineno = lineno + 1
+            # comment or blank line?
+            if line.strip() == '' or line[0] in '#;':
+                continue
+            if line.split(None, 1)[0].lower() == 'rem' and line[0] in "rR":
+                # no leading whitespace
+                continue
+            # continuation line?
+            if line[0].isspace() and cursect is not None and optname:
+                value = line[1:].strip('\n')
+                if value:
+                    cursect[optname].append(value)
+            # a section header or option header?
+            else:
+                # is it a section header?
+                mo = self.SECTCRE.match(line)
+                if mo:
+                    sectname = mo.group('header')
+                    if sectname in self._sections:
+                        cursect = self._sections[sectname]
+                    elif sectname == DEFAULTSECT:
+                        cursect = self._defaults
+                    else:
+                        cursect = self._dict()
+                        cursect['__name__'] = sectname
+                        self._sections[sectname] = cursect
+                    # So sections can't start with a continuation line
+                    optname = None
+                # no section header in the file?
+                elif cursect is None:
+                    raise MissingSectionHeaderError(fpname, lineno, line)
+                # an option line?
+                else:
+                    mo = self._optcre.match(line)
+                    if mo:
+                        optname, vi, optval = mo.group('option', 'vi', 'value')
+                        optname = self.optionxform(optname.rstrip())
+                        # This check is fine because the OPTCRE cannot
+                        # match if it would set optval to None
+                        if optval is not None:
+                            if vi in ('=', ':') and ';' in optval:
+                                # ';' is a comment delimiter only if it follows
+                                # a spacing character
+                                pos = optval.find(';')
+                                if pos != -1 and optval[pos-1].isspace():
+                                    optval = optval[:pos]
+                            optval = optval.strip()
+                            # allow empty values
+                            if optval == '""':
+                                optval = ''
+                            cursect[optname] = [optval]
+                        else:
+                            # valueless option handling
+                            cursect[optname] = optval
+                    else:
+                        # a non-fatal parsing error occurred.  set up the
+                        # exception but keep going. the exception will be
+                        # raised at the end of the file and will contain a
+                        # list of all bogus lines
+                        if not e:
+                            e = ParsingError(fpname)
+                        e.append(lineno, repr(line))
+        # if any parsing errors occurred, raise an exception
+        if e:
+            raise e
+
+        # join the multi-line values collected while reading
+        all_sections = [self._defaults]
+        all_sections.extend(self._sections.values())
+        for options in all_sections:
+            for name, val in options.items():
+                if isinstance(val, list):
+                    options[name] = '\n'.join(val)
 
 
 def generate_ini_file(args):
@@ -35,21 +128,6 @@ def generate_ini_file(args):
     LOG.info("{0} has been generated.".format(args.ini))
 
 
-class FilterConverter(object):
-    def __init__(self, name, filter_str):
-        self._name = name
-        self._filter_str = filter_str
-
-        self._filter = parse_filter(self._filter_str)
-
-        Converter.register_converter(self._name, self)
-
-    def __call__(self, field, record, value, params):
-        LOG.debug("running FilterConverter: %s", self._name)
-        result = self._filter(record)
-        return self._filter.Environment.get('result', {}).get('value', None)
-
-
 def parse_config(args):
     """
     Parse connector configuration and generate a result in dictionary
@@ -58,7 +136,7 @@ def parse_config(args):
     """
     connectors = {}
     try:
-        config = ConfigParser.SafeConfigParser()
+        config = SpecialConfigParser()
         if not os.path.isfile(args.ini):
             # The config file does not yet exist, so generate it.
             # generate_ini_file(args)
@@ -69,7 +147,7 @@ def parse_config(args):
             cfg = {}
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
-                    FilterConverter(name, filter_str)
+                    DynamicConverter(name, filter_str)
             elif section == 'oomnitza' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
                 if not connectors and section != 'oomnitza':
                     raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
@@ -83,6 +161,7 @@ def parse_config(args):
                     mod = importlib.import_module("connectors.{0}".format(module))
                     connector = mod.Connector
                 except ImportError:
+                    LOG.exception("Could not import connector for '%s'.", section)
                     raise ConfigError("Could not import connector for '%s'." % section)
                 else:
                     LOG.debug("parse_config section: %s", section)

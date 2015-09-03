@@ -2,12 +2,14 @@ import os
 import json
 import logging
 import errno
+import math
+import time
 
-from requests import ConnectionError, HTTPError
+from requests import ConnectionError, HTTPError, RequestException
 from lib.connector import AuditConnector
 from lib.error import ConfigError
 
-logger = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
+LOG = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
 
 
 SyncTypes = {
@@ -18,13 +20,15 @@ SyncTypes = {
 
 class Connector(AuditConnector):
     MappingName = 'Casper'
+    RetryCount = 10
+
     Settings = {
         'url':         {'order': 1, 'default': "https://jss.jamfcloud.com/example"},
         'username':    {'order': 2, 'example': "username@example.com"},
         'password':    {'order': 3, 'example': "change-me"},
         'sync_field':  {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'sync_type':   {'order': 5, 'default': "computers", 'choices': ("computers", "mobiledevices")},
-        'update_only': {'order': 6, 'default': "False"}
+        'update_only': {'order': 6, 'default': "False"},
     }
     DefaultConverters = {
         "general.report_date":         "date_format",
@@ -41,17 +45,20 @@ class Connector(AuditConnector):
 
         # ensure URL does not end with a trailing '/'
         if self.settings['url'].endswith('/'):
-            logger.warning("Casper URL should not end with a '/'.")
+            LOG.warning("Casper URL should not end with a '/'.")
             self.settings['url'] = self.settings['url'][:-1]
 
         self.url_template = "%s/{0}" % self.settings['url']
         sync_type = self.settings.get('sync_type', 'computers')
         self.sync_type = SyncTypes[sync_type]
         if sync_type == "computers":
-            self.field_mappings['APPLICATIONS'] = {"source": "software.applications"}
+            print self.field_mappings.keys()
+            if 'APPLICATIONS' not in self.field_mappings:
+                self.field_mappings['APPLICATIONS'] = {"source": "software.applications"}
         else:
             self.MappingName = Connector.MappingName+".MDM"
         self._api_root = self.sync_type['path']
+        self._retry_counter = 0
 
     def get_headers(self):
         return {
@@ -73,17 +80,24 @@ class Connector(AuditConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
 
     def _load_records(self, options):
-        # if False:
-        #     import os
-        #     for filename in [f for f in os.listdir('testing/snapchat/casper') if f.endswith('.json')]:
-        #         with open('testing/snapchat/casper/{}'.format(filename), 'r') as in_json:
-        #             j = json.load(in_json)
-        #             j['status123'] = filename
-        #             yield j
-        #     return
         for id in self.fetch_computer_ids():
-            computer = self.fetch_computer_details(id)
-            yield computer
+            while self._retry_counter <= Connector.RetryCount:
+                try:
+                    computer = self.fetch_computer_details(id)
+                    yield computer
+                    break
+                except RequestException:
+                    self._retry_counter += 1
+                    LOG.exception("Error getting devices details for %r. Attempt #%s failed.",
+                                  id,
+                                  self._retry_counter)
+                    sleep_secs = math.pow(2, min(self._retry_counter, 8))
+                    LOG.warning("Sleeping for %s seconds.", sleep_secs)
+                    time.sleep(sleep_secs)
+
+            if self._retry_counter > Connector.RetryCount:
+                LOG.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
+                break
 
     def fetch_computer_ids(self):
         """

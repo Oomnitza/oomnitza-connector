@@ -47,17 +47,44 @@ The Oomnitza Connector can also be downloaded from within your Oomnitza instance
 ## Runtime Environment Setup
 If you choose to run the binary version of the connector, you can skip this section. If you choose
  to install and run the python code, you will need to install Python 2.7.X as well as the packages which the connector
- relies upon. We suggest you setup a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/)
- and use pip to install the requirements. On Unix like
- systems, this can be done as follows (See our 
+ relies upon. Some of the python packages may require build tools to be installed. 
+
+### Linux Environment
+On Ubuntu, the build tools are installed using:
+
+    > sudo apt-get install build-essential
+ 
+We suggest you setup a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/)
+ and use pip to install the requirements. This can be done as follows (See our 
  [documentation](https://wiki.oomnitza.com/wiki/Installing_additional_Python_Modules) on installing
  additional Python modules for use in Oomnitza.):
 
     > cd /path/to/connector
     > virtualenv .
-    > source bin/active
+    > source bin/activate
     > pip install --upgrade pip
     > pip install -r requirements.txt
+
+### Windows Environment
+ActiveState has an excellent Python package for Windows. It can be downloaded from 
+ http://www.activestate.com/activepython/downloads. Once this has been downloaded and installed, the remaining setup
+ steps can be performed using PowerShell as an administrator. So, open PowerShell and do the following:
+
+    > cd c:\
+    > mkdir oomnitza-connector
+    > cd oomnitza-connector
+    > virtualenv venv --no-setuptools
+    > venv\Scripts\activate
+    > Invoke-WebRequest https://raw.github.com/pypa/pip/master/contrib/get-pip.py -OutFile .\get-pip.py
+    > python get-pip.py
+    > pip install --upgrade pip
+    > pip install requests pyodbc pyparsing 
+    > Invoke-WebRequest https://github.com/Oomnitza/oomnitza-connector/archive/master.zip -OutFile connector-master.zip
+    > Add-Type -A System.IO.Compression.FileSystem
+    > [IO.Compression.ZipFile]::ExtractToDirectory('c:\oomnitza-connector\connector-master.zip', 'c:\oomnitza-connector\')
+    > cd oomnitza-connector-master
+ 
+## Connector Configs
 
 Now you should be able to generate a default config file. Running `python connector.py generate-ini` will regenerate
  the config.ini file, and create a backup if the file already exists. When you edit this file, it will have one section
@@ -66,9 +93,9 @@ Now you should be able to generate a default config file. Running `python connec
 
     [oomnitza]
     url = https://example.oomnitza.com
-    username = python
+    api_token = 
+    username = oomnitza-sa
     password = ThePassword
-    is_sso = False
 
     [airwatch]
     enable = False
@@ -92,7 +119,6 @@ Now you should be able to generate a default config file. Running `python connec
     password = change-me
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     sync_type = computers
-    verify_ssl = True
     update_only = False
 
     [jasper]
@@ -103,15 +129,15 @@ Now you should be able to generate a default config file. Running `python connec
     storage = storage.db
     api_token = YOUR Jasper API TOKEN
     sync_field = 24DCF85294E411E38A52066B556BA4EE
+    update_only = False
 
     [ldap]
     enable = False
     url = ldap://ldap.forumsys.com:389
     username = cn=read-only-admin,dc=example,dc=com
-    password = change-me
+    password = 
     base_dn = dc=example,dc=com
     protocol_version = 3
-    enable_tls = True
     filter = (objectClass=*)
     default_role = 25
     default_position = Employee
@@ -165,11 +191,15 @@ connections and if set to "True" will enable this service for processing. Some f
 connection. For example, "default_role" and "default_user" are fields for connections dealing with loading
 People into the Oomnitza app.
 
-Each section can end with a list of field mappings. These are in the format:
+Each section can end with a list of field mappings. Simple mappings which just copy a field from the external system to 
+ a field inside Oomnitza can be defined here or in the System Settings within Oomnitza. Simple mappings are as follows:
 
     mapping.[Oomnitza Field] = {"source": "[external field]"}
 
-## Connector Configs
+For fields which require processing before being brought into Oomnitza must be defined in the INI. These mappings are 
+ more involved. Please contact [support@oomnitza.com](mailto://support@oomnitza.com) for more information. The format is:
+
+    mapping.[Oomnitza Field] = {"source": "[external field]", "converter": "[converter name]"}
 
 ### Oomnitza Configuration
 `url`: the url of the Oomnitza application. For example: `https://example.oomnitza.com`
@@ -178,7 +208,7 @@ Each section can end with a list of field mappings. These are in the format:
 
 `password`: the Oomnitza password to use
 
-`is_sso`: set to `True` if the site is setup for SSO Only authentication
+`api_token`: The API Token belonging to the Oomnitza user. If provided, `password` must be left blank. 
 
 ### Airwatch Configuration
 `url`: the url of the Airwatch server
@@ -188,6 +218,8 @@ Each section can end with a list of field mappings. These are in the format:
 `password`: the Airwatch password to use
 
 `api_token`: HPDL
+
+`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     To Be Determined
@@ -256,6 +288,8 @@ an existing record that has new information.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
+`update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
+
 #### Default Field Mappings
     To Be Determined
 
@@ -271,10 +305,6 @@ an existing record that has new information.
 `base_dn`: The Base DN to use for the connection.
 
 `protocol_version`: The LDAP Protocol version to use. Defaults to: 3.
-
-`enable_tls`: Used to turn off TLS use when connection to LDAP. This should usually be left as True.
-   This may need to be set to False if you receive the following error message: `"Error when trying to enable TLS on 
-   connection. You may need to set enable_tls = False in your config.ini file."`
 
 `filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)`
 
@@ -381,22 +411,29 @@ Options are `SQL Server` or `Windows`. The default is to use SQL Server Authenti
 ## Running the connector
 The connector is meant to be run from the command line and as such as multiple command line options:
 
-    $ python connector.py --help
-    usage: connector.py [-h] [--show-mappings] [--testmode] [--ini INI]
-                        [--logging-config LOGGING_CONFIG]
+    $ python connector.py 
+    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
+                        [--ini INI] [--logging-config LOGGING_CONFIG]
                         [--record-count RECORD_COUNT]
-                        [{gui,upload,generate-ini}] [connectors [connectors ...]]
-    
+                        {upload,generate-ini,gui} [connectors [connectors ...]]
+    connector.py: error: too few arguments
+    (connector)daniels-mbp:Connector daniel$ python connector.py --help
+    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
+                        [--ini INI] [--logging-config LOGGING_CONFIG]
+                        [--record-count RECORD_COUNT]
+                        {upload,generate-ini,gui} [connectors [connectors ...]]
+
     positional arguments:
-      {gui,upload,generate-ini}
+      {upload,generate-ini,gui}
                             Action to perform.
       connectors            Connectors to run.
-    
+
     optional arguments:
       -h, --help            show this help message and exit
       --show-mappings       Show the mappings which would be used by the
                             connector.
       --testmode            Run connectors in test mode.
+      --save-data           Saves the data loaded from other system.
       --ini INI             Config file to use.
       --logging-config LOGGING_CONFIG
                             Use to override logging config file to use.
@@ -424,11 +461,15 @@ The available actions are:
 `--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
    will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
 
+`--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
+   the data is being loaded and mapped as expected.
+   
 ## Setting the connector to run as an automated task
 There are many ways to automate the sync, here are a few:
 
 * OS X: http://www.maclife.com/article/columns/terminal_101_creating_cron_jobs
 * OS X: http://superuser.com/questions/126907/how-can-i-get-a-script-to-run-every-day-on-mac-os-x
+* OS X: http://launched.zerowidth.com/
 * Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
 * Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
 
@@ -447,15 +488,17 @@ If the service to be connected to requires a particular SSL protocol version to 
 ### Record Filtering
 Support has been added for filtering the records passed from the connector to Oomnitza. By default, all records from the
  remote system will be sent to Oomnitza for processing. To limit the records based on values in those records, a special
- `recordfilter` value can be added to a connector section in the ini file. For example, the following filter will only 
- process records with the `asset_type` field set to "`computer`":
+ `recordfilter` value can be added to a connector section in the ini file. This filter is written using the Python 
+ programming language.
+ 
+For example, the following filter will only  process records with the `asset_type` field set to "`computer`":
 
     recordfilter:
-        record.asset_type == "computer";
+        return record.asset_type == "computer"
         
 This is a very new feature, with many options, and we are still working on the documentation. If you are interested in 
  using this feature, please contact [support@oomnitza.com](mailto://support@oomnitza.com) for assistance.
 
-#The GUI
+# The GUI
 
 #### This section is under construction
