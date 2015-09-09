@@ -5,6 +5,7 @@ import requests
 import json
 import logging
 import pprint
+import errno
 
 from requests.exceptions import HTTPError, RequestException
 
@@ -85,6 +86,7 @@ class BaseConnector(object):
         self.keep_going = True
         ini_field_mappings = {}
         self.__filter__ = None
+        self.send_counter = 0
 
         for key, value in settings.items():
             if key.startswith('mapping.'):
@@ -358,6 +360,24 @@ class BaseConnector(object):
                 self.settings["__testmode__"] and '_test_' or ''
             )
         )
+        if self.settings.get("__save_data__", False):
+            try:
+                try:
+                    os.makedirs("./saved_data")
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                        pass
+                    else:
+                        raise
+
+                filename = "./saved_data/oom.payload{}.json".format(self.send_counter)
+                LOG.info("Saving payload data to %s.", filename)
+                with open(filename, 'w') as save_file:
+                    self.send_counter += 1
+                    json.dump(data, save_file, indent=2)
+            except:
+                LOG.exception("Error saving data.")
+
         result = method(data, options)
         # LOG.debug("send_to_oomnitza result: %r", result)
         return result
