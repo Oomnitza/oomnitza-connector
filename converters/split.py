@@ -14,6 +14,8 @@ def converter(field, record, value, params):
     :return:
     """
 #    logger.warn("converter(%r, %r, %r, %r)", field, record, value, params)
+    if not value:  # Nothing to split if value is None or ''
+        return value
 
     try:
         split_on = params.get('on', None)
@@ -21,6 +23,6 @@ def converter(field, record, value, params):
 
         return value.split(split_on)[index]
     except:
-        logger.exception("Error running split() converter on %r.", value)
+        logger.debug("Error running split() converter on %r.", value)
         return value
 

@@ -67,8 +67,9 @@ We suggest you setup a [virtual environment](http://docs.python-guide.org/en/lat
 
 ### Windows Environment
 ActiveState has an excellent Python package for Windows. It can be downloaded from 
- http://www.activestate.com/activepython/downloads. Once this has been downloaded and installed, the remaining setup
- steps can be performed using PowerShell as an administrator. So, open PowerShell and do the following:
+ http://www.activestate.com/activepython/downloads. Y ou will need to install Python 2.7.X Once this has been downloaded and installed, the remaining setup
+ steps can be performed using PowerShell as an administrator. So, open PowerShell and do the following (feel free to 
+ replace c:\oomnitza-connector with the directory of choice):
 
     > cd c:\
     > mkdir oomnitza-connector
