@@ -18,6 +18,8 @@ import argparse
 import logging
 import logging.config
 
+import decimal  # this is needed here to get the connector to work when compiled/frozen.
+
 import requests
 # I think something like the following is required to fully secure SSL connections.
 # However, it does not seem to want to install correctly (it seems to be missing dependancies).
@@ -102,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
     parser.add_argument('--save-data', action='store_true', help="Saves the data loaded from other system.")
+    # parser.add_argument('--load-data', default="", help="Directory from which to load data.")
     parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
     parser.add_argument('--logging-config', type=str, default=logging_setting_path, help="Use to override logging config file to use.")
     parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
