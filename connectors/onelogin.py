@@ -1,11 +1,14 @@
 import base64
 import logging
 import xmltodict
+import os
+import errno
+
 
 from requests import ConnectionError, HTTPError
 from lib.connector import UserConnector
 
-logger = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
+LOG = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -24,12 +27,36 @@ class Connector(UserConnector):
         'EMAIL':          {'source': "email"},
         'PHONE':          {'source': "phone"},
         'PERMISSIONS_ID': {'setting': "default_role"},
-        'POSITION':       {'setting': "default_position"},
+    }
+
+    StandardFields = {
+        'activated-at',
+        'created-at',
+        'directory-id',
+        'distinguished-name',
+        'email',
+        'external-id',
+        'firstname',
+        'group-id',
+        'id',
+        'invalid-login-attempts',
+        'invitation-sent-at',
+        'last-login',
+        'lastname',
+        'locale-code',
+        'locked-until',
+        'member-of',
+        'openid-name',
+        'password-changed-at',
+        'phone',
+        'status',
+        'updated-at',
+        'username',
     }
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        self.url_template = "%s?from_id={0}" % self.settings['url']
+        self.url_template = "%s?include_custom_attributes=true&from_id={0}" % self.settings['url']
 
     def get_headers(self):
         return {
@@ -75,6 +102,18 @@ class Connector(UserConnector):
             response = self.get(url)
             response.raise_for_status()
 
+            if self.settings.get("__save_data__", False):
+                try:
+                    os.makedirs("./saved_data")
+                    LOG.info("Saving data to %s.", os.path.abspath("./saved_data"))
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                        pass
+                    else:
+                        raise
+                with open("./saved_data/onelogin.{}.xml".format(last_id), "w") as output_file:
+                    output_file.write(response.text)
+
             response = xmltodict.parse(response.text)
             if 'users' not in response:
                 # The 'users' key doesn't exist.
@@ -96,4 +135,10 @@ class Connector(UserConnector):
                         user['phone'] = None
                     last_id = user['id']
                     yield user
+
+    @classmethod
+    def get_field_value(cls, field, data, default=None):
+        if field not in cls.StandardFields and not field.startswith("custom_attribute_"):
+            field = "custom_attribute_{}".format(field)
+        return UserConnector.get_field_value(field, data, default)
 

@@ -25,7 +25,6 @@ class Connector(UserConnector):
         'EMAIL':          {'source': "email"},
         'PHONE':          {'source': "mobilePhone"},
         'PERMISSIONS_ID': {'setting': "default_role"},
-        'POSITION':       {'setting': "default_position"},
     }
 
     def __init__(self, section, settings):

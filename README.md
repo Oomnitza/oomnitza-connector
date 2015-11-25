@@ -1,6 +1,6 @@
 # The Oomnitza Connector
-Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that 
- can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can 
+Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that
+ can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can
  presently pull data from the following sources, with more planned in the future.
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
@@ -22,10 +22,10 @@ The Oomnitza Connector can be hosted on Oomnitza's
 
 
 ## Getting Started
-The most current version of this documentation can always be found on 
+The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
 
-Since Oomnitza is highly customizable, there are many possibilities with the connector. Because of this, it is 
+Since Oomnitza is highly customizable, there are many possibilities with the connector. Because of this, it is
  important to think ahead about what data you want to bring in and how you want to store it. Before we
  begin, take time to think about what information you want, and what Oomnitza fields you want filled out with Casper
  data. If the fields you want to map in haven’t been created yet, now is a good time to do so.
@@ -33,29 +33,29 @@ Since Oomnitza is highly customizable, there are many possibilities with the con
  to get started.)
 
 ## Getting the Connector
-The Oomnitza Connector code is hosted at 
+The Oomnitza Connector code is hosted at
 [https://github.com/Oomnitza/oomnitza-connector](https://github.com/Oomnitza/oomnitza-connector).
 
-The Oomnitza Connector can also be downloaded from within your Oomnitza instance. Log into your instance and 
+The Oomnitza Connector can also be downloaded from within your Oomnitza instance. Log into your instance and
  navigate to the System Settings page. Scroll to the bottom of the Integrations page and download either the
- correct binary or the “Source Code” Package. 
-* If you will be hosting the connector on a Windows or Mac server, we recommend using the binary version. 
-* The Source Code package can be use on a Linux server, as well as Windows and Mac. This package requires 
+ correct binary or the “Source Code” Package.
+* If you will be hosting the connector on a Windows or Mac server, we recommend using the binary version.
+* The Source Code package can be use on a Linux server, as well as Windows and Mac. This package requires
   that a python environment be setup properly, which the binary version avoids.
 
 
 ## Runtime Environment Setup
 If you choose to run the binary version of the connector, you can skip this section. If you choose
  to install and run the python code, you will need to install Python 2.7.X as well as the packages which the connector
- relies upon. Some of the python packages may require build tools to be installed. 
+ relies upon. Some of the python packages may require build tools to be installed.
 
 ### Linux Environment
 On Ubuntu, the build tools are installed using:
 
     > sudo apt-get install build-essential
- 
+
 We suggest you setup a [virtual environment](http://docs.python-guide.org/en/latest/dev/virtualenvs/)
- and use pip to install the requirements. This can be done as follows (See our 
+ and use pip to install the requirements. This can be done as follows (See our
  [documentation](https://wiki.oomnitza.com/wiki/Installing_additional_Python_Modules) on installing
  additional Python modules for use in Oomnitza.):
 
@@ -66,9 +66,9 @@ We suggest you setup a [virtual environment](http://docs.python-guide.org/en/lat
     > pip install -r requirements.txt
 
 ### Windows Environment
-ActiveState has an excellent Python package for Windows. It can be downloaded from 
+ActiveState has an excellent Python package for Windows. It can be downloaded from
  http://www.activestate.com/activepython/downloads. Y ou will need to install Python 2.7.X Once this has been downloaded and installed, the remaining setup
- steps can be performed using PowerShell as an administrator. So, open PowerShell and do the following (feel free to 
+ steps can be performed using PowerShell as an administrator. So, open PowerShell and do the following (feel free to
  replace c:\oomnitza-connector with the directory of choice):
 
     > cd c:\
@@ -79,22 +79,28 @@ ActiveState has an excellent Python package for Windows. It can be downloaded fr
     > Invoke-WebRequest https://raw.github.com/pypa/pip/master/contrib/get-pip.py -OutFile .\get-pip.py
     > python get-pip.py
     > pip install --upgrade pip
-    > pip install requests pyodbc pyparsing 
+    > pip install requests pyodbc pyparsing
     > Invoke-WebRequest https://github.com/Oomnitza/oomnitza-connector/archive/master.zip -OutFile connector-master.zip
     > Add-Type -A System.IO.Compression.FileSystem
     > [IO.Compression.ZipFile]::ExtractToDirectory('c:\oomnitza-connector\connector-master.zip', 'c:\oomnitza-connector\')
     > cd oomnitza-connector-master
- 
+
 ## Connector Configs
 
 Now you should be able to generate a default config file. Running `python connector.py generate-ini` will regenerate
  the config.ini file, and create a backup if the file already exists. When you edit this file, it will have one section
  per connection. You can safely remove the section for the connections you will not be using to keep the file small and
- manageable. An example generated config.ini follows.
+ manageable.
+
+If you require multiple different configurations of a single connector, such as the need to pull from two different LDAP OUs,
+ additional sections can be added by appending a '.' and a unique identifier to the section name. For example, having both a
+ `[ldap]` and `[ldap.Contractors]` section will allow you to pull users from a default and Contractor OU.
+
+An example generated config.ini follows.
 
     [oomnitza]
     url = https://example.oomnitza.com
-    api_token = 
+    api_token =
     username = oomnitza-sa
     password = ThePassword
 
@@ -136,7 +142,7 @@ Now you should be able to generate a default config file. Running `python connec
     enable = False
     url = ldap://ldap.forumsys.com:389
     username = cn=read-only-admin,dc=example,dc=com
-    password = 
+    password =
     base_dn = dc=example,dc=com
     protocol_version = 3
     filter = (objectClass=*)
@@ -192,12 +198,12 @@ connections and if set to "True" will enable this service for processing. Some f
 connection. For example, "default_role" and "default_user" are fields for connections dealing with loading
 People into the Oomnitza app.
 
-Each section can end with a list of field mappings. Simple mappings which just copy a field from the external system to 
+Each section can end with a list of field mappings. Simple mappings which just copy a field from the external system to
  a field inside Oomnitza can be defined here or in the System Settings within Oomnitza. Simple mappings are as follows:
 
     mapping.[Oomnitza Field] = {"source": "[external field]"}
 
-For fields which require processing before being brought into Oomnitza must be defined in the INI. These mappings are 
+For fields which require processing before being brought into Oomnitza must be defined in the INI. These mappings are
  more involved. Please contact [support@oomnitza.com](mailto://support@oomnitza.com) for more information. The format is:
 
     mapping.[Oomnitza Field] = {"source": "[external field]", "converter": "[converter name]"}
@@ -209,7 +215,7 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `password`: the Oomnitza password to use
 
-`api_token`: The API Token belonging to the Oomnitza user. If provided, `password` must be left blank. 
+`api_token`: The API Token belonging to the Oomnitza user. If provided, `password` must be left blank.
 
 ### Airwatch Configuration
 `url`: the url of the Airwatch server
@@ -247,7 +253,7 @@ For fields which require processing before being brought into Oomnitza must be d
 
 ### Casper Configuration
 The `[casper]` section contains a similar set of preferences; your JSS URL, and the login credentials for an auditor
-account in Casper (See the 
+account in Casper (See the
 [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585)
 , pg. 42).
 
@@ -264,10 +270,10 @@ an existing record that has new information.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
-`sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. When syncing mobile 
-   devices a second section should be added to your config.ini file named `[Casper.MDM]` and this value should be set 
+`sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. When syncing mobile
+   devices a second section should be added to your config.ini file named `[Casper.MDM]` and this value should be set
    to `mobiledevices`.
-  
+
 `verify_ssl`: set to false if the Casper server is running with a self signed SSL certificate.
 
 `update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
@@ -368,24 +374,29 @@ an existing record that has new information.
 
 
 ### SCCM Configuration
-**Note:** The SCCM connector currently requires a Windows host. While it should be possible to run the 
+The account used to connect to the SCCM database requires at least read-only access.
+**Note:** The SCCM connector currently requires a Windows host. While it should be possible to run the
 connector on a non-Windows host, such as Linux, we do not provide support for this configuration at this time.
 
 `server`: The server hosting the SCCM database.
 
 `database`: The SCCM database from which to pull data.
 
-`username`: The username to use when connecting to the server.
+`username`: The username to use when connecting to the server using `SQL Server` authentication. This user
+requires read-only access to the DB. Ignored when using `Windows` authentication.
 
-`password`: The password to use when connecting to the server.
+`password`: The password to use when connecting to the server using `SQL Server` authentication.
+Ignored when using `Windows` authentication.
 
-`authentication`: Sets the type of authentication to use when connecting to the server. 
+`authentication`: Sets the type of authentication to use when connecting to the server.
 Options are `SQL Server` or `Windows`. The default is to use SQL Server Authentication.
+When using `Windows` authentication, the `username` and `password` fields are ignored and the credentials
+for the currently logged in user will be used when making the connection to the SCCM database.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
-    TO Be Determined
+    To Be Determined
 
 
 ### Zendesk Configuration
@@ -412,7 +423,7 @@ Options are `SQL Server` or `Windows`. The default is to use SQL Server Authenti
 ## Running the connector
 The connector is meant to be run from the command line and as such as multiple command line options:
 
-    $ python connector.py 
+    $ python connector.py
     usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
                         [--ini INI] [--logging-config LOGGING_CONFIG]
                         [--record-count RECORD_COUNT]
@@ -455,16 +466,16 @@ The available actions are:
 
 `--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
    config.ini mappings, and mappings setup via the website.
-  
+
 `--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
    can be used to see what, exactly, is getting sent to the server.
-  
+
 `--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
    will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
 
 `--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
    the data is being loaded and mapped as expected.
-   
+
 ## Setting the connector to run as an automated task
 There are many ways to automate the sync, here are a few:
 
@@ -489,15 +500,15 @@ If the service to be connected to requires a particular SSL protocol version to 
 ### Record Filtering
 Support has been added for filtering the records passed from the connector to Oomnitza. By default, all records from the
  remote system will be sent to Oomnitza for processing. To limit the records based on values in those records, a special
- `recordfilter` value can be added to a connector section in the ini file. This filter is written using the Python 
+ `recordfilter` value can be added to a connector section in the ini file. This filter is written using the Python
  programming language.
- 
+
 For example, the following filter will only  process records with the `asset_type` field set to "`computer`":
 
     recordfilter:
         return record.asset_type == "computer"
-        
-This is a very new feature, with many options, and we are still working on the documentation. If you are interested in 
+
+This is a very new feature, with many options, and we are still working on the documentation. If you are interested in
  using this feature, please contact [support@oomnitza.com](mailto://support@oomnitza.com) for assistance.
 
 # The GUI

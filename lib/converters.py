@@ -8,6 +8,7 @@ LOG = logging.getLogger("lib/converters")
 class Converter(object):
     def __init__(self):
         self.__loaded_converters = {}
+        self.__converters_cleanup = {}
 
     def run_converter(self, name, field, record, value, params):
         converter = self.__loaded_converters.get(name, None)
@@ -16,11 +17,19 @@ class Converter(object):
             mod = importlib.import_module("converters.{0}".format(name))
             converter = mod.converter
             self.__loaded_converters[name] = converter
+            if hasattr(mod, 'cleanup'):
+                self.__converters_cleanup[name] = mod.cleanup
+
 
         return converter(field, record, value, params)
 
     def register_converter(self, name, converter):
         self.__loaded_converters[name] = converter
+
+
+    def run_all_cleanups(self):
+        for name, fn in self.__converters_cleanup.items():
+            fn()
 
 Converter = Converter()
 

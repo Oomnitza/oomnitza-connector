@@ -29,6 +29,8 @@ import requests
 
 from lib import config
 from lib import connector
+from lib import version
+
 from utils.relative_path import relative_app_path, relative_path
 
 LOG = logging.getLogger("connector.py")
@@ -41,10 +43,12 @@ except ImportError:
     LOG.debug("Looks like wxPython is not installed.")
     HAVE_GUI = False
 
+from lib.converters import Converter
 
 # The import below needs to be enabled when building the binary!!!
 # This is s a holding comment until this is resolved as part of the build automation process.
-# import ldap, suds, pyodbc  # number 2
+# Pull out pyodbc when building Mac binary!!
+# import ldap, suds, csv, pyodbc  # number 2
 
 def main(args):
     """
@@ -77,6 +81,8 @@ def main(args):
         else:
             connector.run_connector(oomnitza_connector, connectors[name], options)
 
+    Converter.run_all_cleanups()
+
     LOG.info("Done.")
 
 
@@ -101,6 +107,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
     parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
+    parser.add_argument('--version', action='store_true', help="Show the connector version.")
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
     parser.add_argument('--save-data', action='store_true', help="Saves the data loaded from other system.")
@@ -112,6 +119,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config.setup_logging(args)
+
+    LOG.info("Connector version: %s", version.VERSION)
+    if args.version:
+        exit()
 
     if args.testmode:
         LOG.info("Connector started in Test Mode.")

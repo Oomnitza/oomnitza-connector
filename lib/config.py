@@ -225,6 +225,7 @@ def parse_config(args):
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
+                        # cfg["__load_data__"] = args.load_data
                         cfg["__name__"] = module
                         cfg["__connector__"] = connector(section, cfg)
 
@@ -285,7 +286,10 @@ def get_default_ini():
         except ImportError as exp:
             sections[name] = [('enable', 'False'), ("# Missing Required Package: {0}".format(exp.message), None)]
         except AttributeError as exp:
-            sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(exp.message),None)]
+            sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(exp.message), None)]
+        except Exception as exp:
+            sections[name] = [('enable', 'False'), ("# Exception: {0}".format(exp.message), None)]
+
 
     return format_sections_for_ini(sections)
 
