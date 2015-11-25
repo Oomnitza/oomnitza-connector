@@ -81,7 +81,6 @@ class Connector(UserConnector):
         'LAST_NAME':      {'source': "sn", 'required': True},
         'EMAIL':          {'source': "mail", 'required': True},
         'PERMISSIONS_ID': {'setting': "default_role"},
-        'POSITION':       {'setting': "default_position"},
     }
 
     def __init__(self, section, settings):

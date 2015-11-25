@@ -4,7 +4,7 @@ a = Analysis(['./oomnitza-connector-master/connector.py'],
              hiddenimports=['connectors.airwatch', 'connectors.bamboohr', 'connectors.casper',
                             'connectors.jasper', 'connectors.ldap', 'connectors.mobileiron',
                             'connectors.okta', 'connectors.onelogin', 'connectors.zendesk',
-                            'connectors.sccm', 'connectors.oomnitza',
+                            'connectors.oomnitza',
                             'converters.casper_extension_attribute',
                             'converters.date_format',
                             'converters.first_from_full',
@@ -14,14 +14,9 @@ a = Analysis(['./oomnitza-connector-master/connector.py'],
                             'converters.split',
                             'converters.split_email',
                             'converters.uber_position',
-                            'xmltodict', 'ctypes.wintypes', 'pyodbc'],
+                            'xmltodict'],
              hookspath=['./oomnitza-connector-master/connectors', './oomnitza-connector-master/converters'],
              runtime_hooks=None)
-
-for d in a.datas:
-    if 'pyconfig' in d[0]:
-        a.datas.remove(d)
-        break
 
 a.datas += [('connectors/airwatch.py', './oomnitza-connector-master/connectors/airwatch.py', 'DATA')]
 a.datas += [('connectors/bamboohr.py', './oomnitza-connector-master/connectors/bamboohr.py', 'DATA')]
@@ -32,7 +27,6 @@ a.datas += [('connectors/mobileiron.py', './oomnitza-connector-master/connectors
 a.datas += [('connectors/okta.py', './oomnitza-connector-master/connectors/okta.py', 'DATA')]
 a.datas += [('connectors/onelogin.py', './oomnitza-connector-master/connectors/onelogin.py', 'DATA')]
 a.datas += [('connectors/zendesk.py', './oomnitza-connector-master/connectors/zendesk.py', 'DATA')]
-a.datas += [('connectors/sccm.py', './oomnitza-connector-master/connectors/sccm.py', 'DATA')]
 a.datas += [('connectors/oomnitza.py', './oomnitza-connector-master/connectors/oomnitza.py', 'DATA')]
 a.datas += [('connector_gui/styles/darwin.json', './oomnitza-connector-master/connector_gui/styles/darwin.json', 'DATA')]
 a.datas += [('connector_gui/styles/windows.json', './oomnitza-connector-master/connector_gui/styles/windows.json', 'DATA')]
@@ -44,7 +38,7 @@ a.datas += [('connector_gui/images/oomnitza_logo.png', './oomnitza-connector-mas
 a.datas += [('connector_gui/images/scheduled.png', './oomnitza-connector-master/connector_gui/images/scheduled.png', 'DATA')]
 a.datas += [('connector_gui/images/expanded.png', './oomnitza-connector-master/connector_gui/images/expanded.png', 'DATA')]
 a.datas += [('connector_gui/images/connector.ico', './oomnitza-connector-master/connector_gui/images/connector.ico', 'DATA')]
-a.datas += [('cacert.pem', 'C:/Python27/lib/site-packages/certifi/cacert.pem', 'DATA')]
+a.datas += [('cacert.pem', '/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem', 'DATA')]
 a.datas += [('logging.json', './oomnitza-connector-master/logging.json', 'DATA')]
 a.datas += [('connector_gui/templates/task_scheduler.xml', './oomnitza-connector-master/connector_gui/templates/task_scheduler.xml', 'DATA')]
 
@@ -54,12 +48,11 @@ exe = EXE(pyz,
           a.binaries,
           a.zipfiles,
           a.datas,
-          name='connector.exe',
+          name='connector',
           debug=False,
           strip=None,
           upx=True,
-          console=False,
-          icon='./oomnitza-connector-master/connector_gui/images/connector.ico' )
-
-
-
+          console=False)
+app = BUNDLE(exe,
+             name='connector.app',
+             icon='/oomnitza-connector-master/connector_gui/images/connector.icns')

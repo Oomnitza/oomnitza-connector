@@ -18,6 +18,7 @@ from .error import ConfigError, AuthenticationError
 from .httpadapters import AdapterMap
 from .converters import Converter
 from .filter import DynamicException
+from .version import VERSION
 
 LastInstalledHandler = None
 
@@ -70,6 +71,8 @@ class BaseConnector(object):
     OomnitzaBatchSize = 100
     BuiltinSettings = ('ssl_protocol',)
 
+    OomnitzaConnector = None
+
     TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
     FalseValues = ['False', 'false', '0', 'No', 'no', False]
     CommonSettings = {
@@ -82,7 +85,7 @@ class BaseConnector(object):
 
     def __init__(self, section, settings):
         self.section = section
-        self.settings = {}
+        self.settings = {'VERSION': VERSION}
         self.keep_going = True
         ini_field_mappings = {}
         self.__filter__ = None
@@ -132,6 +135,9 @@ class BaseConnector(object):
                     mapping['converter'] = self.DefaultConverters[source]
 
         self._session = None
+
+        if section == 'oomnitza' and not BaseConnector.OomnitzaConnector:
+            BaseConnector.OomnitzaConnector = self
 
     def get_field_mappings(self, extra_mappings):
         mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
@@ -370,7 +376,7 @@ class BaseConnector(object):
                     else:
                         raise
 
-                filename = "./saved_data/oom.payload{}.json".format(self.send_counter)
+                filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
                 LOG.info("Saving payload data to %s.", filename)
                 with open(filename, 'w') as save_file:
                     self.send_counter += 1
@@ -527,6 +533,20 @@ class UserConnector(BaseConnector):
     def __init__(self, section, settings):
         super(UserConnector, self).__init__(section, settings)
 
+        if self.settings['default_position'].lower() == 'unused':
+            self.normal_position = True
+        else:
+            self.normal_position = False
+
+        if 'POSITION' not in self.field_mappings and not self.normal_position:
+            self.field_mappings['POSITION'] = {"setting": 'default_position'}
+
+    def send_to_oomnitza(self, oomnitza_connector, record, options):
+        if self.normal_position:
+            options['normal_position'] = True
+
+        return super(UserConnector, self).send_to_oomnitza(oomnitza_connector, record, options)
+
 
 class AssetConnector(BaseConnector):
     RecordType = 'assets'
@@ -536,11 +556,10 @@ class AssetConnector(BaseConnector):
         super(AssetConnector, self).__init__(section, settings)
 
         if self.settings['sync_field'] not in self.field_mappings:
-            logging.error("Sync field %r is not included in the %s mappings. No records can be synced.",
-                          self.settings['sync_field'], self.MappingName)
-            self.field_mappings[self.settings['sync_field']] = {
-                'hardcoded': ""
-            }
+            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced. "
+                              "Please check your field mappings under System Settings > Connectors then select "
+                              "'%s' from the drop down." %
+                              (self.settings['sync_field'], self.MappingName, self.MappingName))
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
@@ -560,11 +579,10 @@ class AuditConnector(BaseConnector):
         super(AuditConnector, self).__init__(section, settings)
 
         if self.settings['sync_field'] not in self.field_mappings:
-            logging.error("Sync field %r is not included in the %s mappings. No records can be synced.",
-                          self.settings['sync_field'], self.MappingName)
-            self.field_mappings[self.settings['sync_field']] = {
-                'hardcoded': ""
-            }
+            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced. "
+                              "Please check your field mappings under System Settings > Connectors then select "
+                              "'%s' from the drop down." %
+                              (self.settings['sync_field'], self.MappingName, self.MappingName))
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {

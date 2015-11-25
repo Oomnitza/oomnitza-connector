@@ -70,22 +70,25 @@ class Connector(BaseConnector):
         # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
     def upload_assets(self, assets, options):
-        # logger.debug("upload_assets( %r )", assets)
-        url = "{url}/api/v2/bulk/assets".format(**self.settings)
+        # LOG.debug("upload_assets( %r )", assets)
+        url = "{url}/api/v2/bulk/assets?VERSION={VERSION}".format(**self.settings)
         response = self.post(url, assets)
-        # logger.debug("response = %r", response.text)
+        # LOG.debug("response = %r", response.text)
         return response
 
     def upload_users(self, users, options):
         # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/users".format(**self.settings)
+        url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
+        if 'normal_position' in options:
+            url += "&normal_position={}".format(options['normal_position'])
+
         response = self.post(url, users)
         # logger.debug("response = %r", response.text)
         return response
 
     def upload_audit(self, computers, options):
         # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/audit".format(**self.settings)
+        url = "{url}/api/v2/bulk/audit?VERSION={VERSION}".format(**self.settings)
         response = self.post(url, computers)
         # logger.debug("response = %r", response.text)
         return response
@@ -125,5 +128,15 @@ class Connector(BaseConnector):
     def get_mappings(self, name):
         url = "{0}/api/v2/mappings?name={1}".format(self.settings['url'], name)
         response = self.get(url)
-        # logger.debug("%s mapping: %r", name, response.json())
         return response.json()
+
+    def get_location_mappings(self, field):
+        try:
+            url = "{0}/api/v3/locations".format(self.settings['url'])
+            response = self.get(url)
+            mappings = {loc.get(field, None): loc['location_id'] for loc in response.json() if loc.get(field, None)}
+            LOG.debug("location mappings for %s: %r", field, mappings)
+            return mappings
+        except:
+            LOG.exception("Failed to load Locations from Oomnitza.")
+            return {}
