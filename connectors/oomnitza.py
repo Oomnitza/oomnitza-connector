@@ -130,11 +130,11 @@ class Connector(BaseConnector):
         response = self.get(url)
         return response.json()
 
-    def get_location_mappings(self, field):
+    def get_location_mappings(self, field, label_field):
         try:
             url = "{0}/api/v3/locations".format(self.settings['url'])
             response = self.get(url)
-            mappings = {loc.get(field, None): loc['location_id'] for loc in response.json() if loc.get(field, None)}
+            mappings = {loc.get(field, None): loc[label_field] for loc in response.json() if loc.get(field, None)}
             LOG.debug("location mappings for %s: %r", field, mappings)
             return mappings
         except:
