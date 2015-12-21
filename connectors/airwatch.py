@@ -69,11 +69,19 @@ class Connector(AuditConnector):
 
         while processed_device_count < total_device_count:
             url = self.url_template.format(rows, page)
-            response = self.get(url).json()
-            if total_device_count == 0:
-                processed_device_count = 0
-                total_device_count = response['Total']
-            devices = response['Devices']
+            try:
+                response = self.get(url)
+                response = response.json()
+                if total_device_count == 0:
+                    processed_device_count = 0
+                    total_device_count = response['Total']
+                devices = response['Devices']
+            except ValueError as exp:
+                logger.exception("Error getting data from AirWatch.")
+                if hasattr(exp, 'doc'):
+                    logger.error("Error Document: %r", exp.doc)
+                devices, total_device_count = [], -1
+
             for device in devices:
                 if self.__load_network_data:
                     device['network'] = self._load_network_information(device['MacAddress'])
