@@ -71,6 +71,11 @@ class Connector(AuditConnector):
             url = self.url_template.format(rows, page)
             try:
                 response = self.get(url)
+                if response.status_code == 204:
+                    # Sometimes it is just an empty response!
+                    logger.error("Got a 204 (Empty Response) from AirWatch!")
+                    return
+
                 response = response.json()
                 if total_device_count == 0:
                     processed_device_count = 0

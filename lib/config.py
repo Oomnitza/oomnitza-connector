@@ -23,6 +23,17 @@ from .error import ConfigError
 
 
 class SpecialConfigParser(SafeConfigParser):
+    def _interpolate(self, section, option, rawval, vars):
+        """
+        Disabled ConfigParser Interpolation of values.
+        :param section:
+        :param option:
+        :param rawval:
+        :param vars:
+        :return: rawval
+        """
+        return rawval
+
     def _read(self, fp, fpname):
         """Parse a sectioned setup file.
 

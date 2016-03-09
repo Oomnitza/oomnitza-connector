@@ -1,5 +1,6 @@
 # -*- mode: python -*-
-a = Analysis(['./oomnitza-connector-master/connector.py'],
+import certifi
+a = Analysis(['./connector.py'],
              pathex=None,
              hiddenimports=['connectors.airwatch', 'connectors.bamboohr', 'connectors.casper',
                             'connectors.jasper', 'connectors.ldap', 'connectors.mobileiron',
@@ -15,32 +16,32 @@ a = Analysis(['./oomnitza-connector-master/connector.py'],
                             'converters.split_email',
                             'converters.uber_position',
                             'xmltodict'],
-             hookspath=['./oomnitza-connector-master/connectors', './oomnitza-connector-master/converters'],
+             hookspath=['./connectors', './converters'],
              runtime_hooks=None)
 
-a.datas += [('connectors/airwatch.py', './oomnitza-connector-master/connectors/airwatch.py', 'DATA')]
-a.datas += [('connectors/bamboohr.py', './oomnitza-connector-master/connectors/bamboohr.py', 'DATA')]
-a.datas += [('connectors/casper.py', './oomnitza-connector-master/connectors/casper.py', 'DATA')]
-a.datas += [('connectors/jasper.py', './oomnitza-connector-master/connectors/jasper.py', 'DATA')]
-a.datas += [('connectors/ldap.py', './oomnitza-connector-master/connectors/ldap.py', 'DATA')]
-a.datas += [('connectors/mobileiron.py', './oomnitza-connector-master/connectors/mobileiron.py', 'DATA')]
-a.datas += [('connectors/okta.py', './oomnitza-connector-master/connectors/okta.py', 'DATA')]
-a.datas += [('connectors/onelogin.py', './oomnitza-connector-master/connectors/onelogin.py', 'DATA')]
-a.datas += [('connectors/zendesk.py', './oomnitza-connector-master/connectors/zendesk.py', 'DATA')]
-a.datas += [('connectors/oomnitza.py', './oomnitza-connector-master/connectors/oomnitza.py', 'DATA')]
-a.datas += [('connector_gui/styles/darwin.json', './oomnitza-connector-master/connector_gui/styles/darwin.json', 'DATA')]
-a.datas += [('connector_gui/styles/windows.json', './oomnitza-connector-master/connector_gui/styles/windows.json', 'DATA')]
-a.datas += [('connector_gui/styles/metadata.json', './oomnitza-connector-master/connector_gui/styles/metadata.json', 'DATA')]
-a.datas += [('connector_gui/images/collapsed.png', './oomnitza-connector-master/connector_gui/images/collapsed.png', 'DATA')]
-a.datas += [('connector_gui/images/disabled.png', './oomnitza-connector-master/connector_gui/images/disabled.png', 'DATA')]
-a.datas += [('connector_gui/images/enabled.png', './oomnitza-connector-master/connector_gui/images/enabled.png', 'DATA')]
-a.datas += [('connector_gui/images/oomnitza_logo.png', './oomnitza-connector-master/connector_gui/images/oomnitza_logo.png', 'DATA')]
-a.datas += [('connector_gui/images/scheduled.png', './oomnitza-connector-master/connector_gui/images/scheduled.png', 'DATA')]
-a.datas += [('connector_gui/images/expanded.png', './oomnitza-connector-master/connector_gui/images/expanded.png', 'DATA')]
-a.datas += [('connector_gui/images/connector.ico', './oomnitza-connector-master/connector_gui/images/connector.ico', 'DATA')]
-a.datas += [('cacert.pem', '/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/site-packages/certifi/cacert.pem', 'DATA')]
-a.datas += [('logging.json', './oomnitza-connector-master/logging.json', 'DATA')]
-a.datas += [('connector_gui/templates/task_scheduler.xml', './oomnitza-connector-master/connector_gui/templates/task_scheduler.xml', 'DATA')]
+a.datas += [('connectors/airwatch.py', './connectors/airwatch.py', 'DATA')]
+a.datas += [('connectors/bamboohr.py', './connectors/bamboohr.py', 'DATA')]
+a.datas += [('connectors/casper.py', './connectors/casper.py', 'DATA')]
+a.datas += [('connectors/jasper.py', './connectors/jasper.py', 'DATA')]
+a.datas += [('connectors/ldap.py', './connectors/ldap.py', 'DATA')]
+a.datas += [('connectors/mobileiron.py', './connectors/mobileiron.py', 'DATA')]
+a.datas += [('connectors/okta.py', './connectors/okta.py', 'DATA')]
+a.datas += [('connectors/onelogin.py', './connectors/onelogin.py', 'DATA')]
+a.datas += [('connectors/zendesk.py', './connectors/zendesk.py', 'DATA')]
+a.datas += [('connectors/oomnitza.py', './connectors/oomnitza.py', 'DATA')]
+a.datas += [('connector_gui/styles/darwin.json', './connector_gui/styles/darwin.json', 'DATA')]
+a.datas += [('connector_gui/styles/windows.json', './connector_gui/styles/windows.json', 'DATA')]
+a.datas += [('connector_gui/styles/metadata.json', './connector_gui/styles/metadata.json', 'DATA')]
+a.datas += [('connector_gui/images/collapsed.png', './connector_gui/images/collapsed.png', 'DATA')]
+a.datas += [('connector_gui/images/disabled.png', './connector_gui/images/disabled.png', 'DATA')]
+a.datas += [('connector_gui/images/enabled.png', './connector_gui/images/enabled.png', 'DATA')]
+a.datas += [('connector_gui/images/oomnitza_logo.png', './connector_gui/images/oomnitza_logo.png', 'DATA')]
+a.datas += [('connector_gui/images/scheduled.png', './connector_gui/images/scheduled.png', 'DATA')]
+a.datas += [('connector_gui/images/expanded.png', './connector_gui/images/expanded.png', 'DATA')]
+a.datas += [('connector_gui/images/connector.ico', './connector_gui/images/connector.ico', 'DATA')]
+a.datas += [('cacert.pem', certifi.where(), 'DATA')]
+a.datas += [('logging.json', './logging.json', 'DATA')]
+a.datas += [('connector_gui/templates/task_scheduler.xml', './connector_gui/templates/task_scheduler.xml', 'DATA')]
 
 pyz = PYZ(a.pure)
 exe = EXE(pyz,
@@ -55,4 +56,4 @@ exe = EXE(pyz,
           console=False)
 app = BUNDLE(exe,
              name='connector.app',
-             icon='/oomnitza-connector-master/connector_gui/images/connector.icns')
+             icon='./connector_gui/images/connector.icns')

@@ -19,8 +19,6 @@ The Oomnitza Connector can be hosted on Oomnitza's
  or can be made accessible from the Oomnitza Cloud. Contact us for more details!
  Organizations with dedicated internal services may prefer to run this connector
  in-house, behind the same firewall that prevents outside access.
-
-
 ## Getting Started
 The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
@@ -84,6 +82,72 @@ ActiveState has an excellent Python package for Windows. It can be downloaded fr
     > Add-Type -A System.IO.Compression.FileSystem
     > [IO.Compression.ZipFile]::ExtractToDirectory('c:\oomnitza-connector\connector-master.zip', 'c:\oomnitza-connector\')
     > cd oomnitza-connector-master
+
+
+## Running the connector
+The connector is meant to be run from the command line and as such as multiple command line options:
+
+    $ python connector.py
+    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
+                        [--ini INI] [--logging-config LOGGING_CONFIG]
+                        [--record-count RECORD_COUNT]
+                        {upload,generate-ini,gui} [connectors [connectors ...]]
+    connector.py: error: too few arguments
+    (connector)daniels-mbp:Connector daniel$ python connector.py --help
+    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
+                        [--ini INI] [--logging-config LOGGING_CONFIG]
+                        [--record-count RECORD_COUNT]
+                        {upload,generate-ini,gui} [connectors [connectors ...]]
+
+    positional arguments:
+      {upload,generate-ini,gui}
+                            Action to perform.
+      connectors            Connectors to run.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --show-mappings       Show the mappings which would be used by the
+                            connector.
+      --testmode            Run connectors in test mode.
+      --save-data           Saves the data loaded from other system.
+      --ini INI             Config file to use.
+      --logging-config LOGGING_CONFIG
+                            Use to override logging config file to use.
+      --record-count RECORD_COUNT
+                            Number of records to pull and process from connection.
+
+The available actions are:
+
+* `gui` (default): launch the config gui.
+* `generate-ini`: generate an example config.ini file.
+* `upload`: uploads the data from the indicated connectors to Oomnitza. The connector values are taken
+   from the section names in the ini file.
+
+`--ini` is used to specify which config file to load, if not provided, `config.ini` from the root directory will be used.
+   This option can be used with the `generate-ini` action to specify the file to generate.
+
+`--logging-config` is used to specify an alternate logging config file.
+
+`--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
+   config.ini mappings, and mappings setup via the website.
+
+`--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
+   can be used to see what, exactly, is getting sent to the server.
+
+`--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
+   will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
+
+`--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
+   the data is being loaded and mapped as expected.
+
+## Setting the connector to run as an automated task
+There are many ways to automate the sync, here are a few:
+
+* OS X: http://www.maclife.com/article/columns/terminal_101_creating_cron_jobs
+* OS X: http://superuser.com/questions/126907/how-can-i-get-a-script-to-run-every-day-on-mac-os-x
+* OS X: http://launched.zerowidth.com/
+* Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
+* Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
 
 ## Connector Configs
 
@@ -215,6 +279,8 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `password`: the Oomnitza password to use
 
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
+
 `api_token`: The API Token belonging to the Oomnitza user. If provided, `password` must be left blank.
 
 ### Airwatch Configuration
@@ -223,6 +289,8 @@ For fields which require processing before being brought into Oomnitza must be d
 `username`: the Airwatch username to use
 
 `password`: the Airwatch password to use
+
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `api_token`: HPDL
 
@@ -266,14 +334,19 @@ an existing record that has new information.
 
 `username`: the Casper username to use
 
-`password`: the Casper password to use
+`password`: the Casper password to use. Note: the Casper API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
+
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 `sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. When syncing mobile
-   devices a second section should be added to your config.ini file named `[Casper.MDM]` and this value should be set
+   devices a second section should be added to your config.ini file named `[casper.MDM]` and this value should be set
    to `mobiledevices`.
 
+`group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
+  If present, only assets from this Group will be processed.
+  
 `verify_ssl`: set to false if the Casper server is running with a self signed SSL certificate.
 
 `update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
@@ -288,6 +361,8 @@ an existing record that has new information.
 `username`: the Jasper username to use
 
 `password`: the Jasper password to use
+
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `storage`: The path to the storage file used to maintain state about the connector. Defaults to: `storage.db`
 
@@ -309,11 +384,13 @@ an existing record that has new information.
 
 `password`: the LDAP password to use
 
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
+
 `base_dn`: The Base DN to use for the connection.
 
 `protocol_version`: The LDAP Protocol version to use. Defaults to: 3.
 
-`filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)`
+`filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects under the base_db. This is a very reasonable default.
 
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
@@ -326,6 +403,8 @@ an existing record that has new information.
 `username`: the MobileIron username to use.
 
 `password`: the MobileIron password to use.
+
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`
 
@@ -388,6 +467,8 @@ requires read-only access to the DB. Ignored when using `Windows` authentication
 `password`: The password to use when connecting to the server using `SQL Server` authentication.
 Ignored when using `Windows` authentication.
 
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
+
 `authentication`: Sets the type of authentication to use when connecting to the server.
 Options are `SQL Server` or `Windows`. The default is to use SQL Server Authentication.
 When using `Windows` authentication, the `username` and `password` fields are ignored and the credentials
@@ -419,71 +500,6 @@ for the currently logged in user will be used when making the connection to the 
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
     mapping.POSITION =       {'setting': "default_position"}
 
-
-## Running the connector
-The connector is meant to be run from the command line and as such as multiple command line options:
-
-    $ python connector.py
-    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
-                        [--ini INI] [--logging-config LOGGING_CONFIG]
-                        [--record-count RECORD_COUNT]
-                        {upload,generate-ini,gui} [connectors [connectors ...]]
-    connector.py: error: too few arguments
-    (connector)daniels-mbp:Connector daniel$ python connector.py --help
-    usage: connector.py [-h] [--show-mappings] [--testmode] [--save-data]
-                        [--ini INI] [--logging-config LOGGING_CONFIG]
-                        [--record-count RECORD_COUNT]
-                        {upload,generate-ini,gui} [connectors [connectors ...]]
-
-    positional arguments:
-      {upload,generate-ini,gui}
-                            Action to perform.
-      connectors            Connectors to run.
-
-    optional arguments:
-      -h, --help            show this help message and exit
-      --show-mappings       Show the mappings which would be used by the
-                            connector.
-      --testmode            Run connectors in test mode.
-      --save-data           Saves the data loaded from other system.
-      --ini INI             Config file to use.
-      --logging-config LOGGING_CONFIG
-                            Use to override logging config file to use.
-      --record-count RECORD_COUNT
-                            Number of records to pull and process from connection.
-
-The available actions are:
-
-* `gui` (default): launch the config gui.
-* `generate-ini`: generate an example config.ini file.
-* `upload`: uploads the data from the indicated connectors to Oomnitza. The connector values are taken
-   from the section names in the ini file.
-
-`--ini` is used to specify which config file to load, if not provided, `config.ini` from the root directory will be used.
-   This option can be used with the `generate-ini` action to specify the file to generate.
-
-`--logging-config` is used to specify an alternate logging config file.
-
-`--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
-   config.ini mappings, and mappings setup via the website.
-
-`--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
-   can be used to see what, exactly, is getting sent to the server.
-
-`--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
-   will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
-
-`--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
-   the data is being loaded and mapped as expected.
-
-## Setting the connector to run as an automated task
-There are many ways to automate the sync, here are a few:
-
-* OS X: http://www.maclife.com/article/columns/terminal_101_creating_cron_jobs
-* OS X: http://superuser.com/questions/126907/how-can-i-get-a-script-to-run-every-day-on-mac-os-x
-* OS X: http://launched.zerowidth.com/
-* Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
-* Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
 
 ## Advanced usage
 
