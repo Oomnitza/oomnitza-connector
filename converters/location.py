@@ -20,7 +20,8 @@ def _load_map(location_field, label_field):
     MAP = BaseConnector.OomnitzaConnector.get_location_mappings(location_field, label_field)
     LOGGER.info("Loaded %s locations.", len(MAP))
     if not MAP:
-        raise Exception("Zero locations loaded from Oomnitza.")
+        LOGGER.warning("Zero locations loaded from Oomnitza.")
+        # raise Exception("Zero locations loaded from Oomnitza.")
     return MAP
 
 

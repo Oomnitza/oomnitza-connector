@@ -163,7 +163,7 @@ class Connector(AuditConnector):
                     continue
                 installed_software.append({
                     "name": software_name,
-                    "version": software.get("verison"),
+                    "version": software.get("version"),
                     "publisher": software.get("publisher"),
                     "path": None
                 })

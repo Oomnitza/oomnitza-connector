@@ -28,6 +28,7 @@ def _clean_record(record):
             clean_record[key] = "*BINARY*"
     return clean_record
 
+
 class DictUnicodeWriter(object):
     def __init__(self, f, fieldnames, dialect=csv.excel, encoding="utf-8", **kwds):
         # Redirect output to a queue
@@ -62,6 +63,7 @@ class DictUnicodeWriter(object):
     def writeheader(self):
         self.writer.writeheader()
 
+
 class Connector(UserConnector):
     MappingName = 'LDAP'
     Settings = {
@@ -70,7 +72,7 @@ class Connector(UserConnector):
         'password':         {'order':  3, 'default': ""},
         'base_dn':          {'order':  4, 'example': "dc=example,dc=com"},
         'protocol_version': {'order':  5, 'default': "3"},
-        'filter':           {'order':  7, 'example': "(objectClass=*)"},
+        'filter':           {'order':  7, 'default': "(objectClass=*)"},
         'default_role':     {'order':  8, 'example': 25, 'type': int},
         'default_position': {'order':  9, 'example': 'Employee'},
     }
@@ -129,19 +131,16 @@ class Connector(UserConnector):
         if self.settings.get('verify_ssl', True) in self.TrueValues:
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
         else:
-            LOG.info("setting ldap.OPT_X_TLS_REQUIRE_CERT = ldap.OPT_X_TLS_ALLOW (no SSL certificate validation).")
+            LOG.info("ldap.verify_ssl = '%s' so SSL certificate validation has been disabled.", self.settings.get('verify_ssl', True))
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_ALLOW)
 
         try:
-            if self.settings['username'].lower() == "anonymous":
-                self.ldap_connection.simple_bind_s()
-            else:
-                password = self.settings['password']
-                if not password:
-                    LOG.warning("No password set for LDAP. Connecting without password.")
-                    password = u""
+            password = self.settings['password']
+            if not password:
+                LOG.warning("No password set for LDAP. Connecting anonymously.")
+                password = u""
 
-                self.ldap_connection.simple_bind_s(self.settings['username'], password)
+            self.ldap_connection.simple_bind_s(self.settings['username'], password)
         except ldap.INVALID_CREDENTIALS:
             LOG.exception("Error calling simple_bind_s()")
             raise AuthenticationError("Cannot connect to the LDAP server with given credentials. "
@@ -270,3 +269,32 @@ class Connector(UserConnector):
     # def get_field_value(cls, field, data, default=[None]):
     #     return data.get(field, default)[0]
     #
+
+
+ErrorDescriptions = """
+From: https://community.hortonworks.com/questions/5322/ranger-user-sync-error-javaxnamingauthenticationex.html
+
+The cause of the LDAP 49 error can vary. You need to check the data code to determine what the actual cause is. Here is a table of the various 49 errors/data codes and what they mean:
+
+49 - LDAP_INVALID_CREDENTIALS - Indicates that during a bind operation one of the following occurred: The client passed either an incorrect DN or password, or the password is incorrect because it has expired, intruder detection has locked the account, or another similar reason. See the data code for more information.
+
+49 / 52e - AD_INVALID CREDENTIALS - Indicates an Active Directory (AD) AcceptSecurityContexterror, which is returned when the username is valid but the combination of password and user credential is invalid. This is the AD equivalent of LDAP error code 49.
+Note: I got this error, 52e, with a clearly invalid username.
+
+49 / 525 - USER NOT FOUND - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is returned when the username is invalid.
+
+49 / 530 - NOT_PERMITTED_TO_LOGON_AT_THIS_TIME - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is logon failure caused because the user is not permitted to log on at this time. Returns only when presented with a valid username and valid password credential.
+
+49 / 531 - RESTRICTED_TO_SPECIFIC_MACHINES - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is logon failure caused because the user is not permitted to log on from this computer. Returns only when presented with a valid username and valid password credential.
+
+49 / 532 - PASSWORD_EXPIRED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The specified account password has expired. Returns only when presented with valid username and password credential.
+
+49 / 533 - ACCOUNT_DISABLED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The account is currently disabled. Returns only when presented with valid username and password credential.
+
+49 / 568 - ERROR_TOO_MANY_CONTEXT_IDS - Indicates that during a log-on attempt, the user's security context accumulated too many security IDs. This is an issue with the specific LDAP user object/account which should be investigated by the LDAP administrator.
+
+49 / 701 - ACCOUNT_EXPIRED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The user's account has expired. Returns only when presented with valid username and password credential.
+
+49 / 773 - USER MUST RESET PASSWORD - Indicates an Active Directory (AD) AcceptSecurityContextdata error. The user's password must be changed before logging on the first time. Returns only when presented with valid user-name and password credential.
+
+"""

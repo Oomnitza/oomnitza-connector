@@ -32,6 +32,7 @@ from lib import connector
 from lib import version
 
 from utils.relative_path import relative_app_path, relative_path
+from utils.single_instance import SingleInstance
 
 LOG = logging.getLogger("connector.py")
 root_logger = logging.getLogger("")
@@ -49,6 +50,7 @@ from lib.converters import Converter
 # This is s a holding comment until this is resolved as part of the build automation process.
 # Pull out pyodbc when building Mac binary!!
 # import ldap, suds, csv, pyodbc  # number 2
+
 
 def main(args):
     """
@@ -122,22 +124,23 @@ if __name__ == "__main__":
 
     LOG.info("Connector version: %s", version.VERSION)
     if args.version:
-        exit()
+        sys.exit(0)
 
     if args.testmode:
         LOG.info("Connector started in Test Mode.")
 
-    if args.action == 'generate-ini':
-        config.generate_ini_file(args)
-    elif args.action == 'gui' and HAVE_GUI:
-        if not os.path.exists(args.ini):
-            # ensure the gui has a config.ini file to load. Generate it if missing.
+    with SingleInstance("Connector is already running."):
+        if args.action == 'generate-ini':
             config.generate_ini_file(args)
-        gui_main(args)
-    else:
-        if not args.connectors:
-            LOG.error("No connectors specified.")
-            sys.exit(1)
+        elif args.action == 'gui' and HAVE_GUI:
+            if not os.path.exists(args.ini):
+                # ensure the gui has a config.ini file to load. Generate it if missing.
+                config.generate_ini_file(args)
+            gui_main(args)
+        else:
+            if not args.connectors:
+                LOG.error("No connectors specified.")
+                sys.exit(1)
 
-        main(args)
+            main(args)
 

@@ -220,6 +220,7 @@ class BaseConnector(object):
         # LOG.debug("headers: %r", headers)
         response = session.get(url, headers=headers, auth=auth,
                                verify=self.get_verification())
+
         response.raise_for_status()
         return response
 
@@ -542,33 +543,11 @@ class UserConnector(BaseConnector):
             self.field_mappings['POSITION'] = {"setting": 'default_position'}
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
+        options['agent_id'] = self.MappingName
         if self.normal_position:
             options['normal_position'] = True
 
         return super(UserConnector, self).send_to_oomnitza(oomnitza_connector, record, options)
-
-
-class AssetConnector(BaseConnector):
-    RecordType = 'assets'
-    MappingName = None
-
-    def __init__(self, section, settings):
-        super(AssetConnector, self).__init__(section, settings)
-
-        if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced. "
-                              "Please check your field mappings under System Settings > Connectors then select "
-                              "'%s' from the drop down." %
-                              (self.settings['sync_field'], self.MappingName, self.MappingName))
-
-    def send_to_oomnitza(self, oomnitza_connector, record, options):
-        payload = {
-            "integration_id": self.MappingName,
-            "sync_field": self.settings['sync_field'],
-            "assets": record,
-            "update_only": self.settings.get('update_only', "False"),
-        }
-        return super(AssetConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
 
 
 class AuditConnector(BaseConnector):
@@ -584,6 +563,8 @@ class AuditConnector(BaseConnector):
                               "'%s' from the drop down." %
                               (self.settings['sync_field'], self.MappingName, self.MappingName))
 
+        self.field_mappings[self.settings['sync_field']]['required'] = True
+
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         payload = {
             "agent_id": self.MappingName,
@@ -594,3 +575,4 @@ class AuditConnector(BaseConnector):
         # pprint.pprint(record)
         return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
 
+AssetConnector = AuditConnector

@@ -81,6 +81,7 @@ class Connector(BaseConnector):
         url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
         if 'normal_position' in options:
             url += "&normal_position={}".format(options['normal_position'])
+        url += "&agent_id={}".format(options.get('agent_id', 'Unknown'))
 
         response = self.post(url, users)
         # logger.debug("response = %r", response.text)
@@ -130,13 +131,42 @@ class Connector(BaseConnector):
         response = self.get(url)
         return response.json()
 
-    def get_location_mappings(self, field, label_field):
+    def get_location_mappings(self, id_field, label_field):
         try:
             url = "{0}/api/v3/locations".format(self.settings['url'])
             response = self.get(url)
-            mappings = {loc.get(field, None): loc[label_field] for loc in response.json() if loc.get(field, None)}
-            LOG.debug("location mappings for %s: %r", field, mappings)
+            mappings = {loc[label_field]: loc[id_field] for loc in response.json() if loc.get(id_field, None) and loc.get(label_field, None)}
+            LOG.info("Location Map to {}: External Value -> Oomnitza ID", id_field)
+            for name in sorted(mappings.keys()):
+                LOG.debug("    {} -> {}".format(name, mappings[name]))
             return mappings
         except:
             LOG.exception("Failed to load Locations from Oomnitza.")
+            return {}
+
+    def get_settings(self, connector, *keys):
+        try:
+            url = "{0}/api/v3/settings/{1}/{2}".format(
+                self.settings['url'],
+                connector,
+                '/'.join(keys)
+            )
+            response = self.get(url)
+            return response.json()['value']  ##!!!!!
+        except:
+            LOG.exception("Failed to load settings from Oomnitza.")
+            raise
+            return {}
+
+    def get_setting(self, key):
+        try:
+            url = "{0}/api/v3/settings/{1}".format(
+                self.settings['url'],
+                key
+            )
+            response = self.get(url)
+            return response.json()['value']
+        except:
+            LOG.exception("Failed to load setting from Oomnitza.")
+            raise
             return {}

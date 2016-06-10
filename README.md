@@ -19,6 +19,8 @@ The Oomnitza Connector can be hosted on Oomnitza's
  or can be made accessible from the Oomnitza Cloud. Contact us for more details!
  Organizations with dedicated internal services may prefer to run this connector
  in-house, behind the same firewall that prevents outside access.
+
+
 ## Getting Started
 The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
