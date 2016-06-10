@@ -279,11 +279,14 @@ def get_default_ini():
     :return: the contents of the INI file.
     """
     sections = {}
-    import connectors
-    prefix = connectors.__name__ + '.'
+    from connectors import EnabledConnectors
+    prefix = 'connectors.'
 
     # pkgutil.iter_modules iterates over the modules in the path
-    for importer, modname, ispkg in pkgutil.iter_modules([relative_path('connectors')], prefix):
+    # Note(daniel): pkgutil.iter_modules stopped working when built with pyinstaller.
+    #               I don't know why and it was easier to switch to a hardcoded set of values.
+    # for importer, modname, ispkg in pkgutil.iter_modules([relative_path('connectors')], prefix):
+    for modname in [prefix+name for name in EnabledConnectors]:
         # Don't process these as they are internal
         if modname in ['connectors.base'] or modname.startswith('connectors.test'):
             continue
@@ -295,6 +298,8 @@ def get_default_ini():
             module = __import__(modname, fromlist="dummy")
             sections[name] = module.Connector.example_ini_settings()
         except ImportError as exp:
+            if name == 'sccm':
+                continue
             sections[name] = [('enable', 'False'), ("# Missing Required Package: {0}".format(exp.message), None)]
         except AttributeError as exp:
             sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(exp.message), None)]

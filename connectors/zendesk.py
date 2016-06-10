@@ -47,8 +47,8 @@ class Connector(UserConnector):
         except HTTPError as exp:
             return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
 
-
     def _load_records(self, options):
+        organization_map = self._load_organizations_if_needed()
         url = self.url_template.format("v2/users.json")
         while url:
             response = self.get(url)
@@ -62,7 +62,45 @@ class Connector(UserConnector):
                 url = None
             else:
                 for user in response['users']:
+                    if organization_map:
+                        user['organization_id'] = organization_map.get(user['organization_id'], user['organization_id'])
                     yield user
                 url = response['next_page']
 
+    def _load_organizations_if_needed(self):
+        """Loads and returns the Zendesk organizations if 'organization_id' is a source field.
 
+        Checks the field_mappings to see if 'organization_id' is a source field.
+
+        Returns
+        -------
+            dict
+                A dict mapping organization_id -> organization_name, or None if 'organization_id' is not a source field.
+
+        """
+        mapped_organization = False
+        for oom_field, mapping in self.field_mappings.items():
+            if 'source' in mapping and mapping['source'] == 'organization_id':
+                mapped_organization = True
+                break
+
+        if not mapped_organization:
+            return None
+
+        organization_map = {}
+        url = self.url_template.format("v2/organizations.json")
+        while url:
+            response = self.get(url)
+            response.raise_for_status()
+
+            response = response.json()
+            if 'organizations' not in response:
+                # The 'organizations' key doesn't exist.
+                # We've likely gotten all the organizations we're going to get
+                url = None
+            else:
+                for organization in response['organizations']:
+                    organization_map[organization["id"]] = organization['name']
+                url = response['next_page']
+
+        return organization_map

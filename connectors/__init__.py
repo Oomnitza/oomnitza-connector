@@ -1,1 +1,15 @@
-__author__ = 'daniel'
+
+EnabledConnectors = {
+    'oomnitza',
+
+    'airwatch',
+    'bamboohr',
+    'casper',
+    'jasper',
+    'ldap',
+    'mobileiron',
+    'okta',
+    'onelogin',
+    'sccm',
+    'zendesk',
+}

@@ -87,9 +87,11 @@ class Connector(UserConnector):
                     users = users['user']
                 else:
                     raise RuntimeError("Unexpected response from OneLogin. Got type: %s" % type(users['user']))
+
                 for user in users:
-                    if isinstance(user['phone'], dict) and '@nil' in user['phone']:
-                        user['phone'] = None
+                    for key in user:
+                        if isinstance(user[key], dict) and '@nil' in user[key]:
+                            user[key] = None
 #                    print repr(user)
                     yield user
             return
@@ -131,8 +133,9 @@ class Connector(UserConnector):
                     raise RuntimeError("Unexpected response from OneLogin. Got type: %s" % type(users['user']))
 
                 for user in users:
-                    if isinstance(user['phone'], dict) and '@nil' in user['phone']:
-                        user['phone'] = None
+                    for key in user:
+                        if isinstance(user[key], dict) and '@nil' in user[key]:
+                            user[key] = None
                     last_id = user['id']
                     yield user
 
