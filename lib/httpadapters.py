@@ -19,21 +19,13 @@ class Sslv23HttpAdapter(BaseHttpAdapter):
     """"Transport adapter" that allows us to force protocol to SSLv23."""
     Protocol = ssl.PROTOCOL_SSLv23
 
-
-class Sslv3HttpAdapter(BaseHttpAdapter):
-    """"Transport adapter" that allows us to force protocol to SSLv3."""
-    Protocol = ssl.PROTOCOL_SSLv3
-
-
 class Tlsv1HttpAdapter(BaseHttpAdapter):
     """"Transport adapter" that allows us to force protocol to TLSv1."""
     Protocol = ssl.PROTOCOL_TLSv1
 
 
 AdapterMap = {
-    'ssl': Sslv3HttpAdapter,
     'sslv23': Sslv23HttpAdapter,
-    'sslv3': Sslv3HttpAdapter,
     'tls': Tlsv1HttpAdapter,
     'tls1': Tlsv1HttpAdapter,
 }
