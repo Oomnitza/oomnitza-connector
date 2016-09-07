@@ -61,7 +61,7 @@ class Connector(BaseConnector):
         except RequestException as exp:
             if isinstance(exp.message, basestring):
                 raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
-            if isinstance(exp.message.args[1], gaierror):
+            if len(exp.message.args) > 2 and isinstance(exp.message.args[1], gaierror):
                 msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
                 if exp.message.args[1].errno == 8:
                     msg = "Unable to get address for {}.".format(self.settings['url'])

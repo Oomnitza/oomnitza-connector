@@ -3,6 +3,7 @@ import os
 import sys
 import requests
 import json
+import copy
 import logging
 import pprint
 import errno
@@ -76,11 +77,16 @@ class BaseConnector(object):
     TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
     FalseValues = ['False', 'false', '0', 'No', 'no', False]
     CommonSettings = {
-        'verify_ssl':   {'order': 0, 'default': "True"},
-        'cacert_file':  {'order': 1, 'default': ""},
-        'cacert_dir':   {'order': 2, 'default': ""},
-        'env_password': {'order': 3, 'default': ""},
-        'ssl_protocol': {'order': 4, 'default': ""},
+        'verify_ssl':     {'order': 0, 'default': "True"},
+        'cacert_file':    {'order': 1, 'default': ""},
+        'cacert_dir':     {'order': 2, 'default': ""},
+        'env_password':   {'order': 3, 'default': ""},
+        'ssl_protocol':   {'order': 4, 'default': ""},
+        'use_server_map': {'order': 5, 'default': "True"},
+        'only_if_filled': {'order': 6, 'default': ""},
+        'dont_overwrite': {'order': 7, 'default': ""},
+        'insert_only':    {'order': 8, 'default': "False"},
+        'update_only':    {'order': 9, 'default': "False"},
     }
 
     def __init__(self, section, settings):
@@ -90,6 +96,7 @@ class BaseConnector(object):
         ini_field_mappings = {}
         self.__filter__ = None
         self.send_counter = 0
+        self._session = None
 
         for key, value in settings.items():
             if key.startswith('mapping.'):
@@ -134,8 +141,6 @@ class BaseConnector(object):
                 if source in self.DefaultConverters and 'converter' not in mapping:
                     mapping['converter'] = self.DefaultConverters[source]
 
-        self._session = None
-
         if section == 'oomnitza' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
 
@@ -158,19 +163,18 @@ class BaseConnector(object):
         :return: the default mappings
         """
         # Connector mappings are stored in Oomnitza, so get them.
-        default_mappings = self.FieldMappings.copy()
-        server_mappings = self.settings['__oomnitza_connector__'].get_mappings(
-            # If '.' is in self.section, it is something like 'Casper.MDM', so use the section name to pull in the maps.
-            '.' in self.section and self.section or self.MappingName
-        )
+        default_mappings = copy.deepcopy(self.FieldMappings)
 
-        for source, fields in server_mappings.items():
-            if isinstance(fields, basestring):
-                fields = [fields]
-            for f in fields:
-                if f not in default_mappings:
-                    default_mappings[f] = {}
-                default_mappings[f]['source'] = source
+        if self.settings.get('use_server_map', True) in self.TrueValues:
+            server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+
+            for source, fields in server_mappings.items():
+                if isinstance(fields, basestring):
+                    fields = [fields]
+                for f in fields:
+                    if f not in default_mappings:
+                        default_mappings[f] = {}
+                    default_mappings[f]['source'] = source
 
         return default_mappings
 
@@ -326,7 +330,8 @@ class BaseConnector(object):
                         if record_count:
                             record_count -= 1
                             LOG.info("Sending record %r to Oomnitza.", converted)
-                            self.send_to_oomnitza(oomnitza_connector, converted, options)
+                            if converted:
+                                self.send_to_oomnitza(oomnitza_connector, converted, options)
                         else:
                             LOG.info("Done sending limited records to Oomnitza.")
                             return True
@@ -570,7 +575,10 @@ class AuditConnector(BaseConnector):
             "agent_id": self.MappingName,
             "sync_field": self.settings['sync_field'],
             "computers": record,
+            "insert_only": self.settings.get('insert_only', "False"),
             "update_only": self.settings.get('update_only', "False"),
+            "only_if_filled": self.settings.get('only_if_filled', None),
+            "dont_overwrite": self.settings.get('dont_overwrite', None),
         }
         # pprint.pprint(record)
         return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)

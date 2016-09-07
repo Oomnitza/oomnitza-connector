@@ -125,8 +125,9 @@ class Connector(AuditConnector):
             while self._retry_counter <= Connector.RetryCount:
                 try:
                     computer = self.fetch_asset_details(id)
-                    yield computer
-                    break
+                    if computer:
+                        yield computer
+                    break  # out of retry loop
                 except RequestException:
                     self._retry_counter += 1
                     LOG.exception("Error getting devices details for %r. Attempt #%s failed.",
@@ -163,19 +164,23 @@ class Connector(AuditConnector):
         """
         This method is used to retrieve the details of an asset by its Casper's ID
         """
-        url = self.details_url.format(str(id))
-        # print url
-        details = self.get(url).json()[self.sync_type['data']]
+        try:
+            url = self.details_url.format(str(id))
+            # print url
+            details = self.get(url).json()[self.sync_type['data']]
 
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-            with open("./saved_data/{}.json".format(str(id)), "w") as save_file:
-                save_file.write(json.dumps(details))
+            if self.settings.get("__save_data__", False):
+                try:
+                    os.makedirs("./saved_data")
+                except OSError as exc:
+                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                        pass
+                    else:
+                        raise
+                with open("./saved_data/{}.json".format(str(id)), "w") as save_file:
+                    save_file.write(json.dumps(details))
 
-        return details
+            return details
+        except:
+            LOG.exception("fetch_ssset_details( {} ) failed." % id)
+            return None

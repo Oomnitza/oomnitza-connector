@@ -22,7 +22,11 @@ def _clean_record(record):
     for key, value in record.items():
         try:
             if isinstance(value, list):
-                value = value[0]
+                # check for empty lists and set value to an empty string when one is found.
+                if value:
+                    value = value[0]
+                else:
+                    value = u""
             clean_record[key] = value.decode('unicode_escape').encode('iso8859-1').decode('utf8')
         except ValueError:
             clean_record[key] = "*BINARY*"
