@@ -265,7 +265,7 @@ def parse_config(args):
         for name, connector in connectors.items():
             if name == 'oomnitza':
                 continue
-            print connector["__connector__"].MappingName, "Mappings"
+            print connector["__connector__"].section, "Mappings"
             pprint.pprint(connector["__connector__"].field_mappings)
         exit(0)
 
