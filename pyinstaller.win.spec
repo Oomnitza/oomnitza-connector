@@ -11,6 +11,7 @@ a = Analysis(
         'connectors.casper',
         'connectors.jasper',
         'connectors.ldap',
+        'connectors.ldap_assets',
         'connectors.mobileiron',
         'connectors.okta',
         'connectors.onelogin',
@@ -27,6 +28,9 @@ a = Analysis(
         'converters.split',
         'converters.split_email',
         'converters.uber_position',
+        'converters.concat',
+        'converters.timestamp',
+        'converters.ldap_timestamp',
 
         'xmltodict',
     ],

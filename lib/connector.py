@@ -15,6 +15,7 @@ from utils.relative_path import relative_app_path
 LOG = logging.getLogger("lib/connector")
 root_logger = logging.getLogger('')
 
+from lib import TrueValues
 from .error import ConfigError, AuthenticationError
 from .httpadapters import AdapterMap
 from .converters import Converter
@@ -74,8 +75,6 @@ class BaseConnector(object):
 
     OomnitzaConnector = None
 
-    TrueValues = ['True', 'true', '1', 'Yes', 'yes', True]
-    FalseValues = ['False', 'false', '0', 'No', 'no', False]
     CommonSettings = {
         'verify_ssl':     {'order': 0, 'default': "True"},
         'cacert_file':    {'order': 1, 'default': ""},
@@ -165,7 +164,7 @@ class BaseConnector(object):
         # Connector mappings are stored in Oomnitza, so get them.
         default_mappings = copy.deepcopy(self.FieldMappings)
 
-        if self.settings.get('use_server_map', True) in self.TrueValues:
+        if self.settings.get('use_server_map', True) in TrueValues:
             server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
 
             for source, fields in server_mappings.items():
@@ -254,7 +253,7 @@ class BaseConnector(object):
         Returns the value of verification.
         :return: True (Path_to_cacert in binary) / False
         """
-        verify_ssl = self.settings.get('verify_ssl', True) in self.TrueValues
+        verify_ssl = self.settings.get('verify_ssl', True) in TrueValues
         if verify_ssl:
             # 'frozen' is added by PyInstaller which is necessary to learn at run-time
             # whether the app is running from source or part of bundle
@@ -314,6 +313,8 @@ class BaseConnector(object):
                     record = [record]
 
                 for rec in record:
+                    # if save_data:
+                    #     save the damn record.
                     if not self.keep_going:
                         break  # break out of "for rec in record"
 
@@ -470,7 +471,7 @@ class BaseConnector(object):
             if f_type:
                 incoming_value = f_type(incoming_value)
 
-            if specs.get('required', False) in self.TrueValues and not incoming_value:
+            if specs.get('required', False) in TrueValues and not incoming_value:
                 LOG.debug("Record missing %r. Record = %r", field, incoming_record)
                 missing_fields.add(field)
 

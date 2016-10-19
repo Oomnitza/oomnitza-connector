@@ -7,7 +7,8 @@ from lib.connector import AuditConnector
 
 logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
 
-
+#  http://www.mssccm.com/category/sccm-reports-sccm-sql-queries/
+#
 MainSQL = """
 SELECT cs.ResourceID AS resource_id,
        cs.Name0 AS computer_name,
@@ -87,11 +88,12 @@ class Connector(AuditConnector):
             "driver": "{SQL Server}",
             "server": self.settings['server'],
             "database": self.settings['database'],
-            "user": self.settings['username'],
-            "password": self.settings['password']
         }
         if self.settings['authentication'] == "Windows":
             connect_args['trusted_connection'] = "yes"
+        else:
+            connect_args["user"] = self.settings['username']
+            connect_args["password"] = self.settings['password']
 
         self.db = pyodbc.connect(**connect_args)
 

@@ -3,15 +3,14 @@ from __future__ import absolute_import
 import logging
 import ldap
 
-from lib.connector import UserConnector, AuthenticationError
+from lib.connector import AuditConnector, AuthenticationError
 from lib.ext.ldap import LdapConnection
 
+LOG = logging.getLogger("connectors/ldap_assets")  # pylint:disable=invalid-name
 
-LOG = logging.getLogger("connectors/ldap_users")  # pylint:disable=invalid-name
 
-
-class Connector(UserConnector):
-    MappingName = 'LDAP'
+class Connector(AuditConnector):
+    MappingName = 'LDAP_assets'
     Settings = {
         'url':              {'order':  1, 'example': "ldap://ldap.forumsys.com:389"},
         'username':         {'order':  2, 'example': "cn=read-only-admin,dc=example,dc=com"},
@@ -20,21 +19,16 @@ class Connector(UserConnector):
         'group_dn':         {'order':  5, 'default': ""},
         'protocol_version': {'order':  6, 'default': "3"},
         'filter':           {'order':  7, 'default': "(objectClass=*)"},
-        'default_role':     {'order':  8, 'example': 25, 'type': int},
-        'default_position': {'order':  9, 'example': 'Employee'},
+        'sync_field':       {'order':  8, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
+
     FieldMappings = {
-        'USER':           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
-        'FIRST_NAME':     {'source': "givenName", 'required': True},
-        'LAST_NAME':      {'source': "sn", 'required': True},
-        'EMAIL':          {'source': "mail", 'required': True},
-        'PERMISSIONS_ID': {'setting': "default_role"},
     }
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]+['sAMAccountName']))
+        fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]))
         self.ldap_connection = LdapConnection(self.settings, fields)
 
     def authenticate(self):
@@ -52,6 +46,7 @@ class Connector(UserConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % exp}
 
     def _load_records(self, options):
-        for user in self.ldap_connection.load_data(options):
-            yield user
+        for asset in self.ldap_connection.load_data(options):
+            yield asset
+
 

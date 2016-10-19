@@ -7,6 +7,7 @@ EnabledConnectors = {
     'casper',
     'jasper',
     'ldap',
+    'ldap_assets',
     'mobileiron',
     'okta',
     'onelogin',
