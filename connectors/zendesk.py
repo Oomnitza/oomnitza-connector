@@ -63,7 +63,12 @@ class Connector(UserConnector):
             else:
                 for user in response['users']:
                     if organization_map:
-                        user['organization_id'] = organization_map.get(user['organization_id'], user['organization_id'])
+                        org = organization_map.get(user['organization_id'], None)
+                        if org:
+                            user['organization_id'] = org['name']
+                            user['organization'] = org
+                        else:
+                            user['organization'] = None
                     yield user
                 url = response['next_page']
 
@@ -100,7 +105,7 @@ class Connector(UserConnector):
                 url = None
             else:
                 for organization in response['organizations']:
-                    organization_map[organization["id"]] = organization['name']
+                    organization_map[organization["id"]] = organization
                 url = response['next_page']
 
         return organization_map
