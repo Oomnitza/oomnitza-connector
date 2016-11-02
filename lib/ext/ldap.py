@@ -114,12 +114,15 @@ class LdapConnection(object):
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_ALLOW)
 
         try:
-            password = self.settings['password']
-            if not password:
-                LOG.warning("No password set for LDAP. Connecting anonymously.")
-                password = u""
+            if self.settings['username'].lower() == 'anonymous':
+                self.ldap_connection.simple_bind_s()
+            else:
+                password = self.settings['password']
+                if not password:
+                    LOG.warning("No password set for LDAP. Connecting without password.")
+                    password = u""
 
-            self.ldap_connection.simple_bind_s(self.settings['username'], password)
+                self.ldap_connection.simple_bind_s(self.settings['username'], password)
         except ldap.INVALID_CREDENTIALS:
             LOG.exception("Error calling simple_bind_s()")
             raise AuthenticationError("Cannot connect to the LDAP server with given credentials. "

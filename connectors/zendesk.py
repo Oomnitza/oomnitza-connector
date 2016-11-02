@@ -11,11 +11,12 @@ logger = logging.getLogger("connectors/zendesk")  # pylint:disable=invalid-name
 class Connector(UserConnector):
     MappingName = 'Zendesk'
     Settings = {
-        'system_name':      {'order': 1, 'example': "oomnitza"},
-        'api_token':        {'order': 2, 'example': "YOUR Zendesk API TOKEN"},
-        'username':         {'order': 3, 'example': "username@example.com"},
-        'default_role':     {'order': 4, 'example': 25, 'type': int},
-        'default_position': {'order': 5, 'example': 'Employee'},
+        'system_name':        {'order': 1, 'example': "oomnitza"},
+        'api_token':          {'order': 2, 'example': "YOUR Zendesk API TOKEN"},
+        'username':           {'order': 3, 'example': "username@example.com"},
+        'default_role':       {'order': 4, 'example': 25, 'type': int},
+        'default_position':   {'order': 5, 'example': 'Employee'},
+        'load_organizations': {'order': 6, 'default': False},
     }
 
     FieldMappings = {
@@ -65,10 +66,9 @@ class Connector(UserConnector):
                     if organization_map:
                         org = organization_map.get(user['organization_id'], None)
                         if org:
-                            user['organization_id'] = org['name']
                             user['organization'] = org
                         else:
-                            user['organization'] = None
+                            user['organization'] = {}
                     yield user
                 url = response['next_page']
 
@@ -83,14 +83,10 @@ class Connector(UserConnector):
                 A dict mapping organization_id -> organization_name, or None if 'organization_id' is not a source field.
 
         """
-        mapped_organization = False
-        for oom_field, mapping in self.field_mappings.items():
-            if 'source' in mapping and mapping['source'] == 'organization_id':
-                mapped_organization = True
-                break
-
-        if not mapped_organization:
+        if not self.settings.get('load_organizations'):
             return None
+
+        logger.info("Loading Zendesk Organizations...")
 
         organization_map = {}
         url = self.url_template.format("v2/organizations.json")
@@ -108,4 +104,5 @@ class Connector(UserConnector):
                     organization_map[organization["id"]] = organization
                 url = response['next_page']
 
+        logger.info("Loaded %s organizations.", len(organization_map))
         return organization_map

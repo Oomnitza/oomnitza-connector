@@ -61,7 +61,7 @@ class SpecialConfigParser(SafeConfigParser):
                 continue
             # continuation line?
             if line[0].isspace() and cursect is not None and optname:
-                value = line[1:].strip('\n')
+                value = line.strip('\n')
                 if value:
                     cursect[optname].append(value)
             # a section header or option header?
@@ -320,7 +320,7 @@ def format_sections_for_ini(sections):
 
             tpl = "{0} = {1}"
             if '\n' in value:
-                tpl = "{0}:\n{1}"
+                tpl = "{0}:{1}"
             parts.append(tpl.format(key, value))
         parts.append('')
 
