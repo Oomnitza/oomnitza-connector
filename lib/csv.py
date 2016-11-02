@@ -41,3 +41,6 @@ class DictUnicodeWriter(object):
     def writeheader(self):
         self.writer.writeheader()
 
+
+# FixMe: this needs to actually be implemented.
+UnicodeDictReader = csv.DictReader

@@ -1,8 +1,7 @@
 import sys
 import json
-import ConfigParser
 
-from lib.config import format_sections_for_ini
+from lib.config import format_sections_for_ini, SpecialConfigParser
 from utils.relative_path import relative_app_path
 
 path = relative_app_path('config.ini')
@@ -67,7 +66,7 @@ class ConfigModel:
         format which includes integration names and the required info for
         pulling out data
         """
-        config_parser = ConfigParser.ConfigParser()
+        config_parser = SpecialConfigParser()
         config_parser.optionxform = str
         config_parser.read(path)
 

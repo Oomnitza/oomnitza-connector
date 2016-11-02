@@ -21,6 +21,7 @@ from .httpadapters import AdapterMap
 from .converters import Converter
 from .filter import DynamicException
 from .version import VERSION
+from utils.data import get_field_value
 
 LastInstalledHandler = None
 
@@ -497,18 +498,7 @@ class BaseConnector(object):
         :param default: the default value to return if field can't be found
         :return: the field value, or default.
         """
-        if not data:
-            return default
-
-        if '.' in field:
-            current, rest = field.split('.', 1)
-            if isinstance(data, list) and current.isdigit():
-                return cls.get_field_value(rest, data[int(current)], default)
-            if current in data:
-                return cls.get_field_value(rest, data[current], default)
-            return default
-
-        return data.get(field, default)
+        return get_field_value(data, field, default)
 
     def get_setting_value(self, setting, default=None):
         """

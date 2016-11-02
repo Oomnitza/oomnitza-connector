@@ -34,6 +34,10 @@ class DataViewer(wx.TreeCtrl):
         self.tree_nodes_mappings['oomnitza connection'] = self.oomnitza
 
         for connector in sorted(connectors.keys()):
+            if 'enable' not in connectors[connector]:
+                # Don't display non-connector sections in the tree
+                continue
+
             if connector in mappings:
                 item = self.AppendItem(self.connectors, mappings[connector])
                 self.tree_nodes_mappings[mappings[connector].lower()] = item

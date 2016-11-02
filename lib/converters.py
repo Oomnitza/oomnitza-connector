@@ -11,7 +11,7 @@ class Converter(object):
         self.__converters_cleanup = {}
 
     def run_converter(self, name, field, record, value, params):
-        converter = self.__loaded_converters.get(name, None)
+        converter = self.__loaded_converters.get(name.lower(), None)
         if not converter:
             # the converter has not been loaded yet, so load it and save it into cls.Converters
             mod = importlib.import_module("converters.{0}".format(name))
@@ -19,7 +19,6 @@ class Converter(object):
             self.__loaded_converters[name] = converter
             if hasattr(mod, 'cleanup'):
                 self.__converters_cleanup[name] = mod.cleanup
-
 
         return converter(field, record, value, params)
 

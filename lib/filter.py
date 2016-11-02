@@ -5,17 +5,18 @@ logging.basicConfig()
 LOG = logging.getLogger("lib/filter")
 
 from . import converters
+from utils.data import get_field_value
 
 
 class DynamicException(Exception):
     pass
-
 
 GLOBALS = {
     'LOG': LOG,
     'DynamicException': DynamicException,
     'converter': converters.builtin_converter,
     'cae': converters.builtin_cea,
+    'get_field_value': get_field_value
 }
 
 CONVERTER_WRAPPER = """
