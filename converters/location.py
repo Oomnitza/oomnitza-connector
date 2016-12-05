@@ -49,6 +49,11 @@ def converter(field, record, value, params):
 
     if value in MAP:
         return MAP[value]
+
+    # check if we were given a value somewhat close to the location_id value and return it.
+    if value.lower() in MAP.values():
+        return value.lower()
+
     # LOGGER.error("Failed to find location %r in Location field %r.", value, internal_field)
     if value not in FAILED_LOOKUP:
         FAILED_LOOKUP[value] = 1

@@ -68,7 +68,7 @@ class DataViewer(wx.TreeCtrl):
     def update_status(self, config):
         child, cookie = self.GetFirstChild(self.connectors)
         while child.IsOk():
-            if config[self.GetItemText(child).lower()]['enable'] == 'True':
+            if config[self.GetItemText(child).lower()].get('enable') == 'True':
                 self.SetItemImage(child, self.enabled_icon_id, wx.TreeItemIcon_Normal)
             else:
                 self.SetItemImage(child, self.disabled_icon_id, wx.TreeItemIcon_Normal)
