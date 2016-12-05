@@ -125,7 +125,7 @@ class ConfigView:
                         self.on_stop(evt, run_btn, selected, None, 'all'), self.stop_btn)
         selected = []
         for connector in menu_connectors_copy:
-            if menu_connectors_copy[connector]['enable'] == 'True':
+            if menu_connectors_copy[connector].get('enable') == 'True':
                 selected.append(connector)
         self.frame.Bind(wx.EVT_BUTTON, lambda evt, selected=selected,
                         stop_btn=self.stop_btn: self.run(evt, selected, stop_btn, None, 'all'), self.run_btn)
@@ -265,7 +265,7 @@ class ConfigView:
         self.model.add_observers(run_btn, 'enabled', selected)
         stop_btn = Button(panel, "Stop Connector",
                           size=self.style['content']['sub_panel']['button']['size'])
-        if config[selected]['enable'] == 'True':
+        if config[selected].get('enable') == 'True':
             test_btn.Enable()
             run_btn.Enable()
         else:

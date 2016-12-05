@@ -466,7 +466,11 @@ class BaseConnector(object):
 
             converter = specs.get('converter', None)
             if converter:
-                incoming_value = self.apply_converter(converter, source or field, incoming_record, incoming_value)
+                try:
+                    incoming_value = self.apply_converter(converter, source or field, incoming_record, incoming_value)
+                except Exception as exp:
+                    LOG.exception("Failed to run converter: %s", converter)
+                    incoming_value = None
 
             f_type = specs.get('type', None)
             if f_type:
