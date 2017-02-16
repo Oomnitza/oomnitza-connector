@@ -1,4 +1,3 @@
-
 EnabledConnectors = {
     'oomnitza',
 
@@ -13,4 +12,8 @@ EnabledConnectors = {
     'onelogin',
     'sccm',
     'zendesk',
+    'appledep',
+    #
+    # 'googleusers',
+    # 'chromebooks',
 }

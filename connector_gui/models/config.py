@@ -1,17 +1,14 @@
-import sys
+import copy
 import json
 
 from lib.config import format_sections_for_ini, SpecialConfigParser
 from utils.relative_path import relative_app_path
 
-path = relative_app_path('config.ini')
 
-
-class ConfigModel:
-
-    def __init__(self):
-        self.config = self.parse_config()
-        self.config_copy = self.parse_config()
+class ConfigModel(object):
+    def __init__(self, args):
+        self.config = self.parse_config(args)
+        self.config_copy = copy.deepcopy(self.config)
         self.observers = {}
         self.observers['changed'] = []
         self.observers['enabled'] = {}
@@ -60,7 +57,7 @@ class ConfigModel:
         self.config[selected][field] = value
         self.notify_observers('changed')
 
-    def parse_config(self):
+    def parse_config(self, args):
         """
         Parse connector configuration and generate a result in dictionary
         format which includes integration names and the required info for
@@ -68,7 +65,7 @@ class ConfigModel:
         """
         config_parser = SpecialConfigParser()
         config_parser.optionxform = str
-        config_parser.read(path)
+        config_parser.read(args.ini)
 
         config = {}
 
@@ -92,22 +89,24 @@ class ConfigModel:
         """
         section_config = {}
 
+        path = relative_app_path('config.ini')
+
         for section in self.config:
             section_config[section] = []
             for field in self.config[section]:
                 section_config[section].append((field, self.config[section][field]))
 
-        dynamic_config = self.parse_config()
-        for section in dynamic_config:
-            if section in self.config:
-                for field in dynamic_config[section]:
-                    if field not in self.config[section]:
-                        section_config[section].append((field, dynamic_config[section][field]))
+        # dynamic_config = self.parse_config()
+        # for section in dynamic_config:
+        #     if section in self.config:
+        #         for field in dynamic_config[section]:
+        #             if field not in self.config[section]:
+        #                 section_config[section].append((field, dynamic_config[section][field]))
 
         format_config = format_sections_for_ini(section_config)
 
         with open(path, 'w') as config_file:
             config_file.write(format_config)
 
-        self.config_copy = self.parse_config()
+        self.config_copy = copy.deepcopy(self.config)
         self.notify_observers('enabled')

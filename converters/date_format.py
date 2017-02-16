@@ -1,6 +1,6 @@
-
-import time
 import datetime
+
+import arrow
 
 
 def converter(field, record, value, params):
@@ -11,13 +11,14 @@ def converter(field, record, value, params):
     :return: epoch time
     """
     if isinstance(value, datetime.datetime):
-        return int((value - datetime.datetime(1970, 1, 1)).total_seconds())
+        return arrow.get(value).timestamp
 
-    if value not in [None, '', ' ']:
+    try:
         if 'T' in value:
             value = value.split('T')[0]
         elif ' ' in value:
             value = value.split(' ')[0]
-        return int(time.mktime(time.strptime(value, "%Y-%m-%d")))
-    else:
+
+        return arrow.get(value, "YYYY-MM-DD").timestamp
+    except:
         return value

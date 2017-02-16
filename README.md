@@ -5,7 +5,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
-* Casper [http://www.jamfsoftware.com/products/casper-suite/](http://www.jamfsoftware.com/products/casper-suite/)
+* Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
@@ -13,14 +13,13 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
+* Apple DEP [http://www.apple.com/business/dep/](http://www.apple.com/business/dep/)
 
 The Oomnitza Connector can be hosted on Oomnitza's
  server cloud, free of charge, if the third party server is
  or can be made accessible from the Oomnitza Cloud. Contact us for more details!
  Organizations with dedicated internal services may prefer to run this connector
  in-house, behind the same firewall that prevents outside access.
-
-
 ## Getting Started
 The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
@@ -178,6 +177,12 @@ An example generated config.ini follows.
     api_token = YOUR AirWatch API TOKEN
     sync_field = 24DCF85294E411E38A52066B556BA4EE
 
+    [appledep]
+    enable = False
+    url = https://mdmenrollment.apple.com
+    api_token = YOUR APPLE DEP SERVER TOKEN
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
     [bamboohr]
     enable = False
     url = https://api.bamboohr.com/api/gateway.php
@@ -302,6 +307,17 @@ For fields which require processing before being brought into Oomnitza must be d
     To Be Determined
 
 
+### Apple DEP Configuration
+`url`: the url of the Apple DEP MDM server
+
+`api_token`: the server token that should be obtained from Apple DEP MDM server
+
+`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+#### Default Field Mappings
+    To Be Determined
+
+
 ### BambooHR Configuration
 `url`: the url of the BambooHR server
 
@@ -323,9 +339,7 @@ For fields which require processing before being brought into Oomnitza must be d
 
 ### Casper Configuration
 The `[casper]` section contains a similar set of preferences; your JSS URL, and the login credentials for an auditor
-account in Casper (See the
-[Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585)
-, pg. 42).
+account in Casper (See the [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585), pg. 42).
 
 The identifier section of the config.ini file should contain a mapping to a unique field in Oomnitza, which you want to
 use as the identifier for an asset. Serial Number is the most commonly used identifier since no two assets should share
@@ -342,9 +356,8 @@ an existing record that has new information.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
-`sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. When syncing mobile
-   devices a second section should be added to your config.ini file named `[casper.MDM]` and this value should be set
-   to `mobiledevices`.
+`sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. 
+If you need to pull computers AND mobile devices info from Casper, run connectors separately as 2 different processes with different configuration files. Simultaneous extraction of computers and mobile devices is not supported for now. 
 
 `group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
   If present, only assets from this Group will be processed.
@@ -353,6 +366,180 @@ an existing record that has new information.
 
 `update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
 
+#### List of currently supported Casper external fields (computers)
+    'general.alt_mac_address'
+    'general.asset_tag'
+    'general.barcode_1'
+    'general.barcode_2'
+    'general.distribution_point'
+    'general.id'
+    'general.initial_entry_date'
+    'general.initial_entry_date_epoch'
+    'general.initial_entry_date_utc'
+    'general.ip_address'
+    'general.jamf_version'
+    'general.last_cloud_backup_date_epoch'
+    'general.last_cloud_backup_date_utc'
+    'general.last_contact_time'
+    'general.last_contact_time_epoch'
+    'general.last_contact_time_utc'
+    'general.mac_address'
+    'general.mdm_capable'
+    'general.name'
+    'general.netboot_server'
+    'general.platform'
+    'general.report_date'
+    'general.report_date_epoch'
+    'general.report_date_utc'
+    'general.serial_number'
+    'general.sus'
+    'general.udid'
+    'hardware.active_directory_status'
+    'hardware.available_ram_slots'
+    'hardware.battery_capacity'
+    'hardware.boot_rom'
+    'hardware.bus_speed'
+    'hardware.bus_speed_mhz'
+    'hardware.cache_size'
+    'hardware.cache_size_kb'
+    'hardware.make'
+    'hardware.model'
+    'hardware.model_identifier'
+    'hardware.nic_speed'
+    'hardware.number_processors'
+    'hardware.optical_drive'
+    'hardware.os_build'
+    'hardware.os_name'
+    'hardware.os_version'
+    'hardware.processor_architecture'
+    'hardware.processor_speed'
+    'hardware.processor_speed_mhz'
+    'hardware.processor_type'
+    'hardware.service_pack'
+    'hardware.smc_version'
+    'hardware.total_ram'
+    'hardware.total_ram_mb'
+    'location.building'
+    'location.department'
+    'location.email_address'
+    'location.phone'
+    'location.position'
+    'location.real_name'
+    'location.room'
+    'location.username'
+    'purchasing.applecare_id'
+    'purchasing.is_leased'
+    'purchasing.is_purchased'
+    'purchasing.lease_expires'
+    'purchasing.lease_expires_epoch'
+    'purchasing.lease_expires_utc'
+    'purchasing.life_expectancy'
+    'purchasing.os_applecare_id'
+    'purchasing.os_maintence_expires'
+    'purchasing.po_date'
+    'purchasing.po_date_epoch'
+    'purchasing.po_date_utc'
+    'purchasing.po_number'
+    'purchasing.purchase_price'
+    'purchasing.purchasing_account'
+    'purchasing.purchasing_contact'
+    'purchasing.vendor'
+    'purchasing.warranty_expires'
+    'purchasing.warranty_expires_epoch'
+    'purchasing.warranty_expires_utc'
+
+#### List of currently supported Casper external fields (mobile devices)
+    'general.airplay_password'
+    'general.asset_tag'
+    'general.available'
+    'general.available_mb'
+    'general.battery_level'
+    'general.bluetooth_mac_address'
+    'general.capacity'
+    'general.capacity_mb'
+    'general.bluetooth_mac_address'
+    'general.cloud_backup_enabled'
+    'general.device_id'
+    'general.device_name'
+    'general.device_ownership_level'
+    'general.display_name'
+    'general.do_not_disturb_enabled'
+    'general.id'
+    'general.initial_entry_date_epoch'
+    'general.initial_entry_date_utc'
+    'general.ip_address'
+    'general.itunes_store_account_is_active'
+    'general.last_backup_time_epoch'
+    'general.last_backup_time_utc'
+    'general.last_cloud_backup_date_epoch'
+    'general.last_cloud_backup_date_utc'
+    'general.last_inventory_update'
+    'general.last_inventory_update_epoch'
+    'general.last_inventory_update_utc'
+    'general.locales'
+    'general.managed'
+    'general.model'
+    'general.model_display'
+    'general.model_identifier'
+    'general.modelDisplay'  # looks like the same as 'general.model_display'
+    'general.modem_firmware'
+    'general.name'
+    'general.os_build'
+    'general.os_type'
+    'general.os_version'
+    'general.percentage_used'
+    'general.phone_number'
+    'general.serial_number'
+    'general.supervised'
+    'general.tethered'
+    'general.udid'
+    'general.wifi_mac_address'
+    'location.building'
+    'location.department'
+    'location.email_address'
+    'location.phone'
+    'location.position'
+    'location.real_name'
+    'location.room'
+    'location.username'
+    'network.carrier_settings_version'
+    'network.cellular_technology'
+    'network.current_carrier_network'
+    'network.current_mobile_country_code'
+    'network.current_mobile_network_code'
+    'network.data_roaming_enabled'
+    'network.home_carrier_network'
+    'network.home_mobile_country_code'
+    'network.home_mobile_network_code'
+    'network.iccid'
+    'network.imei'
+    'network.roaming'
+    'network.voice_roaming_enabled'
+    'purchasing.applecare_id'
+    'purchasing.is_leased'
+    'purchasing.is_purchased'
+    'purchasing.lease_expires'
+    'purchasing.lease_expires_epoch'
+    'purchasing.lease_expires_utc'
+    'purchasing.life_expectancy'
+    'purchasing.po_date'
+    'purchasing.po_date_epoch'
+    'purchasing.po_date_utc'
+    'purchasing.po_number'
+    'purchasing.purchase_price'
+    'purchasing.purchasing_account'
+    'purchasing.purchasing_contact'
+    'purchasing.vendor'
+    'purchasing.warranty_expires'
+    'purchasing.warranty_expires_epoch'
+    'purchasing.warranty_expires_utc'
+    'security.block_level_encryption_capable'
+    'security.data_protection'
+    'security.file_level_encryption_capable'
+    'security.passcode_compliant'
+    'security.passcode_compliant_with_profile'
+    'security.passcode_present'
+    
 #### Default Field Mappings
     To Be Determined
 
@@ -419,7 +606,7 @@ an existing record that has new information.
 ### Okta Configuration
 `url`: The full URI for the Okta server. For example: `https://oomnitza-admin.okta.com`
 
-`api_token`: The Jasper API Token.
+`api_token`: The Okta API Token.
 
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 

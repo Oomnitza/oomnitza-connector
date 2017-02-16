@@ -52,7 +52,7 @@ class SingleInstance:
             self._lock_path = lock_path
         else:
             if not lock_file:
-                lock_file = sys.argv[0]+'.lock'
+                lock_file = os.path.split(sys.argv[0]+'.lock')[-1]
             tmp_dir = tempfile.gettempdir()
             self._lock_path = os.path.join(tmp_dir, lock_file)
 
