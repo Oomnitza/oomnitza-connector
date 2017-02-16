@@ -10,6 +10,7 @@ a = Analysis(
         'connectors.bamboohr',
         'connectors.casper',
         'connectors.jasper',
+        'connectors.appledep',
         'connectors.ldap',
         'connectors.ldap_assets',
         'connectors.mobileiron',
