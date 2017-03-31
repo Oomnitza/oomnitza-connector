@@ -1,27 +1,26 @@
-
+import copy
+import errno
+import json
+import logging
 import os
 import sys
+
 import requests
-import json
-import copy
-import logging
-import pprint
-import errno
+from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException
 
-from requests.exceptions import HTTPError, RequestException
-
+from lib import TrueValues
+from utils.data import get_field_value
 from utils.relative_path import relative_app_path
+from .converters import Converter
+from .error import ConfigError, AuthenticationError
+from .filter import DynamicException
+from .httpadapters import AdapterMap, retries
+from .version import VERSION
+
 
 LOG = logging.getLogger("lib/connector")
 root_logger = logging.getLogger('')
-
-from lib import TrueValues
-from .error import ConfigError, AuthenticationError
-from .httpadapters import AdapterMap
-from .converters import Converter
-from .filter import DynamicException
-from .version import VERSION
-from utils.data import get_field_value
 
 LastInstalledHandler = None
 
@@ -203,10 +202,14 @@ class BaseConnector(object):
             if protocol:
                 LOG.info("Forcing SSL Protocol to: %s", protocol)
                 if protocol.lower() in AdapterMap:
-                    self._session.mount("https://", AdapterMap[protocol.lower()]())
+                    self._session.mount("https://", AdapterMap[protocol.lower()](max_retries=retries))
                 else:
                     raise RuntimeError("Invalid value for ssl_protocol: %r. Valid values are %r.",
                                        protocol, list(set(AdapterMap.keys())))
+            else:
+                self._session.mount("https://", HTTPAdapter(max_retries=retries))
+
+            self._session.mount("http://", HTTPAdapter(max_retries=retries))
         return self._session
 
     def get(self, url, headers=None, auth=None):
