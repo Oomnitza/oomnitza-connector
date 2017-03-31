@@ -182,5 +182,5 @@ class Connector(AuditConnector):
 
             return details
         except:
-            LOG.exception("fetch_ssset_details( {} ) failed." % id)
+            LOG.exception("fetch_asset_details( {} ) failed." % id)
             return None

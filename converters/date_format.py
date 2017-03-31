@@ -15,10 +15,8 @@ def converter(field, record, value, params):
 
     try:
         if 'T' in value:
-            value = value.split('T')[0]
+            return arrow.get(value).timestamp
         elif ' ' in value:
-            value = value.split(' ')[0]
-
-        return arrow.get(value, "YYYY-MM-DD").timestamp
+            return arrow.get(value, "YYYY-MM-DD HH:mm:ss").timestamp
     except:
         return value

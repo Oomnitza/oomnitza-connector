@@ -2,6 +2,13 @@ import ssl
 
 from requests.adapters import HTTPAdapter, DEFAULT_POOLBLOCK
 from requests.packages.urllib3.poolmanager import PoolManager
+from requests.packages.urllib3.util.retry import Retry
+
+
+retries = Retry(total=10,
+                backoff_factor=0.5,
+                method_whitelist=False,
+                status_forcelist=[500, 502, 503, 504])
 
 
 class BaseHttpAdapter(HTTPAdapter):
