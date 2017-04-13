@@ -535,6 +535,17 @@ class UserConnector(BaseConnector):
     RecordType = 'users'
 
     def __init__(self, section, settings):
+
+        if 'USER' in self.FieldMappings:
+            self.FieldMappings['USER']['required'] = True
+        else:
+            raise Exception("Missing mapping filed USER is required for records will be sent to Oomnitza.")
+
+        if 'EMAIL' in self.FieldMappings:
+            self.FieldMappings['EMAIL']['required'] = True
+        else:
+            raise Exception("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
+
         super(UserConnector, self).__init__(section, settings)
 
         if self.settings['default_position'].lower() == 'unused':
