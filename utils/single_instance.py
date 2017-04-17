@@ -12,11 +12,6 @@ Example
                 print i
                 time.sleep(1)
 
-Attributes
-----------
-    is_already_running : bool
-        True if there is already an instance of this application running.
-
 """
 
 import sys
@@ -34,7 +29,10 @@ else:
 
 
 class SingleInstance:
-    def __init__(self, exit_msg=None, lock_path=None, lock_file=None):
+
+    enabled = True
+
+    def __init__(self, enabled=True, exit_msg=None, lock_path=None, lock_file=None):
         """Use me to keep this app to a single instance.
 
         Parameters
@@ -47,33 +45,38 @@ class SingleInstance:
                 Defaults to None. The filename to use when generating the lock_path.
 
         """
-        self._exit_msg = exit_msg or "This app is already running!"
-        if lock_path:
-            self._lock_path = lock_path
-        else:
-            if not lock_file:
-                lock_file = os.path.split(sys.argv[0]+'.lock')[-1]
-            tmp_dir = tempfile.gettempdir()
-            self._lock_path = os.path.join(tmp_dir, lock_file)
+        self.enabled = enabled
 
-        self._fh = None
-        self._is_already_running = False
-        self._do_magic()
-        if exit_msg and self._is_already_running:
-            sys.exit(
-                "{}.\n  File '{}' exists and is locked.".format(exit_msg, self._lock_path)
-            )
+        if self.enabled:
+            self._exit_msg = exit_msg or "This app is already running!"
+            if lock_path:
+                self._lock_path = lock_path
+            else:
+                if not lock_file:
+                    lock_file = os.path.split(sys.argv[0]+'.lock')[-1]
+                tmp_dir = tempfile.gettempdir()
+                self._lock_path = os.path.join(tmp_dir, lock_file)
+
+            self._fh = None
+            self._is_already_running = False
+            self._do_magic()
+            if exit_msg and self._is_already_running:
+                sys.exit(
+                    "{}.\n  File '{}' exists and is locked.".format(exit_msg, self._lock_path)
+                )
 
     @property
     def is_already_running(self):
         return self._is_already_running
 
     def __enter__(self):
-        LOGGER.debug("SingleInstance.__enter__() has been entered.")
+        if self.enabled:
+            LOGGER.debug("SingleInstance.__enter__() has been entered.")
 
     def __exit__(self, type, value, traceback):
-        LOGGER.debug("SingleInstance.__exit__() has been entered.")
-        self._clean_up()
+        if self.enabled:
+            LOGGER.debug("SingleInstance.__exit__() has been entered.")
+            self._clean_up()
 
     def _do_magic(self):
         LOGGER.debug("Acquiring SingleInstance LOCK on %s.", self._lock_path)
@@ -116,14 +119,3 @@ class SingleInstance:
         except Exception as exp:
             # raise # for debugging porpuses, do not raise it on production
             LOGGER.exception("Exception in SingleInstance.clean_up(): %s", str(exp))
-
-
-if __name__ == "__main__":
-    import time
-    logging.basicConfig(level=logging.DEBUG)
-
-    with SingleInstance("This app is already running!"):
-        for i in range(20, 0, -1):
-            print i
-            time.sleep(1)
-

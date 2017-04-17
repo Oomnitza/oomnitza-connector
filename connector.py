@@ -117,6 +117,8 @@ if __name__ == "__main__":
     parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
     parser.add_argument('--logging-config', type=str, default=logging_setting_path, help="Use to override logging config file to use.")
     parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
+    parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
+                                                                 "simultaneously running connectors")
 
     args = parser.parse_args()
 
@@ -129,7 +131,7 @@ if __name__ == "__main__":
     if args.testmode:
         LOG.info("Connector started in Test Mode.")
 
-    with SingleInstance("Connector is already running."):
+    with SingleInstance(bool(args.singleton), "Connector is already running."):
         if args.action == 'generate-ini':
             config.generate_ini_file(args)
         elif args.action == 'gui' and HAVE_GUI:
@@ -143,4 +145,3 @@ if __name__ == "__main__":
                 sys.exit(1)
 
             main(args)
-
