@@ -1,10 +1,13 @@
-import os
 import base64
-import logging
 import errno
 import json
+import logging
+import os
+import uuid
 
+from gevent.pool import Pool
 from requests import ConnectionError, HTTPError
+
 from lib.connector import AuditConnector
 
 logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
@@ -57,54 +60,89 @@ class Connector(AuditConnector):
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+
+    def device_page_url_generator(self, options):
+        """
+        This is generator of urls for device pages
+        :return:
+        """
+        page = options.get('start_page', 0)
+        rows = options.get('rows_per_page', 250)
+        while True:
+            yield self.url_template.format(rows, page)
+            page += 1
+
+    def get_device_page_info(self, page_url):
+        """
+        This is method used to return page information
+        :param page_url: url for the airwatch `page`
+        :return:
+        """
+        response = self.get(page_url)
+        try:
+            response.raise_for_status()
+        except HTTPError:
+            return []
+
+        if response.status_code == 204:
+            # Sometimes it is just an empty response!
+            logger.error("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
+            return []
+
+        response = response.json()
+        return response['Devices']
+
+    def device_page_generator(self, options):
+        """
+        Page info generator
+        :param options:
+        :return:
+        """
+
+        pool_size = self.settings['__workers__']
+
+        connection_pool = Pool(size=pool_size)
+
+        for page in connection_pool.imap(self.get_device_page_info, self.device_page_url_generator(options), maxsize=pool_size):
+            if not page:
+                raise StopIteration
+            yield page
+
+    def retrieve_device_info(self, device):
+        """
+        Extract device info
+
+        :param device:
+        :return:
+        """
+        if self.__load_network_data:
+            device['network'] = self._load_network_information(device['MacAddress'])
+
+        if self.settings.get("__save_data__", False):
+            try:
+                os.makedirs("./saved_data")
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                    pass
+                else:
+                    raise
+            with open("./saved_data/{}.json".format(uuid.uuid4().hex), "w") as save_file:
+                save_file.write(json.dumps(device))
+        return device
 
     def _load_records(self, options):
-        page = options.get('start_page', 0)
-        rows = options.get('rows_per_page', 500)
-        processed_device_count = -1
-        total_device_count = 0
 
-        while processed_device_count < total_device_count:
-            url = self.url_template.format(rows, page)
-            try:
-                response = self.get(url)
-                if response.status_code == 204:
-                    # Sometimes it is just an empty response!
-                    logger.error("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
-                    return
+        pool_size = self.settings['__workers__']
 
-                response = response.json()
-                if total_device_count == 0:
-                    processed_device_count = 0
-                    total_device_count = response['Total']
-                devices = response['Devices']
-            except ValueError as exp:
-                logger.exception("Error getting data from AirWatch.")
-                if hasattr(exp, 'doc'):
-                    logger.error("Error Document: %r", exp.doc)
-                devices, total_device_count = [], -1
+        connection_pool = Pool(size=pool_size)
 
-            for device in devices:
-                if self.__load_network_data:
-                    device['network'] = self._load_network_information(device['MacAddress'])
-
-                processed_device_count += 1
-                if self.settings.get("__save_data__", False):
-                    try:
-                        os.makedirs("./saved_data")
-                    except OSError as exc:
-                        if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                            pass
-                        else:
-                            raise
-                    with open("./saved_data/{}.json".format(str(processed_device_count)), "w") as save_file:
-                        save_file.write(json.dumps(device))
-                yield device
-
-            page += 1
+        for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
+            if not device_info:
+                raise StopIteration
+            yield device_info
 
     def _load_network_information(self, mac_address):
         try:
@@ -115,6 +153,6 @@ class Connector(AuditConnector):
             url = self.network_url_template.format(mac=mac_address)
             response = self.get(url).json()
             return response
-        except Exception as e:
-            logger.exception("Error trying to load network details for device: %s", url)
+        except HTTPError:
+            logger.exception("Error trying to load network details for device: %s", mac_address)
             return {}

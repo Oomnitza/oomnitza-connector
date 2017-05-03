@@ -26,8 +26,8 @@ class Connector(UserConnector):
 
     FieldMappings = {
         'USER':           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
-        'FIRST_NAME':     {'source': "givenName", 'required': True},
-        'LAST_NAME':      {'source': "sn", 'required': True},
+        'FIRST_NAME':     {'source': "givenName"},
+        'LAST_NAME':      {'source': "sn"},
         'EMAIL':          {'source': "mail", 'required': True},
         'PERMISSIONS_ID': {'setting': "default_role"},
     }

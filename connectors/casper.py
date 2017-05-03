@@ -1,12 +1,13 @@
-import os
+import errno
 import json
 import logging
-import errno
-import math
-import time
+import os
 import urllib
 
-from requests import ConnectionError, HTTPError, RequestException
+import gevent
+from gevent.pool import Pool
+from requests import ConnectionError, HTTPError
+
 from lib.connector import AuditConnector
 from lib.error import ConfigError
 
@@ -49,9 +50,26 @@ class Connector(AuditConnector):
         "purchasing.warranty_expires": "date_format",
         "purchasing.lease_expires":    "date_format",
         "purchasing.po_date":          "date_format",
-        # Not sure mac_model_from_sn should be applied by default. -djs
-        # "hardware.model":              "mac_model_from_sn",
     }
+
+    def get_details_url(self, sync_type):
+        # try to extract data subsets to make request more efficient and quick
+        subsets = None
+        try:
+            subsets = set(map(str.capitalize, filter(bool, [str(_.get('source', '').split('.')[0]) for _ in self.field_mappings.values()])))
+        except:
+            pass
+
+        if subsets:
+            details_url = self.url_template.format(
+                "JSSResource/%s/id/{}/subset/%s" % (sync_type, '&'.join(subsets))
+            )
+        else:
+            details_url = self.url_template.format(
+                "JSSResource/%s/id/{}" % sync_type
+            )
+
+        return details_url
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
@@ -94,11 +112,7 @@ class Connector(AuditConnector):
             self.ids_url = self.url_template.format(self.sync_type['all_ids_path'])
             self.ids_converter = lambda data: data[self.sync_type['array']]
 
-        self.details_url = self.url_template.format(
-            "JSSResource/%s/id/{}" % sync_type
-        )
-
-        self._retry_counter = 0
+        self.details_url = self.get_details_url(sync_type)
 
     def get_headers(self):
         return {
@@ -115,31 +129,22 @@ class Connector(AuditConnector):
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
             LOG.exception("Error testing connection.")
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
         except HTTPError as exp:
             LOG.exception("Error testing connection!")
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
 
     def _load_records(self, options):
-        for id in self.fetch_asset_ids():
-            while self._retry_counter <= Connector.RetryCount:
-                try:
-                    computer = self.fetch_asset_details(id)
-                    if computer:
-                        yield computer
-                    break  # out of retry loop
-                except RequestException:
-                    self._retry_counter += 1
-                    LOG.exception("Error getting devices details for %r. Attempt #%s failed.",
-                                  id,
-                                  self._retry_counter)
-                    sleep_secs = math.pow(2, min(self._retry_counter, 8))
-                    LOG.warning("Sleeping for %s seconds.", sleep_secs)
-                    time.sleep(sleep_secs)
 
-            if self._retry_counter > Connector.RetryCount:
-                LOG.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
-                break
+        pool_size = self.settings['__workers__']
+
+        connection_pool = Pool(size=pool_size)
+
+        for device_info in connection_pool.imap(self.fetch_asset_details, self.fetch_asset_ids(), maxsize=pool_size):
+            if device_info:
+                yield device_info
+            else:
+                raise StopIteration
 
     def fetch_asset_ids(self):
         """
@@ -150,22 +155,19 @@ class Connector(AuditConnector):
             response = self.get(self.ids_url)
             data = self.ids_converter(response.json())
             return [c['id'] for c in data]
-        except HTTPError as exp:
+        except HTTPError:
             if self.group_name:
                 LOG.error("Error loading assets for group: %r. Please verify the group name is correct.", self.group_name)
             else:
                 LOG.exception("Error loading IDs from Casper.")
             return []
-        # except Exception as exp:
-        #     LOG.exception("C")
-        #     raise
 
-    def fetch_asset_details(self, id):
+    def fetch_asset_details(self, device_id):
         """
         This method is used to retrieve the details of an asset by its Casper's ID
         """
         try:
-            url = self.details_url.format(str(id))
+            url = self.details_url.format(str(device_id))
             # print url
             details = self.get(url).json()[self.sync_type['data']]
 
@@ -177,10 +179,42 @@ class Connector(AuditConnector):
                         pass
                     else:
                         raise
-                with open("./saved_data/{}.json".format(str(id)), "w") as save_file:
+                with open("./saved_data/{}.json".format(str(device_id)), "w") as save_file:
                     save_file.write(json.dumps(details))
 
             return details
         except:
-            LOG.exception("fetch_asset_details( {} ) failed." % id)
+            LOG.exception("fetch_asset_details( %s ) failed." % device_id)
             return None
+
+    def server_handler(self, wsgi_env, options):
+        """
+        Webhook handler (https://github.com/brysontyrrell/Example-JSS-Webhooks)
+        It will consume incoming POST request and perform a sync for a certain record
+        """
+        try:
+            payload = json.loads(wsgi_env['wsgi.input'].read())
+
+            event_type = payload['webhook']['webhookEvent']
+            object_id = payload['event'].get('jssID')
+
+            if object_id:
+                LOG.info('Casper webhook event %s triggered for device #%s' % (event_type, object_id))
+
+                if self.is_authorized():
+
+                    print self.get_details_url("computers").format(object_id)
+                    if event_type.startswith('Computer'):
+                        device = self.get(self.get_details_url("computers").format(object_id)).json()['computer']
+                    elif event_type.startswith('MobileDevice'):
+                        device = self.get(self.get_details_url("mobiledevices").format(object_id)).json()['mobile_device']
+                    else:
+                        LOG.warning('Casper unknown event %s caught. Cannot handle' % event_type)
+                        return
+
+                    # sync retrieved device with Oomnitza
+                    async_sender = gevent.spawn(self.sender, *(self.OomnitzaConnector, options, device))
+                    async_sender.join()
+
+        except:
+            LOG.exception('Casper server handler failed')

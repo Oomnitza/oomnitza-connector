@@ -12,20 +12,17 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import sys
 import argparse
-import logging
 import logging.config
 
 import decimal  # this is needed here to get the connector to work when compiled/frozen.
 
 import requests
-# I think something like the following is required to fully secure SSL connections.
-# However, it does not seem to want to install correctly (it seems to be missing dependancies).
-# ToDo: turn this back on.
-# import urllib3.contrib.pyopenssl
-# urllib3.contrib.pyopenssl.inject_into_urllib3()
 
 from lib import config
 from lib import connector
@@ -33,6 +30,7 @@ from lib import version
 
 from utils.relative_path import relative_app_path, relative_path
 from utils.single_instance import SingleInstance
+from lib.converters import Converter
 
 LOG = logging.getLogger("connector.py")
 root_logger = logging.getLogger("")
@@ -44,7 +42,6 @@ except ImportError:
     LOG.debug("Looks like wxPython is not installed.")
     HAVE_GUI = False
 
-from lib.converters import Converter
 
 # The import below needs to be enabled when building the binary!!!
 # This is s a holding comment until this is resolved as part of the build automation process.
@@ -52,43 +49,54 @@ from lib.converters import Converter
 # import ldap, suds, csv, pyodbc  # number 2
 
 
-def main(args):
+def prepare_connector(cmdline_args):
     """
-    Main entry point for Oomnitza connector
+    Prepare the connector stuff
     """
     try:
-        connectors = config.parse_config(args)
+        connectors = config.parse_config(cmdline_args)
     except config.ConfigError as exp:
         LOG.error("Error loading config.ini: %s", exp.message)
-        return
-    except Exception:
+        sys.exit(1)
+
+    except:
         LOG.exception("Error processing config.ini file.")
-        return
+        sys.exit(1)
 
     oomnitza_connector = connectors.pop('oomnitza')["__connector__"]
     try:
         oomnitza_connector.authenticate()
     except (connector.AuthenticationError, requests.HTTPError, requests.ConnectionError) as exp:
         LOG.error("Error connecting to Oomnitza API: %s", exp.message)
-        return
+        sys.exit(1)
 
     options = {}
-    if args.record_count:
-        options['record_count'] = args.record_count
+    if cmdline_args.record_count:
+        options['record_count'] = cmdline_args.record_count
 
-    for name in args.connectors:
+    return connectors, oomnitza_connector, options
+
+
+def main(cmdline_args):
+    """
+    Main entry point for Oomnitza connector
+    """
+    non_oomnitza_connectors, oomnitza_connector, options = prepare_connector(cmdline_args)
+
+    for name in cmdline_args.connectors:
         LOG.info("Running connector: %s", name)
-        if name not in connectors:
+        if name not in non_oomnitza_connectors:
             LOG.error("Connector '%s' is not enabled.", name)
         else:
-            connector.run_connector(oomnitza_connector, connectors[name], options)
+            connector.run_connector(oomnitza_connector, non_oomnitza_connectors[name], options)
 
     Converter.run_all_cleanups()
 
     LOG.info("Done.")
 
 
-if __name__ == "__main__":
+def parse_command_line_args(for_server=False):
+
     action_default = None
     action_nargs = None
     logging_setting_path = relative_app_path('logging.json')
@@ -107,8 +115,18 @@ if __name__ == "__main__":
         actions.append('gui')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
-    parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
+
+    if for_server:
+        parser.add_argument('--host', type=str, default='127.0.0.1')
+        parser.add_argument('--port', type=int, default=8000)
+    else:
+        parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
+        parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
+        parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
+        parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
+                                                                     "simultaneously running connectors")
+        parser.add_argument('--workers', type=int, default=10, help="Number of async IO workers used to pull & push records.")
+
     parser.add_argument('--version', action='store_true', help="Show the connector version.")
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
@@ -116,13 +134,22 @@ if __name__ == "__main__":
     # parser.add_argument('--load-data', default="", help="Directory from which to load data.")
     parser.add_argument('--ini', type=str, default=relative_app_path("config.ini"), help="Config file to use.")
     parser.add_argument('--logging-config', type=str, default=logging_setting_path, help="Use to override logging config file to use.")
-    parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
-    parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
-                                                                 "simultaneously running connectors")
 
-    args = parser.parse_args()
+    cmdline_args = parser.parse_args()
 
-    config.setup_logging(args)
+    config.setup_logging(cmdline_args)
+
+    if for_server:
+        # region COMPATIBILITY WITH CONFIG PARSER
+        cmdline_args.record_count = None
+        # endregion
+
+    return cmdline_args
+
+
+if __name__ == "__main__":
+
+    args = parse_command_line_args()
 
     LOG.info("Connector version: %s", version.VERSION)
     if args.version:
