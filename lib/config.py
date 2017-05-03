@@ -236,6 +236,8 @@ def parse_config(args):
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
+                        if 'workers' in args:
+                            cfg["__workers__"] = args.workers
                         # cfg["__load_data__"] = args.load_data
                         cfg["__name__"] = module
                         cfg["__connector__"] = connector(section, cfg)

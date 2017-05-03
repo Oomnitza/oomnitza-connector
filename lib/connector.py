@@ -6,6 +6,7 @@ import os
 import sys
 
 import requests
+from gevent.pool import Pool
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
 
@@ -18,9 +19,9 @@ from .filter import DynamicException
 from .httpadapters import AdapterMap, retries
 from .version import VERSION
 
-
 LOG = logging.getLogger("lib/connector")
 root_logger = logging.getLogger('')
+
 
 LastInstalledHandler = None
 
@@ -89,6 +90,7 @@ class BaseConnector(object):
     }
 
     def __init__(self, section, settings):
+        self.sent_records_counter = 0
         self.section = section
         self.settings = {'VERSION': VERSION}
         self.keep_going = True
@@ -271,7 +273,6 @@ class BaseConnector(object):
         else:
             return False
 
-
     def get_headers(self):
         """
         Returns the headers to be used by default in get() and post() methods
@@ -292,12 +293,31 @@ class BaseConnector(object):
     def stop_sync(self):
         self.keep_going = False
 
-    def perform_sync(self, oomnitza_connector, options):
+    def sender(self, oomnitza_connector, options, rec):
         """
-        This method controls the sync process. Called from the command line script to do the work.
-        :param oomnitza_connector: the Oomnitza API Connector
-        :param options: right now, always {}
-        :return: boolean success
+        This is data sender that should be executed by greenlet to make network IO operations non-blocking.
+
+        :param oomnitza_connector:
+        :param options:
+        :param rec:
+        :return:
+        """
+
+        if not (self.__filter__ is None or self.__filter__(rec)):
+            LOG.info("Skipping record %r because it did not pass the filter.", rec)
+            return
+
+        converted_record = self.convert_record(rec)
+        if not converted_record:
+            LOG.debug("Skipping record %r because it has not been converted properly", rec)
+            return
+
+        self.send_to_oomnitza(oomnitza_connector, converted_record, options)
+
+    def is_authorized(self):
+        """
+        Check if authorized
+        :return:
         """
         try:
             self.authenticate()
@@ -308,52 +328,49 @@ class BaseConnector(object):
             LOG.exception("Authentication Failed: %r.", exp.message)
             return False
 
-        record_count = options.get('record_count', None)
-        limit_records = bool(record_count)
-        records = []
+        return True
+
+    def perform_sync(self, oomnitza_connector, options):
+        """
+        This method controls the sync process. Called from the command line script to do the work.
+        :param oomnitza_connector: the Oomnitza API Connector
+        :param options: right now, always {}
+        :return: boolean success
+        """
+        if not self.is_authorized():
+            return
+
+        limit_records = float(options.get('record_count', 'inf'))
+
         try:
+            pool_size = self.settings['__workers__']
+
+            connection_pool = Pool(size=pool_size)
             for record in self._load_records(options):
-                if not isinstance(record, list):
-                    record = [record]
 
-                for rec in record:
-                    # if save_data:
-                    #     save the damn record.
+                if self.sent_records_counter < limit_records:
+
                     if not self.keep_going:
-                        break  # break out of "for rec in record"
+                        break  # break out of "for record in _load_records"
 
-                    if not(self.__filter__ is None or self.__filter__(rec)):
-                        LOG.info("Skipping record because it did not pass the filter.")
-                        continue
-                    converted = self.convert_record(rec)
-                    if converted:
-                        records.append(converted)
-                    else:
-                        LOG.debug("Skipping record: %r", rec)
+                    if not isinstance(record, list):
+                        record = [record]
 
-                    if limit_records:
-                        if record_count:
-                            record_count -= 1
-                            LOG.info("Sending record %r to Oomnitza.", converted)
-                            if converted:
-                                self.send_to_oomnitza(oomnitza_connector, converted, options)
-                        else:
-                            LOG.info("Done sending limited records to Oomnitza.")
-                            return True
-                    else:
-                        if len(records) >= self.OomnitzaBatchSize:  # ToDo: make this dynamic
-                            LOG.info("sending %s records to oomnitza...", len(records))
-                            self.send_to_oomnitza(oomnitza_connector, records, options)
-                            records = []
+                    for rec in record:
 
-                if not self.keep_going:
-                    LOG.warning("Upload process has been terminated forcibly.")
-                    break  # break out of "for record in self._load_records(options)"
+                        # increase records counter
+                        self.sent_records_counter += 1
+                        if not self.sent_records_counter % 10:
+                            LOG.info("Sent %r records to Oomnitza.", self.sent_records_counter)
 
-            # do one final check for records which need to be sent
-            if len(records):
-                LOG.info("sending final %s records to oomnitza...", len(records))
-                self.send_to_oomnitza(oomnitza_connector, records, options)
+                        if not self.keep_going:
+                            break  # break out of "for rec in record"
+
+                        connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
+                else:
+                    self.keep_going = False
+
+            LOG.info("Finished! Sent %r records to Oomnitza.", self.sent_records_counter)
 
             return True
         except RequestException as exp:
@@ -421,6 +438,14 @@ class BaseConnector(object):
         :return: nothing, but yields records wither singly or in a list
         """
         raise NotImplemented
+
+    def server_handler(self, wsgi_env, options):
+        """
+        Do the server side logic for the certain connector.
+        :param options:
+        :return:
+        """
+        raise NotImplementedError
 
     def convert_record(self, incoming_record):
         """
@@ -566,7 +591,7 @@ class UserConnector(BaseConnector):
 
 class AuditConnector(BaseConnector):
     RecordType = 'audit'
-    OomnitzaBatchSize = 10
+    OomnitzaBatchSize = 1
 
     def __init__(self, section, settings):
         super(AuditConnector, self).__init__(section, settings)
