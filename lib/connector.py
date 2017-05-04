@@ -12,7 +12,6 @@ from requests.exceptions import RequestException
 
 from lib import TrueValues
 from utils.data import get_field_value
-from utils.relative_path import relative_app_path
 from .converters import Converter
 from .error import ConfigError, AuthenticationError
 from .filter import DynamicException
@@ -20,21 +19,16 @@ from .httpadapters import AdapterMap, retries
 from .version import VERSION
 
 LOG = logging.getLogger("lib/connector")
-root_logger = logging.getLogger('')
 
 
 LastInstalledHandler = None
 
 
 def run_connector(oomnitza_connector, connector, options):
-    global LastInstalledHandler
+    global LOG
 
     try:
-        if LastInstalledHandler:
-            root_logger.removeHandler(LastInstalledHandler)
-        LastInstalledHandler = logging.FileHandler(relative_app_path("{}.log".format(connector['__name__'])))
-        LastInstalledHandler.setLevel(logging.INFO)
-        root_logger.addHandler(LastInstalledHandler)
+        LOG = logging.getLogger(connector['__name__'])
 
         conn = connector["__connector__"]
 
@@ -369,6 +363,7 @@ class BaseConnector(object):
                         connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
                 else:
                     self.keep_going = False
+                    break
 
             LOG.info("Finished! Sent %r records to Oomnitza.", self.sent_records_counter)
 
