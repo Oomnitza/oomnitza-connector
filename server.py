@@ -1,8 +1,9 @@
+from connector import prepare_connector, parse_command_line_args
+
 import logging
 
+import gevent
 from gevent import pywsgi
-
-from connector import prepare_connector, parse_command_line_args
 
 LOG = logging.getLogger("connector_server")
 
@@ -36,7 +37,12 @@ class Server(object):
 
         else:
             try:
-                connector_to_handle_request['__connector__'].server_handler(environ, self.options)
+                gevent.spawn(
+                    connector_to_handle_request['__connector__'].server_handler,
+                    # Important: read the body content before passing to the greenlet
+                    *(environ['wsgi.input'].read(), environ, self.options)
+                ).start()
+
             except NotImplementedError:
                 LOG.warning('Received request cannot be handled because connector "%s" does not support server mode' % connector_name)
 

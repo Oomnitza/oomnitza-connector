@@ -187,13 +187,13 @@ class Connector(AuditConnector):
             LOG.exception("fetch_asset_details( %s ) failed." % device_id)
             return None
 
-    def server_handler(self, wsgi_env, options):
+    def server_handler(self, body, wsgi_env, options):
         """
         Webhook handler (https://github.com/brysontyrrell/Example-JSS-Webhooks)
         It will consume incoming POST request and perform a sync for a certain record
         """
         try:
-            payload = json.loads(wsgi_env['wsgi.input'].read())
+            payload = json.loads(body)
 
             event_type = payload['webhook']['webhookEvent']
             object_id = payload['event'].get('jssID')
@@ -213,8 +213,6 @@ class Connector(AuditConnector):
                         return
 
                     # sync retrieved device with Oomnitza
-                    async_sender = gevent.spawn(self.sender, *(self.OomnitzaConnector, options, device))
-                    async_sender.join()
-
+                    gevent.spawn(self.sender, *(self.OomnitzaConnector, options, device)).start()
         except:
             LOG.exception('Casper server handler failed')

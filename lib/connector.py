@@ -434,9 +434,11 @@ class BaseConnector(object):
         """
         raise NotImplemented
 
-    def server_handler(self, wsgi_env, options):
+    def server_handler(self, body, wsgi_env, options):
         """
         Do the server side logic for the certain connector.
+        :param wsgi_env: WSGI env dict
+        :param body: request body read from the WSGI env dict 
         :param options:
         :return:
         """
