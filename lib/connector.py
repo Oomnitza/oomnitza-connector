@@ -365,6 +365,8 @@ class BaseConnector(object):
                     self.keep_going = False
                     break
 
+            connection_pool.join()
+
             LOG.info("Finished! Sent %r records to Oomnitza.", self.sent_records_counter)
 
             return True
