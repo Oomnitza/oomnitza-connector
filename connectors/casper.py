@@ -203,7 +203,6 @@ class Connector(AuditConnector):
 
                 if self.is_authorized():
 
-                    print self.get_details_url("computers").format(object_id)
                     if event_type.startswith('Computer'):
                         device = self.get(self.get_details_url("computers").format(object_id)).json()['computer']
                     elif event_type.startswith('MobileDevice'):

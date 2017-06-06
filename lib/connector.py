@@ -440,7 +440,7 @@ class BaseConnector(object):
         """
         Do the server side logic for the certain connector.
         :param wsgi_env: WSGI env dict
-        :param body: request body read from the WSGI env dict 
+        :param body: request bode read from the 
         :param options:
         :return:
         """
@@ -517,7 +517,6 @@ class BaseConnector(object):
             return None
 
         return outgoing_record
-
 
     @classmethod
     def get_field_value(cls, field, data, default=None):
@@ -613,7 +612,4 @@ class AuditConnector(BaseConnector):
             "only_if_filled": self.settings.get('only_if_filled', None),
             "dont_overwrite": self.settings.get('dont_overwrite', None),
         }
-        # pprint.pprint(record)
         return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)
-
-AssetConnector = AuditConnector
