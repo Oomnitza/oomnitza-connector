@@ -1,21 +1,17 @@
-import os
-import sys
-import json
-from ConfigParser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
 import importlib
-import pkgutil
-import shutil
+import json
 import logging
 import logging.config
+import os
 import pprint
+import shutil
+import sys
+from ConfigParser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
 
-from utils.relative_path import relative_path
-from utils.relative_path import relative_app_path
 from lib.error import AuthenticationError
+from utils.relative_path import relative_app_path
 
 LOG = logging.getLogger("lib/config")
-
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 from .filter import DynamicConverter, parse_filter

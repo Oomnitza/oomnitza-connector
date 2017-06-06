@@ -14,6 +14,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Apple DEP [http://www.apple.com/business/dep/](http://www.apple.com/business/dep/)
+* Plain CSV files
 
 The Oomnitza Connector can be hosted on Oomnitza's
  server cloud, free of charge, if the third party server is
@@ -321,6 +322,20 @@ An example generated config.ini follows.
     username = username@example.com
     default_role = 25
     default_position = Employee
+    
+    [csv_assets]
+    enable = False
+    filename = /some/path/to/file/assets.csv
+    directory = /some/path/to/files
+    sync_field = BARCODE
+
+    [csv_users]
+    enable = False
+    filename = /some/path/to/file/users.csv
+    directory = /some/path/to/files
+    default_role = 25
+    default_position = Employee
+
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
 Oomnitza. You can use an existing user’s credentials for username and password, but best practice is to create a
@@ -362,7 +377,7 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
-`api_token`: HPDL
+`api_token`: API token for the connection
 
 `sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
@@ -381,14 +396,40 @@ For fields which require processing before being brought into Oomnitza must be d
     To Be Determined
 
 
+### CSV Assets Configuration
+`filename`: CSV file with assets inside
+
+`directory`: directory with CSV files with assets inside. Note: `filename` and `directory` are mutually exclusive
+
+`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+#### Default Field Mappings
+    No default mapping. Everything should be defined in the config
+
+
+### CSV Users Configuration
+`filename`: CSV file with assets inside
+
+`directory`: directory with CSV files with assets inside. Note: `filename` and `directory` are mutually exclusive
+
+`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
+
+`default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+#### Default Field Mappings
+    No default mapping. Everything should be defined in the config
+
+
 ### BambooHR Configuration
 `url`: the url of the BambooHR server
 
-`system_name`: hpdl
+`system_name`: Identifier of your system in the Bamboo HR environment
 
-`api_token`: hpdl
+`api_token`: API token for the connection
 
-`default_role` = 25
+`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
+
+`default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 #### Default Field Mappings
     mapping.USER =            {'source': "workEmail"}

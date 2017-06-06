@@ -1,17 +1,17 @@
 from __future__ import absolute_import
 
-import os
+import errno
 import logging
+import os
+
 import ldap
 import ldapurl
-import errno
+from ldap.controls import SimplePagedResultsControl
+from unicodecsv import DictWriter as DictUnicodeWriter
 
 from lib import TrueValues
-from ldap.controls import SimplePagedResultsControl
 from lib.connector import AuthenticationError
 from lib.error import ConfigError
-from lib.csv import DictUnicodeWriter
-
 
 LOG = logging.getLogger("ext/ldap")  # pylint:disable=invalid-name
 
@@ -283,5 +283,3 @@ class LdapConnection(object):
 
         LOG.warning("Unable to get LDAP object for '%s'.", dn)
         return None
-
-
