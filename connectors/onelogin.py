@@ -68,7 +68,7 @@ class Connector(UserConnector):
         elif self.settings.get('api_token'):
             LOG.warning('Deprecated API used! Please switch to the new OneLogin API')
             self.old_api = True
-            self.url_template = "%s?include_custom_attributes=true&from_id={0}" % self.settings['url']
+            self.url_template = "%s?include_custom_attributes=true&page={0}" % self.settings['url']
         else:
             raise RuntimeError('OneLogin connector configured improperly')
 
@@ -77,7 +77,7 @@ class Connector(UserConnector):
         DEPRECATED
         """
         return {
-            'Authorization': "Basic %s" % base64.standard_b64encode(self.settings['api_token']+":x")
+            'Authorization': "Basic %s" % base64.standard_b64encode(self.settings['api_token'] + ":x")
         }
 
     def get_headers_new(self):
@@ -111,7 +111,10 @@ class Connector(UserConnector):
 
     def do_test_connection(self, options):
         try:
-            url = self.url_template.format(1)
+            if self.old_api:
+                url = self.url_template.format(1)
+            else:
+                url = self.url_template.format('')
             response = self.get(url)
             response.raise_for_status()
             return {'result': True, 'error': ''}
@@ -128,9 +131,9 @@ class Connector(UserConnector):
         # The OneLogin API returns 100 results at a time. We'll start at 0 and
         # set the from_id parameter to the max_id for each subsequent request.
 
-        last_id = 0
+        page = 1
         while True:
-            url = self.url_template.format(last_id)
+            url = self.url_template.format(page)
             response = self.get(url)
             response.raise_for_status()
 
@@ -143,31 +146,27 @@ class Connector(UserConnector):
                         pass
                     else:
                         raise
-                with open("./saved_data/onelogin.{}.xml".format(last_id), "w") as output_file:
+                with open("./saved_data/onelogin.{}.xml".format(page), "w") as output_file:
                     output_file.write(response.text)
 
-            response = xmltodict.parse(response.text)
-            if 'users' not in response:
+            users = xmltodict.parse(response.text).get('users', {}).get('user', [])
+            if not users:
                 # The 'users' key doesn't exist.
                 # We've likely gotten all the users we're going to get
                 break
             else:
-                users = response['users']
-                if isinstance(users['user'], dict):
+                if isinstance(users, dict):
                     # If the OneLogin API returns one result users won't
                     # be in a list, there will just be one OrderedDict
-                    users = [users['user']]
-                elif isinstance(users['user'], list):
-                    users = users['user']
-                else:
-                    raise RuntimeError("Unexpected response from OneLogin. Got type: %s" % type(users['user']))
+                    users = [users]
 
                 for user in users:
                     for key in user:
                         if isinstance(user[key], dict) and '@nil' in user[key]:
                             user[key] = None
-                    last_id = user['id']
                     yield user
+
+            page += 1
 
     def get_users_new(self):
 
@@ -194,7 +193,7 @@ class Connector(UserConnector):
                     output_file.write(response.text.encode('utf-8'))
 
             response = json.loads(response.text)
-            if not 'pagination' in response:
+            if 'pagination' not in response:
                 # need pagination to request for next page
                 break
             else:

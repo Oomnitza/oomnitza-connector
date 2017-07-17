@@ -33,7 +33,7 @@ class Connector(UserConnector):
 
     def get_headers(self):
         return {
-            'contentType': 'application/json',
+            'Content-Type': 'application/json',
             'Authorization': 'SSWS %s' % self.settings['api_token']
         }
 

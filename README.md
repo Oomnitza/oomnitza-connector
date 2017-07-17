@@ -857,3 +857,16 @@ If you have installed [wxPython](https://wxpython.org/) in your system you will 
 
 This will run the connector with graphical interface. This interface is used to configure the config.ini file. 
 Unfortunately now this interface does not support all the sections of the config.ini, for example you cannot edit the custom converters or filters.
+
+# Current limitations
+
+###### Software mapping
+There is no possibility to set the mapping for the software info associated with IT assets (SCCM, JAMF). The only thing can be done is to disable the mapping at all. 
+To do this set the following custom mapping in your config.ini file:
+
+    mapping.APPLICATIONS = {"hardcoded": []}
+
+###### MS Windows environment
+In MS Windows environment the "Task Scheduler" is the natural tool to schedule the connector execution. Please note that when the task is scheduled via "Task Scheduler" the "working directory" is not 
+the directory of connector executable, but other one. So if you are using this tool to schedule the connector job, please also set the path to the configuration files via the command line arguments. 
+Or schedule not the connector itself, but the .bat file which is triggering the connector  
