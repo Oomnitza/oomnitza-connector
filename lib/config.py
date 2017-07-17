@@ -232,8 +232,10 @@ def parse_config(args):
                             cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
                         cfg["__testmode__"] = args.testmode
                         cfg["__save_data__"] = args.save_data
-                        if 'workers' in args:
+                        try:
                             cfg["__workers__"] = args.workers
+                        except:
+                            cfg["__workers__"] = 10
                         # cfg["__load_data__"] = args.load_data
                         cfg["__name__"] = module
                         cfg["__connector__"] = connector(section, cfg)

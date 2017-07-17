@@ -89,7 +89,7 @@ class Connector(AuditConnector):
 
         if response.status_code == 204:
             # Sometimes it is just an empty response!
-            logger.error("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
+            # logger.error("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
             return []
 
         response = response.json()
@@ -111,15 +111,23 @@ class Connector(AuditConnector):
                 raise StopIteration
             yield page
 
-    def retrieve_device_info(self, device):
+    def retrieve_device_info(self, devices):
         """
         Extract device info
 
-        :param device:
+        :param devices: list of devices to process
         :return:
         """
-        if self.__load_network_data:
+        def set_network_info(device):
             device['network'] = self._load_network_information(device['MacAddress'])
+            return device
+
+        if self.__load_network_data:
+            pool_size = self.settings['__workers__']
+            connection_pool = Pool(size=pool_size)
+            processed_devices = connection_pool.map(set_network_info, devices)
+        else:
+            processed_devices = devices
 
         if self.settings.get("__save_data__", False):
             try:
@@ -130,8 +138,8 @@ class Connector(AuditConnector):
                 else:
                     raise
             with open("./saved_data/{}.json".format(uuid.uuid4().hex), "w") as save_file:
-                save_file.write(json.dumps(device))
-        return device
+                save_file.write(json.dumps(processed_devices))
+        return processed_devices
 
     def _load_records(self, options):
 

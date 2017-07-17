@@ -77,15 +77,15 @@ class ConfigView:
 
         # Create a container for presenting init menu page
         self.init_page = ScrolledWindow(parent=self.frame,
-                                   size=self.style['content']['size'],
-                                   fg_color=self.style['content']['fg_color'],
-                                   bg_color=self.style['content']['bg_color'])
+                                        size=self.style['content']['size'],
+                                        fg_color=self.style['content']['fg_color'],
+                                        bg_color=self.style['content']['bg_color'])
 
         # Create a container for presenting settings pages
         self.setting_page = ScrolledWindow(parent=self.frame,
-                                      size=self.style['content']['size'],
-                                      fg_color=self.style['content']['fg_color'],
-                                      bg_color=self.style['content']['bg_color'])
+                                           size=self.style['content']['size'],
+                                           fg_color=self.style['content']['fg_color'],
+                                           bg_color=self.style['content']['bg_color'])
         self.setting_page.Hide()
 
         # Create sizers for layout
@@ -166,7 +166,6 @@ class ConfigView:
 
     def create_setting_view(self, panel, config, fields_display_order,
                             field_mappings, selected):
-
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sub_sizer = wx.GridBagSizer(hgap=self.style['sizer']['hgap'],
@@ -305,7 +304,7 @@ class ConfigView:
             # Create a sizer for setting page layout
             sizer = wx.BoxSizer(wx.VERTICAL)
             sub_sizer = wx.GridBagSizer(hgap=self.style['sizer']['hgap'],
-                                    vgap=self.style['sizer']['vgap'])
+                                        vgap=self.style['sizer']['vgap'])
 
             sub_panel = Panel(parent=panel,
                               size=self.style['content']['sub_panel']['size'],
@@ -533,9 +532,9 @@ class ConfigView:
                 options = {}
                 period_choice = ''
 
-                task_name = 'oomnitza.%s' % (selected)
+                task_name = 'oomnitza.%s' % selected
                 options['command'] = sys.executable
-                options['arguments'] = 'upload %s' % (selected)
+                options['arguments'] = 'upload %s' % selected
                 options['user'] = username
 
                 start_date = time_widgets['start_date'].GetValue()
@@ -630,12 +629,9 @@ class ConfigView:
                 month = time_widgets['month'].GetValue()
                 weekday = time_widgets['weekday'].GetValue()
 
-                arguments = []
-                arguments.append(sys.executable)
-                arguments.append('upload')
-                arguments.append(selected)
+                arguments = [sys.executable, 'upload', selected]
 
-                filename = 'com.oomnitza.%s' % (selected)
+                filename = 'com.oomnitza.%s' % selected
                 filepath = '/tmp/' + filename + '.plist'
                 plist = {'Label': filename, 'ProgramArguments': arguments, 'StartCalendarInterval': {'Minute': minute, 'Hour': hour, 'Day': day,
                          'Month': month, 'Weekday': weekday}}
@@ -687,9 +683,9 @@ class ConfigView:
 
         logs = ""
         try:
-            log_file = open(relative_app_path('{0}.log'.format(selected)), "r")
+            log_file = open(relative_app_path('info.log'), "r")
             for line in log_file.readlines():
-                if line != "\n" and line != "":
+                if line != "\n" and line != "" and line.startswith(selected):
                     logs += line
         except IOError:
             pass
@@ -716,10 +712,10 @@ class ConfigView:
     def clear_log(self, event, panel, multitext_id, selected):
         dlg = wx.MessageDialog(None, "Are you sure you want to clear the logs?",
                                "Clear Log", wx.YES_NO | wx.ICON_QUESTION)
-        if (dlg.ShowModal() == wx.ID_YES):
+        if dlg.ShowModal() == wx.ID_YES:
             for child in panel.GetChildren():
                 if child.GetId() == multitext_id:
-                    open(relative_app_path("{0}.log".format(selected)), "w").close()
+                    open(relative_app_path("info.log".format(selected)), "w").close()
                     event.GetEventObject().Disable()
                     self.reload_log(event, panel, multitext_id,
                                     event.GetEventObject(), selected)
@@ -729,9 +725,9 @@ class ConfigView:
         for child in panel.GetChildren():
             if child.GetId() == multitext_id:
                 logs = ""
-                log_file = open(relative_app_path("{0}.log".format(selected)), "r")
+                log_file = open(relative_app_path("info.log"), "r")
                 for line in log_file.readlines():
-                    if line != "\n" and line != "":
+                    if line != "\n" and line != "" and line.startswith(selected):
                         logs += line
 
                 child.SetValue("")
@@ -765,9 +761,10 @@ class ConfigView:
         cols = 0
 
         title = wx.StaticText(self.init_page, -1, "Connectors List")
-        description = wx.StaticText(self.init_page, -1,\
-        "Configure each connector before running it.\n"\
-        "Please refer to https://github.com/oomnitza for additional information.")
+        description = wx.StaticText(self.init_page, -1,
+        "Configure each connector before running it.\n"
+        "Please refer to github.com/Oomnitza/oomnitza-connector\n"
+        "for additional information.")
 
         # Create a tree control to be the menu of init page
         init_page_menu = wx.TreeCtrl(self.init_page, -1,
@@ -826,9 +823,10 @@ class ConfigView:
         if selected == "oomnitza":
 
             title = wx.StaticText(self.setting_page, -1, "Oomnitza Connection")
-            description = wx.StaticText(self.setting_page, -1,\
-            "Configure Oomnitza connection before running connectors.\n"\
-            "Please refer to https://github.com/oomnitza for additional information.")
+            description = wx.StaticText(self.setting_page, -1,
+            "Configure Oomnitza connection before running connectors.\n"
+            "Please refer to github.com/Oomnitza/oomnitza-connector\n"
+            "for additional information.")
 
             sizer.Add(title, pos=(rows, cols), span=(1, 2),
                       flag=wx.LEFT | wx.TOP,
@@ -941,7 +939,7 @@ class ConfigView:
                     stop_btn.Show()
                     run_btn.Hide()
                     self.frame.GetSizer().Layout()
-                    if not panel is None:
+                    if panel is not None:
                         panel.GetSizer().Layout()
                 except Exception as exp:
                     if mode == 'all':
@@ -984,14 +982,12 @@ class ConfigView:
                 flag = False
                 break
         if not flag:
-            wx.MessageBox('Please stop the process of uploading before closing application!', 'Warning',
-                    wx.OK | wx.ICON_INFORMATION)
+            wx.MessageBox('Please stop the process of uploading before closing application!', 'Warning', wx.OK | wx.ICON_INFORMATION)
 
         else:
             self.frame.Destroy()
             for select in self.threads:
                 self.threads[select][0].join()
-
 
     def on_add(self, event, listbox, field, selected):
         text = wx.GetTextFromUser('Enter a new item', 'Insert dialog')
@@ -1078,6 +1074,3 @@ class ConfigView:
             style = json.load(json_file)
 
         return style
-
-
-

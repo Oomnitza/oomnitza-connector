@@ -84,7 +84,8 @@ class BaseConnector(object):
     }
 
     def __init__(self, section, settings):
-        self.sent_records_counter = 0
+        self.processed_records_counter = 0.
+        self.sent_records_counter = 0.
         self.section = section
         self.settings = {'VERSION': VERSION}
         self.keep_going = True
@@ -342,32 +343,29 @@ class BaseConnector(object):
             connection_pool = Pool(size=pool_size)
             for record in self._load_records(options):
 
-                if self.sent_records_counter < limit_records:
-
-                    if not self.keep_going:
-                        break  # break out of "for record in _load_records"
-
-                    if not isinstance(record, list):
-                        record = [record]
-
-                    for rec in record:
-
-                        # increase records counter
-                        self.sent_records_counter += 1
-                        if not self.sent_records_counter % 10:
-                            LOG.info("Sent %r records to Oomnitza.", self.sent_records_counter)
-
-                        if not self.keep_going:
-                            break  # break out of "for rec in record"
-
-                        connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
-                else:
-                    self.keep_going = False
+                if not self.keep_going:
                     break
 
-            connection_pool.join()
+                if not isinstance(record, list):
+                    record = [record]
 
-            LOG.info("Finished! Sent %r records to Oomnitza.", self.sent_records_counter)
+                for rec in record:
+
+                    if self.processed_records_counter < limit_records:
+
+                        # increase records counter
+                        self.processed_records_counter += 1
+                        if not self.processed_records_counter % 10:
+                            LOG.info("Sent %d records to Oomnitza.", self.processed_records_counter)
+
+                        if not self.keep_going:
+                            break
+
+                        connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
+
+            connection_pool.join(timeout=60)  # set non-empty timeout to guarantee context switching in case of threading
+
+            LOG.info("Finished! Processed %d records. %d records have been sent to Oomnitza" % (self.processed_records_counter, self.sent_records_counter))
 
             return True
         except RequestException as exp:
@@ -410,6 +408,8 @@ class BaseConnector(object):
                 LOG.exception("Error saving data.")
 
         result = method(data, options)
+        if not self.settings["__testmode__"]:
+            self.sent_records_counter += 1
         # LOG.debug("send_to_oomnitza result: %r", result)
         return result
 

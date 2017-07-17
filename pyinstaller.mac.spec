@@ -18,6 +18,8 @@ a = Analysis(
         'connectors.onelogin',
         # 'connectors.sccm',
         'connectors.zendesk',
+        'connectors.csv_assets',
+        'connectors.csv_users',
 
         'converters.casper_extension_attribute',
         'converters.date_format',

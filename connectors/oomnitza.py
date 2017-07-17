@@ -1,5 +1,3 @@
-
-import base64
 import logging
 import pprint
 from socket import gaierror
@@ -36,11 +34,9 @@ class Connector(BaseConnector):
         return {}
 
     def get_headers(self):
-        # LOG.debug("get_headers(): self.settings['api_token'] = %r", self.settings['api_token'])
-        return {'contentType': 'application/json', 'Authorization2': self.settings['api_token']}
+        return {'Content-Type': 'application/json; charset=utf-8', 'Authorization2': self.settings['api_token']}
 
     def authenticate(self):
-        # LOG.debug("authenticate(0): self.settings['api_token'] = %r", self.settings['api_token'])
         if not self.settings['api_token']:
             if not self.settings['username'] or not self.settings['password']:
                 raise ConfigError("Oomnitza section needs either: api_token or username & password.")
@@ -69,13 +65,6 @@ class Connector(BaseConnector):
             raise AuthenticationError(str(exp))
         # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
-    def upload_assets(self, assets, options):
-        # LOG.debug("upload_assets( %r )", assets)
-        url = "{url}/api/v2/bulk/assets?VERSION={VERSION}".format(**self.settings)
-        response = self.post(url, assets)
-        # LOG.debug("response = %r", response.text)
-        return response
-
     def upload_users(self, users, options):
         # logger.debug("upload_users( %r )", users)
         url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
@@ -94,19 +83,12 @@ class Connector(BaseConnector):
         # logger.debug("response = %r", response.text)
         return response
 
-    def _test_upload_assets(self, assets, options):
-        LOG.warning("upload_assets() = %r", assets)
+    @staticmethod
+    def _test_upload_users(users, options):
+        pprint.pprint(users)
 
-    def _test_upload_users(self, users, options):
-        if not isinstance(users, list):
-            users = [users]
-        if not self._test_headers:
-            self._test_headers = users[0].keys()
-            print("\t".join(self._test_headers))
-        for user in users:
-            print("\t".join([repr(user[f]) or '""' for f in self._test_headers]))
-
-    def _test_upload_audit(self, computers, options):
+    @staticmethod
+    def _test_upload_audit(computers, options):
         pprint.pprint(computers)
 
     def perform_sync(self, oomnitza_connector, options):

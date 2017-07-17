@@ -12,7 +12,9 @@
       "ldap_assets": "LDAP_assets",
       "bamboohr": "BambooHR",
       "zendesk": "Zendesk",
-      "sccm": "SCCM"
+      "sccm": "SCCM",
+      "csv_assets": "CSV_assets",
+      "csv_users": "CSV_users"
     },
   "field_mappings":
     {
@@ -20,6 +22,8 @@
       "system_name": "System Name",
       "username": "User Name",
       "password": "Password",
+      "client_id": "Client ID",
+      "client_secret": "Client Secret",
       "api_token": "API Token",
       "storage": "Storage",
       "partitions": "Partitions",
@@ -44,7 +48,9 @@
       "server": "Server",
       "database": "Database",
       "authentication": "Authentication",
-      "update_only": "Update Only"
+      "update_only": "Update Only",
+      "filename": "Filename",
+      "directory": "Directory"
     },
   "fields_display_order":
     [
@@ -52,6 +58,8 @@
       "system_name",
       "username",
       "password",
+      "client_id",
+      "client_secret",
       "api_token",
       "is_sso",
       "storage",
@@ -60,6 +68,8 @@
       "email_attr",
       "enable_tls",
       "base_dn",
+      "filename",
+      "directory",
       "group_dn",
       "filter",
       "protocol_version",
