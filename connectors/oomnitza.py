@@ -34,7 +34,10 @@ class Connector(BaseConnector):
         return {}
 
     def get_headers(self):
-        return {'Content-Type': 'application/json; charset=utf-8', 'Authorization2': self.settings['api_token']}
+        if self.settings['api_token']:
+            return {'Content-Type': 'application/json; charset=utf-8', 'Authorization2': self.settings['api_token']}
+        # these empty headers because of the old implementation of request_token endpoint, body SHOULD NOT be interpreted as JSON here!
+        return {}
 
     def authenticate(self):
         if not self.settings['api_token']:
