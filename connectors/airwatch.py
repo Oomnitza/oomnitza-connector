@@ -82,10 +82,6 @@ class Connector(AuditConnector):
         :return:
         """
         response = self.get(page_url)
-        try:
-            response.raise_for_status()
-        except HTTPError:
-            return []
 
         if response.status_code == 204:
             # Sometimes it is just an empty response!

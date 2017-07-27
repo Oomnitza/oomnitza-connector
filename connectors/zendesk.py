@@ -2,7 +2,7 @@
 import base64
 import logging
 
-from requests import ConnectionError, HTTPError
+from requests import HTTPError
 from lib.connector import UserConnector
 
 logger = logging.getLogger("connectors/zendesk")  # pylint:disable=invalid-name
@@ -42,24 +42,20 @@ class Connector(UserConnector):
     def do_test_connection(self, options):
         try:
             url = self.url_template.format("v2/users.json") + "?per_page=1&page=1"
-            response = self.get(url)
-            response.raise_for_status()
+            self.get(url)
             return {'result': True, 'error': ''}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
 
     def _load_records(self, options):
         organization_map = self._load_organizations_if_needed()
         url = self.url_template.format("v2/users.json")
         while url:
             response = self.get(url)
-            response.raise_for_status()
-
             response = response.json()
             if 'users' not in response:
                 # The 'users' key doesn't exist.
                 # We've likely gotten all the users we're going to get
-                users = None
                 url = None
             else:
                 for user in response['users']:
@@ -92,8 +88,6 @@ class Connector(UserConnector):
         url = self.url_template.format("v2/organizations.json")
         while url:
             response = self.get(url)
-            response.raise_for_status()
-
             response = response.json()
             if 'organizations' not in response:
                 # The 'organizations' key doesn't exist.
