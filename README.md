@@ -298,6 +298,7 @@ An example generated config.ini follows.
     api_token = YOUR Okta API TOKEN
     default_role = 25
     default_position = Employee
+    deprovisioned = false
 
     [onelogin]
     enable = False
@@ -717,12 +718,14 @@ Set the field mapping related to computers in the 'casper' section and set **syn
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
+`deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
+
 #### Default Field Mappings
-    mapping.USER =           {'source': "login"},
-    mapping.FIRST_NAME =     {'source': "firstName"},
-    mapping.LAST_NAME =      {'source': "lastName"},
-    mapping.EMAIL =          {'source': "email"},
-    mapping.PHONE =          {'source': "mobilePhone"},
+    mapping.USER =           {'source': "profile.login"},
+    mapping.FIRST_NAME =     {'source': "profile.firstName"},
+    mapping.LAST_NAME =      {'source': "profile.lastName"},
+    mapping.EMAIL =          {'source': "profile.email"},
+    mapping.PHONE =          {'source': "profile.mobilePhone"},
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
     mapping.POSITION =       {'setting': "default_position"},
 

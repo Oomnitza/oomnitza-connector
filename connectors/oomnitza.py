@@ -141,7 +141,6 @@ class Connector(BaseConnector):
         except:
             LOG.exception("Failed to load settings from Oomnitza.")
             raise
-            return {}
 
     def get_setting(self, key):
         try:
@@ -154,4 +153,3 @@ class Connector(BaseConnector):
         except:
             LOG.exception("Failed to load setting from Oomnitza.")
             raise
-            return {}

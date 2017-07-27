@@ -50,7 +50,8 @@
       "authentication": "Authentication",
       "update_only": "Update Only",
       "filename": "Filename",
-      "directory": "Directory"
+      "directory": "Directory",
+      "deprovisioned": "Include\ndeprovisioned\nusers"
     },
   "fields_display_order":
     [
@@ -85,6 +86,7 @@
       "server",
       "database",
       "authentication",
-      "update_only"
+      "update_only",
+      "deprovisioned"
     ]
 }
