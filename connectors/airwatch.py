@@ -115,7 +115,7 @@ class Connector(AuditConnector):
         :return:
         """
         def set_network_info(device):
-            device['network'] = self._load_network_information(device['MacAddress'])
+            device['network'] = self._load_network_information(device.get('MacAddress', ''))
             return device
 
         if self.__load_network_data:
