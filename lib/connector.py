@@ -559,13 +559,13 @@ class UserConnector(BaseConnector):
 
     def __init__(self, section, settings):
 
-        if 'USER' in self.FieldMappings:
-            self.FieldMappings['USER']['required'] = True
+        if 'USER' in self.field_mappings:
+            self.field_mappings['USER']['required'] = True
         else:
             raise Exception("Missing mapping filed USER is required for records will be sent to Oomnitza.")
 
-        if 'EMAIL' in self.FieldMappings:
-            self.FieldMappings['EMAIL']['required'] = True
+        if 'EMAIL' in self.field_mappings:
+            self.field_mappings['EMAIL']['required'] = True
         else:
             raise Exception("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
 

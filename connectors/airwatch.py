@@ -29,6 +29,7 @@ class Connector(AuditConnector):
         'password':   {'order': 3, 'example': "change-me"},
         'api_token':  {'order': 4, 'example': "YOUR AirWatch API TOKEN"},
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'dep_uuid':   {'order': 6, 'default': ''}
     }
 
     def __init__(self, section, settings):
@@ -139,14 +140,26 @@ class Connector(AuditConnector):
 
     def _load_records(self, options):
 
-        pool_size = self.settings['__workers__']
+        if self.settings.get('dep_uuid'):
+            # if the dep_uuid is given, we have to retrieve the different subset of devices fro the separate API
+            # it is not clear from the docs if the API supports pagination, looks like not
+            # also this API is supported only be the AirWatch starting from 9.2(?)
+            dep_api_url = '%s/api/mdm/dep/groups/%s/devices' % (self.settings['url'], self.settings['dep_uuid'])
+            devices = self.get(dep_api_url)
+            for device in devices:
+                if not device:
+                    raise StopIteration
+                yield device
+        else:
 
-        connection_pool = Pool(size=pool_size)
+            pool_size = self.settings['__workers__']
 
-        for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
-            if not device_info:
-                raise StopIteration
-            yield device_info
+            connection_pool = Pool(size=pool_size)
+
+            for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
+                if not device_info:
+                    raise StopIteration
+                yield device_info
 
     def _load_network_information(self, mac_address):
         try:
