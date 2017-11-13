@@ -559,6 +559,8 @@ class UserConnector(BaseConnector):
 
     def __init__(self, section, settings):
 
+        super(UserConnector, self).__init__(section, settings)
+
         if 'USER' in self.field_mappings:
             self.field_mappings['USER']['required'] = True
         else:
@@ -569,8 +571,6 @@ class UserConnector(BaseConnector):
         else:
             raise Exception("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
 
-        super(UserConnector, self).__init__(section, settings)
-
         if self.settings['default_position'].lower() == 'unused':
             self.normal_position = True
         else:
@@ -578,6 +578,9 @@ class UserConnector(BaseConnector):
 
         if 'POSITION' not in self.field_mappings and not self.normal_position:
             self.field_mappings['POSITION'] = {"setting": 'default_position'}
+
+        if 'PERMISSIONS_ID' not in self.field_mappings:
+            self.field_mappings['PERMISSIONS_ID'] = {"setting": 'default_role'}
 
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         options['agent_id'] = self.MappingName
