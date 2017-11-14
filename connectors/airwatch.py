@@ -128,7 +128,7 @@ class Connector(AuditConnector):
                     device['dep'] = dep_info_about_device
             return device
 
-        # extend the info about devices using info from the separate-
+        # extend the info about devices using info from the separate API
         if self.dep_devices:
             devices = map(set_dep_info, devices)
 
@@ -154,9 +154,9 @@ class Connector(AuditConnector):
     def _load_records(self, options):
 
         if self.settings.get('dep_uuid'):
-            # if the dep_uuid is given, we have to retrieve the different subset of devices fro the separate API
+            # if the dep_uuid is given, we have to retrieve the different subset of devices from the separate API
             # it is not clear from the docs if the API supports pagination, looks like not
-            # also this API is supported only be the AirWatch starting from 9.2(?)
+            # also this API is supported only by the AirWatch starting from 9.2(?)
             dep_api_url = '%s/api/mdm/dep/groups/%s/devices' % (self.settings['url'], self.settings['dep_uuid'])
             self.dep_devices = {_['deviceSerialNumber']: _ for _ in self.get(dep_api_url)}
 
