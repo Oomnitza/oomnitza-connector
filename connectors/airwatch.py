@@ -158,7 +158,7 @@ class Connector(AuditConnector):
             # it is not clear from the docs if the API supports pagination, looks like not
             # also this API is supported only by the AirWatch starting from 9.2(?)
             dep_api_url = '%s/api/mdm/dep/groups/%s/devices' % (self.settings['url'], self.settings['dep_uuid'])
-            self.dep_devices = {_[0]['deviceSerialNumber']: _[0] for _ in self.get(dep_api_url)}
+            self.dep_devices = {_['deviceSerialNumber']: _ for _ in self.get(dep_api_url).json()}
 
         pool_size = self.settings['__workers__']
 
