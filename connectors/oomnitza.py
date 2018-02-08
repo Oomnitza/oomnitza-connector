@@ -121,9 +121,9 @@ class Connector(BaseConnector):
             url = "{0}/api/v3/locations".format(self.settings['url'])
             response = self.get(url)
             mappings = {loc[label_field]: loc[id_field] for loc in response.json() if loc.get(id_field, None) and loc.get(label_field, None)}
-            LOG.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
+            LOG.debug("Location Map to %s: External Value -> Oomnitza ID", id_field)
             for name in sorted(mappings.keys()):
-                LOG.debug("    {} -> {}".format(name, mappings[name]))
+                LOG.info(u"    %s -> %s" % (name, mappings[name]))
             return mappings
         except:
             LOG.exception("Failed to load Locations from Oomnitza.")

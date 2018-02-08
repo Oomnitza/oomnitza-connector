@@ -60,6 +60,12 @@ class Connector(AuditConnector):
         except:
             pass
 
+        # Add `ExtensionAttributes` subset to the set of subsets if special converter is used
+        if subsets:
+            for _ in self.field_mappings.values():
+                if 'casper_extension_attribute' in _.get('converter', ''):
+                    subsets |= {'ExtensionAttributes'}
+
         if subsets:
             details_url = self.url_template.format(
                 "JSSResource/%s/id/{}/subset/%s" % (sync_type, '&'.join(subsets))

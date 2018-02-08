@@ -3,10 +3,12 @@ from __future__ import absolute_import
 import errno
 import logging
 import os
+import re
 
 import ldap
 import ldapurl
-from ldap.controls import SimplePagedResultsControl
+from ldap.controls.libldap import SimplePagedResultsControl
+from ldap.controls.sss import SSSRequestControl
 from unicodecsv import DictWriter as DictUnicodeWriter
 
 from lib import TrueValues
@@ -42,6 +44,9 @@ Note: I got this error, 52e, with a clearly invalid username.
 
 """
 
+SIZELIMIT = 1000
+PREFIX_LENGTH_LIMIT = 5
+
 
 class LdapConnection(object):
     @classmethod
@@ -65,6 +70,7 @@ class LdapConnection(object):
         return clean_record
 
     def __init__(self, settings, fields):
+        self.pg_ctrl = None
         self.settings = settings
         self.ldap_connection = None
         self.ldap_query_fields = fields
@@ -146,13 +152,17 @@ class LdapConnection(object):
                     raise
 
         if self.settings['protocol_version'] == '2':
-            if self.settings['group_dn']:
-                users = self.query_group(options)
+            if self.settings['groups_dn']:
+                users = self.query_groups(options)
+            elif self.settings['group_dn']:
+                users = self.query_group(options, self.settings['group_dn'])
             else:
                 users = self.query_objects(options)
         else:
-            if self.settings['group_dn']:
-                users = self.query_group_paged(options)
+            if self.settings['groups_dn']:
+                users = self.query_groups(options)
+            elif self.settings['group_dn']:
+                users = self.query_group_paged(options, self.settings['group_dn'])
             else:
                 users = self.query_objects_paged(options)
 
@@ -182,6 +192,58 @@ class LdapConnection(object):
         for user in users:
             yield user
 
+    def query_objects_iteratively(self, fields):
+        page_criterium = re.findall(
+            '(.*)\[(.*)\]', self.settings.get('page_criterium'))
+        if not (len(page_criterium) == 1 and len(page_criterium[0]) == 2):
+            LOG.error("incorrect page_criterium setting for ldap")
+            return []
+        page_criterium_field, page_criterium_data = page_criterium[0]
+
+        def get_users_portion(pagination_prefix):
+            if len(pagination_prefix) > PREFIX_LENGTH_LIMIT:
+                LOG.error(
+                    'prefix size limit was exceeded with prefix %s ' % pagination_prefix)
+                return []
+
+            users_portion = []
+            current_filter = "(&{}({}={}*))".format(
+                self.settings['filter'],
+                page_criterium_field,
+                pagination_prefix,
+                sizelimit=SIZELIMIT
+            )
+            try:
+                users_portion.extend(
+                    self.ldap_connection.search_s(
+                        self.settings['base_dn'],
+                        ldap.SCOPE_SUBTREE,
+                        current_filter,
+                        fields
+                    )
+                )
+            except Exception as exception:
+                LOG.info(
+                    'exception %s was raised while fetching data %s' % (
+                        exception, current_filter)
+                )
+            else:
+                if len(users_portion) < SIZELIMIT:
+                    return users_portion
+                LOG.info(
+                    'got %s result for filter %s with sizelimit %s' % (
+                        len(users_portion), current_filter, SIZELIMIT)
+                )
+            users_portion = []
+
+            for i in page_criterium_data:
+                u_p = get_users_portion(pagination_prefix + i)
+                users_portion.extend(u_p)
+            return users_portion
+
+        result = get_users_portion('')
+        return result
+
     def query_objects(self, options):
         """
         Connects to LDAP server and attempts to query and return all users.
@@ -193,90 +255,156 @@ class LdapConnection(object):
         if full_record:
             fields = None
 
-        ldap_users = self.ldap_connection.search_s(
-            self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
-            fields
-        )
+        if self.settings.get('page_criterium'):
+            ldap_users = self.query_objects_iteratively(fields)
+        else:
+            ldap_users = self.ldap_connection.search_s(
+                self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
+                fields
+            )
         # disconnect and return results
         self.ldap_connection.unbind_s()
         for user in ldap_users:
             if user[0] and user[1]:
                 yield self.clean_record(user[1])
 
-    def query_objects_paged(self, options):
+    def get_page(self, page_size, full_record):
         """
-        Connects to LDAP server and attempts to query and return all users
-        by iterating through each page result. Requires LDAP v3.
-        """
-        page_size = options.get('page_size', 500)
-        criticality = options.get('criticality', True)
-        cookie = options.get('cookie', '')
-        full_record = options.get('full_record', False)
+        Method used to retrieve all the objects in the "page" using Simple Paged Results Manipulation
+        and Server Side Sorting extensions
 
+        https://tools.ietf.org/html/rfc2696
+        https://tools.ietf.org/html/rfc2891
+
+        :param full_record: flag identifying that we hav to extract the full set of fields
+        :param page_size: size of page
+        :return: generator
+        """
         fields = self.ldap_query_fields
         if full_record:
             fields = None
 
-        # search the server for users
-        first_pass = True
-        pg_ctrl = SimplePagedResultsControl(criticality, page_size, cookie)
+        # set ldap control extensions
+        if not self.pg_ctrl:
+            self.pg_ctrl = SimplePagedResultsControl(True, page_size, '')
 
-        LOG.debug("self.ldap_query_fields = %r", self.ldap_query_fields)
-        while first_pass or pg_ctrl.cookie:
-            first_pass = False
-            msgid = self.ldap_connection.search_ext(
-                self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
-                fields,
-                serverctrls=[pg_ctrl]
-            )
+        serverctrls = [self.pg_ctrl]
+        if fields:
+            # if we have defined set of fields, use the last one for the sorting
+            serverctrls.append(SSSRequestControl(ordering_rules=[fields[-1]]))
 
-            result_type, ldap_users, msgid, serverctrls = self.ldap_connection.result3(msgid)
-            pg_ctrl.cookie = serverctrls[0].cookie
-            for user in ldap_users:
-                if user[0] and user[1]:
-                    yield self.clean_record(user[1])
+        msgid = self.ldap_connection.search_ext(
+            self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
+            fields,
+            serverctrls=serverctrls
+        )
 
-        # disconnect and return results
-        self.ldap_connection.unbind_s()
+        _, records, msgid, serverctrls = self.ldap_connection.result3(msgid)
+        self.pg_ctrl.cookie = [_ for _ in serverctrls if _.controlType == SimplePagedResultsControl.controlType][0].cookie
 
-    def query_group(self, options):
+        if not self.pg_ctrl.cookie:
+            # disconnect, the page is the last one
+            self.ldap_connection.unbind_s()
+
+        return (self.clean_record(record[1]) for record in records if (record[0] and record[1]))
+
+    def pages(self, options):
+        """
+        Gather all the pages and then return them.
+        This is not optimal approach but allow us to not handle connection timeout exception
+        in case of long data pushing to Oomnitza
+        :param options:
+        :return:
+        """
+        pages = []
+
+        page_size = options.get('page_size', 500)
+        full_record = options.get('full_record', False)
+
+        LOG.info("Gathering LDAP info...")
+        counter = 1
+        while not self.pg_ctrl or self.pg_ctrl.cookie:
+
+            pages.append(self.get_page(page_size, full_record))
+            LOG.info("Gathered up to %d records" % (counter * page_size))
+            counter += 1
+
+        return pages
+
+    def query_objects_paged(self, options):
+        """
+        Generator over the gathered pages
+        :param options:
+        :return:
+        """
+        pages = self.pages(options)
+
+        while pages:
+
+            page_generator = pages.pop()
+
+            for record in page_generator:
+                yield record
+
+    def query_groups(self, options):
+        members = []
+        groups_dn = self.settings['groups_dn']
+        for group_dn in groups_dn:
+            members.extend(self.query_group(options, group_dn))
+        return members
+
+    def query_group(self, options, group_dn):
         """
         Connects to LDAP server and attempts to query and return all objects in a Group.
         """
         group = self.ldap_connection.search_s(
-            self.settings['group_dn'], ldap.SCOPE_SUBTREE, "(objectClass=*)", None
+            group_dn, ldap.SCOPE_SUBTREE, "(objectClass=*)", None
         )
         if group:
             group = group[0]
         if len(group) == 2 and group[0] and group[1]:
             group = group[1]
-        if group:
-            for index, member in enumerate(group['member']):
-                print index, member
 
         members = []
-        for member in group['member']:
-            print member
-            user = self.get_object(options, member)
+        for member in group[self.settings['group_members_attr']]:
+            if self.settings['group_member_filter']:
+                user = self.get_object(
+                    options,
+                    filter=self.settings['group_member_filter'].format(member)
+                )
+            else:
+                user = self.get_object(options, dn=member)
             if user:
                 members.append(self.clean_record(user))
 
         return members
 
-    def query_group_paged(self, options):
-        return self.query_group(options)
+    def query_group_paged(self, options, group_dn):
+        return self.query_group(options, group_dn)
 
-    def get_object(self, options, dn):
+    def get_object(self, options, dn=None, filter=None):
         full_record = options.get('full_record', False)
 
         fields = self.ldap_query_fields
         if full_record:
             fields = None
 
-        result = self.ldap_connection.search_s(
-            dn, ldap.SCOPE_BASE, self.settings['filter'],
-            fields
-        )
+        if dn:
+            result = self.ldap_connection.search_s(
+                dn, ldap.SCOPE_BASE, self.settings['filter'], fields
+            )
+        elif filter:
+            ldap_filter = '(&{}{})'.format(self.settings['filter'], filter)
+            result = self.ldap_connection.search_s(
+                self.settings['base_dn'],
+                ldap.SCOPE_SUBTREE,
+                ldap_filter,
+                fields
+            )
+        else:
+            LOG.error("Neither dn nor filter was provided for get_object method")
+            return None
+
         if result:
             if len(result[0]) == 2 and result[0][1]:
                 return result[0][1]

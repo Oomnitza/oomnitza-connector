@@ -17,6 +17,7 @@ from .error import ConfigError, AuthenticationError
 from .filter import DynamicException
 from .httpadapters import AdapterMap, retries
 from .version import VERSION
+from .strongbox import Strongbox, StrongboxBackend
 
 LOG = logging.getLogger("lib/connector")
 
@@ -81,6 +82,8 @@ class BaseConnector(object):
         'dont_overwrite': {'order': 7, 'default': ""},
         'insert_only':    {'order': 8, 'default': "False"},
         'update_only':    {'order': 9, 'default': "False"},
+        'vault_keys':     {'order': 10, 'default': ""},
+        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING}
     }
 
     def __init__(self, section, settings):
@@ -123,12 +126,14 @@ class BaseConnector(object):
 
         # loop over settings definitions, setting default values
         for key, setting in self.Settings.items():
-            if not self.settings.get(key, None):
-                default = setting.get('default', None)
-                if default is None:
+            setting_value = self.settings.get(key, None)
+            if not setting_value:
+                setting_value = setting.get('default', None)
+                if setting_value is None:
                     raise RuntimeError("Missing setting value for %s." % key)
-                else:
-                    self.settings[key] = default
+            if setting.get('validator', None):
+                setting_value = setting['validator'](setting_value)
+            self.settings[key] = setting_value
 
         self.field_mappings = self.get_field_mappings(ini_field_mappings)
         if hasattr(self, "DefaultConverters"):
@@ -139,6 +144,40 @@ class BaseConnector(object):
 
         if section == 'oomnitza' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
+
+        backend_name = settings.get('vault_backend', StrongboxBackend.KEYRING)
+        self._strongbox = Strongbox(section, backend_name)
+        self._preload_secrets()
+
+    def _get_secrets(self, keys=None):
+        """
+        Get secrets from vault for specified keys. Raises ``ConfigError``
+        if secret is missed in vault.
+        """
+        secrets = {}
+        if keys is not None:
+            for secret_key in keys:
+                secret_value = self._strongbox.get_secret(secret_key)
+                if secret_value:
+                    secrets[secret_key] = secret_value
+                else:
+                    raise ConfigError(
+                        "Unable to find secret in secretbox, ensure secret "
+                        "key/value pair has been inserted before starting "
+                        "connector:\n\t"
+                        "python strongbox.py --connector=%s --key=%s --value="
+                        % (self._strongbox._service_name, secret_key)
+                    )
+        return secrets
+
+    def _preload_secrets(self):
+        """
+        Load secrets from vault into connector settings.
+        """
+        secret_keys_string = self.settings.get('vault_keys', '')
+        secret_keys = secret_keys_string.split()
+        secrets = self._get_secrets(secret_keys)
+        self.settings.update(secrets)
 
     def get_field_mappings(self, extra_mappings):
         mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
@@ -356,7 +395,7 @@ class BaseConnector(object):
                         # increase records counter
                         self.processed_records_counter += 1
                         if not self.processed_records_counter % 10:
-                            LOG.info("Sent %d records to Oomnitza.", self.processed_records_counter)
+                            LOG.info("Processed %d records. Sent %d records to Oomnitza." % (self.processed_records_counter, self.sent_records_counter))
 
                         if not self.keep_going:
                             break
@@ -440,7 +479,7 @@ class BaseConnector(object):
         """
         Do the server side logic for the certain connector.
         :param wsgi_env: WSGI env dict
-        :param body: request bode read from the 
+        :param body: request bode read from the
         :param options:
         :return:
         """

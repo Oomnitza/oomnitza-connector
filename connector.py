@@ -123,7 +123,7 @@ def parse_command_line_args(for_server=False):
         parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
         parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
                                                                      "simultaneously running connectors")
-        parser.add_argument('--workers', type=int, default=10, help="Number of async IO workers used to pull & push records.")
+        parser.add_argument('--workers', type=int, default=2, help="Number of async IO workers used to pull & push records.")
 
     parser.add_argument('--version', action='store_true', help="Show the connector version.")
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector.")
