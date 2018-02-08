@@ -4,6 +4,7 @@ EnabledConnectors = {
     'airwatch',
     'bamboohr',
     'casper',
+    'chef',
     'jasper',
     'ldap',
     'ldap_assets',

@@ -61,9 +61,8 @@ class SingleInstance:
             self._is_already_running = False
             self._do_magic()
             if exit_msg and self._is_already_running:
-                sys.exit(
-                    "{}.\n  File '{}' exists and is locked.".format(exit_msg, self._lock_path)
-                )
+                LOGGER.exception("{}.\n  File '{}' exists and is locked.".format(exit_msg, self._lock_path))
+                sys.exit()
 
     @property
     def is_already_running(self):

@@ -51,7 +51,11 @@
       "update_only": "Update Only",
       "filename": "Filename",
       "directory": "Directory",
-      "deprovisioned": "Include\ndeprovisioned\nusers"
+      "deprovisioned": "Include\ndeprovisioned\nusers",
+      "page_criterium": "Page criterium",
+      "groups_dn": "Groups DN",
+      "group_members_attr": "Group\nmembers\nattribute",
+      "group_member_filter": "Group\nmembers\nfilter"
     },
   "fields_display_order":
     [
@@ -87,6 +91,10 @@
       "database",
       "authentication",
       "update_only",
-      "deprovisioned"
+      "deprovisioned",
+      "page_criterium",
+      "groups_dn",
+      "group_members_attr",
+      "group_member_filter"
     ]
 }

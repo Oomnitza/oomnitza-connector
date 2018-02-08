@@ -235,7 +235,7 @@ def parse_config(args):
                         try:
                             cfg["__workers__"] = args.workers
                         except:
-                            cfg["__workers__"] = 10
+                            cfg["__workers__"] = 2
                         # cfg["__load_data__"] = args.load_data
                         cfg["__name__"] = module
                         cfg["__connector__"] = connector(section, cfg)

@@ -6,6 +6,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
+* Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
@@ -102,6 +103,153 @@ Sometimes you need the connector not as plain python script but as standalone ex
  or
  
     pyinstaller pyinstaller.mac.spec
+
+## Storage for Connector secrets
+
+To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
+
+There are two options:
+
+- local KeyRing;
+- external the Vault Key Management System by Hashicorp (the Vault KMS).
+
+KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
+
+The [Vault KMS](https://www.vaultproject.io/intro/index.html) provides an additional layer of security. In this case, all secrets will be stored in the external encrypted backend:
+
+### Common recommendations:
+
+Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
+Use a technical role with restricted permissions to run the Connector.
+It is recommended to use web server for the Vault KMS.
+To avoid the Vault KMS API call unauthorized using restrict IPs (see section
+Network Security) for the Vault KMS API call and connected system. For
+example, in Nginx configuration for the Vault KMS:
+
+```nginx
+location / {
+  # allow connector workstation IP
+  allow    192.168.1.4;
+  # drop rest of the world
+  deny    all;
+}
+```
+
+### Deployment and receiving secrets
+
+#### Local KeyRing description
+
+OS Supported:
+
+Ubuntu Linux: KWallet. SHA-1 (2000 times).
+Windows: Credential Locker;
+OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
+
+_OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
+
+1. To use local KeyRing specify `keyring` as the `vault_backend` in config
+
+```ini
+[oomnitza]
+url = https://example.com
+vault_backend = keyring
+vault_keys = api_token
+```
+
+For Ubuntu, you need to install and configure KeyRing Daemon.
+
+2. To add secrets use the command line utility which enables an easy way to
+   place secrets to the system keyring service.
+
+
+```sh
+$ python strongbox.py --help
+usage: strongbox.py [-h] [--version] --connector CONNECTOR --key KEY --value VALUE
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             Show the vault version.
+  --connector CONNECTOR Connector name under which secret is saved in a vault.
+  --key KEY             Secret key name.
+  --value VALUE         Secret value. Will be requested.
+```
+
+To prevent password disclosure you will be asked to provide your secret value
+in the console.
+
+```sh
+python strongbox.py --connector=oomnitza --key=api_token --value
+Your secret: your-secret
+```
+
+You can add a few secrets to one type of Connector.
+
+#### The Vault KMS run-up
+
+To use the Vault KMS:
+
+1. Install, initialize and unseal the Vault KMS (use documentation).
+
+2. Mount Key/Value Secret Backend.
+
+3. Write secrets to Key/Value Secret Backend. For example:
+
+```sh
+$ vault write secret/zendesk \
+    system_name=oomnitza_user \
+    api_token=123456789ABCD$$$
+Success! Data written to: secret/zendesk
+```
+
+4.Create a json/hcl file with policy:
+
+# This section grants all access on "secret/zendesk*". 
+# Further restrictions can be applied to this broad policy.
+
+```hcl
+path "secret/zendesk/*" {
+  capabilities = ["read", "list"]
+}
+```
+
+5. To add this policy to the Vault  KMS system policies list use the following
+   command or API:
+
+```sh
+vault write sys/policy/zendesk-read policy=@/root/vault/zendesk-read.hcl
+```
+
+6.To create a token with assigned policy:
+
+```sh
+vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
+Token: 6c1247-413f-4816-5f=a72-2ertc1d2165e
+```
+
+7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
+
+```ini
+[zendesk]
+enable = true
+url = https://example.com
+vault_backend = vault
+vault_keys = api_token username password
+```
+
+9. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
+   be added to system keyring via vault cli.
+
+Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
+
+```sh
+python strongbox.py --connector=zendesk --key=vault_url --value=
+Your secret: https://vault.adress.com/v1/secret/zendesk
+
+python strongbox.py --connector=zendesk --key=vault_token --value=
+Your secret: 6c1247-413f-4816-5f=a72-2ertc1d2165e
+```
+
+__It is recomended to use read-only token.__
 
 ## Running the connector client
 The connector is meant to be run from the command line and as such as multiple command line options:
@@ -279,6 +427,14 @@ An example generated config.ini follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     sync_type = computers
     update_only = False
+    
+    [chef]
+    enable = False
+    url = https://chef-server/organizations/ORG/
+    client = user
+    key_file = /home/user/user.pem
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+    attribute_extension = 
 
     [jasper]
     enable = False
@@ -666,6 +822,51 @@ Set the field mapping related to computers in the 'casper' section and set **syn
 #### Default Field Mappings
     To Be Determined
 
+### Chef Configuration
+The `[chef]` section contains a similar set of preferences.
+
+The identifier section of the config.ini file should contain a mapping to a unique field in Oomnitza, which you want to use as the identifier for an asset.
+
+`url`: the full url of the Chef server with organization e.g. https://chef-server/organizations/ORG/
+
+`client`: the Chef username for authentication
+
+`key_file`: the Chef RSA private key for authentication
+
+`sync_field`: The Oomnitza field internal id which contains the asset's unique identifier.
+
+`attribute_extension`: [optional] dictionary of additional node attributes to extract
+
+#### List of currently supported Chef attributes
+    'hardware.name'
+    'hardware.ip_address'
+    'hardware.mac_address'
+    'hardware.hostname'
+    'hardware.fqdn'
+    'hardware.domain'
+    'hardware.platform'
+    'hardware.platform_version'
+    'hardware.serial_number'
+    'hardware.model'
+    'hardware.total_memory_mb'
+    'hardware.total_hdd_mb'
+    'hardware.cpu'
+    'hardware'cpu_count'
+    'hardware.uptime_seconds'
+
+#### Attribute Extension
+The connector config.ini allows for additional node attributes to be extracted.
+
+Example: `attribute_extension = {"__default__": {"kernel_name": "automatic.kernel.name"}}`
+
+The above example will introduce a new mappable attribute "hardware.kernel_name". If a particular platform does not have this node attribute, it will processed as empty.
+
+`attribute_extension = {
+    "mac_os_x": {"machine_name": "automatic.machinename"},
+    "windows": {"machine_name": "automatic.foo.bar"}
+}`
+
+The above example will introduce a new mappable attribute "hardware.machine_name" for mac_os_x and windows nodes only.
 
 ### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.
