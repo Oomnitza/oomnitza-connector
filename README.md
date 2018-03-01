@@ -141,8 +141,10 @@ location / {
 
 OS Supported:
 
-Ubuntu Linux: KWallet. SHA-1 (2000 times).
-Windows: Credential Locker;
+Ubuntu Linux: [SecretStorage](https://github.com/mitya57/secretstorage) (requires installation of additional packages).
+
+Windows: Windows Credential Manager (by default).
+
 OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
 
 _OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
@@ -156,7 +158,7 @@ vault_backend = keyring
 vault_keys = api_token
 ```
 
-For Ubuntu, you need to install and configure KeyRing Daemon.
+For Linux, you may have to install **dbus-python** package and configure KeyRing Daemon.
 
 2. To add secrets use the command line utility which enables an easy way to
    place secrets to the system keyring service.
@@ -405,6 +407,7 @@ An example generated config.ini follows.
     password = change-me
     api_token = YOUR AirWatch API TOKEN
     sync_field = 24DCF85294E411E38A52066B556BA4EE
+    dep_uuid = 
 
     [appledep]
     enable = False
@@ -553,7 +556,9 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `api_token`: API token for the connection
 
-`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+`dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
 
 #### Default Field Mappings
     To Be Determined
