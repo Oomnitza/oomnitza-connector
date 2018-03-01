@@ -36,6 +36,7 @@ class Connector(AuditConnector):
         super(Connector, self).__init__(section, settings)
         self.url_template = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['url']
         self.network_url_template = "%s/api/v1/mdm/devices/macaddress/{mac}/network" % self.settings['url']
+        self.dep_devices = {}  # this is the storage for the device info retrieved through the DEP-specific API
 
         self.__load_network_data = False
         for key, value in self.field_mappings.items():
@@ -119,6 +120,18 @@ class Connector(AuditConnector):
             device['network'] = self._load_network_information(device.get('MacAddress', ''))
             return device
 
+        def set_dep_info(device):
+            serial_number = device.get('SerialNumber')
+            if serial_number:
+                dep_info_about_device = self.dep_devices.get(serial_number)
+                if dep_info_about_device:
+                    device['dep'] = dep_info_about_device
+            return device
+
+        # extend the info about devices using info from the separate API
+        if self.dep_devices:
+            devices = map(set_dep_info, devices)
+
         if self.__load_network_data:
             pool_size = self.settings['__workers__']
             connection_pool = Pool(size=pool_size)
@@ -141,25 +154,20 @@ class Connector(AuditConnector):
     def _load_records(self, options):
 
         if self.settings.get('dep_uuid'):
-            # if the dep_uuid is given, we have to retrieve the different subset of devices fro the separate API
+            # if the dep_uuid is given, we have to retrieve the different subset of devices from the separate API
             # it is not clear from the docs if the API supports pagination, looks like not
-            # also this API is supported only be the AirWatch starting from 9.2(?)
+            # also this API is supported only by the AirWatch starting from 9.2(?)
             dep_api_url = '%s/api/mdm/dep/groups/%s/devices' % (self.settings['url'], self.settings['dep_uuid'])
-            devices = self.get(dep_api_url)
-            for device in devices:
-                if not device:
-                    raise StopIteration
-                yield device
-        else:
+            self.dep_devices = {_['deviceSerialNumber']: _ for _ in self.get(dep_api_url).json()}
 
-            pool_size = self.settings['__workers__']
+        pool_size = self.settings['__workers__']
 
-            connection_pool = Pool(size=pool_size)
+        connection_pool = Pool(size=pool_size)
 
-            for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
-                if not device_info:
-                    raise StopIteration
-                yield device_info
+        for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
+            if not device_info:
+                raise StopIteration
+            yield device_info
 
     def _load_network_information(self, mac_address):
         try:
