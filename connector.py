@@ -15,7 +15,6 @@
 from gevent import monkey
 monkey.patch_all(thread=False)
 
-import os
 import sys
 import argparse
 import logging.config
@@ -32,19 +31,6 @@ from lib.converters import Converter
 
 LOG = logging.getLogger("connector.py")
 root_logger = logging.getLogger("")
-
-try:
-    from oomnitza_gui import main as gui_main
-    HAVE_GUI = True
-except ImportError:
-    LOG.debug("Looks like wxPython is not installed.")
-    HAVE_GUI = False
-
-
-# The import below needs to be enabled when building the binary!!!
-# This is s a holding comment until this is resolved as part of the build automation process.
-# Pull out pyodbc when building Mac binary!!
-# import ldap, suds, csv, pyodbc  # number 2
 
 
 def prepare_connector(cmdline_args):
@@ -108,9 +94,6 @@ def parse_command_line_args(for_server=False):
         'upload',      # action which pulls data from remote system and push to Oomnitza.
         'generate-ini' # action which generates an example config.ini file.
     ]
-    if HAVE_GUI:
-        # action which runs the gui.
-        actions.append('gui')
 
     parser = argparse.ArgumentParser()
 
@@ -159,11 +142,6 @@ if __name__ == "__main__":
     with SingleInstance(bool(args.singleton), "Connector is already running."):
         if args.action == 'generate-ini':
             config.generate_ini_file(args)
-        elif args.action == 'gui' and HAVE_GUI:
-            if not os.path.exists(args.ini):
-                # ensure the gui has a config.ini file to load. Generate it if missing.
-                config.generate_ini_file(args)
-            gui_main(args)
         else:
             if not args.connectors:
                 LOG.error("No connectors specified.")

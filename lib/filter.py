@@ -76,6 +76,7 @@ def parse_filter(filter_str):
         LOG.exception("TypeError calling compile()")
         raise
 
+
 def parse_converter(name, filter_str):
     try:
         code = CONVERTER_WRAPPER.format(name=name, code=filter_str)

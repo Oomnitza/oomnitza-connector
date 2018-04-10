@@ -343,7 +343,7 @@ class BaseConnector(object):
 
         converted_record = self.convert_record(rec)
         if not converted_record:
-            LOG.debug("Skipping record %r because it has not been converted properly", rec)
+            LOG.info("Skipping record %r because it has not been converted properly", rec)
             return
 
         self.send_to_oomnitza(oomnitza_connector, converted_record, options)
@@ -376,14 +376,31 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
+        save_data = self.settings.get("__save_data__", False)
+
+        if save_data:
+            try:
+                os.makedirs("./saved_data")
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
+                    pass
+                else:
+                    raise
+
         try:
             pool_size = self.settings['__workers__']
 
             connection_pool = Pool(size=pool_size)
-            for record in self._load_records(options):
+            for index, record in enumerate(self._load_records(options)):
 
                 if not self.keep_going:
                     break
+
+                if save_data:
+                    filename = "./saved_data/{}.json".format(str(index))
+                    with open(filename, "w") as save_file:
+                        LOG.info("Saving fetched payload data to %s.", filename)
+                        json.dump(record, save_file, indent=2)
 
                 if not isinstance(record, list):
                     record = [record]
@@ -430,16 +447,9 @@ class BaseConnector(object):
         )
         if self.settings.get("__save_data__", False):
             try:
-                try:
-                    os.makedirs("./saved_data")
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                        pass
-                    else:
-                        raise
 
                 filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
-                LOG.info("Saving payload data to %s.", filename)
+                LOG.info("Saving processed payload data to %s.", filename)
                 with open(filename, 'w') as save_file:
                     self.send_counter += 1
                     json.dump(data, save_file, indent=2)
@@ -458,6 +468,7 @@ class BaseConnector(object):
         :param options: currently always {}
         :return: Nothing
         """
+        # NOTE: not used for now, because we have deprecated GUI
         try:
             return self.do_test_connection(options)
         except Exception as exp:
@@ -465,7 +476,7 @@ class BaseConnector(object):
             return {'result': False, 'error': 'Test Connection Failed: %s' % exp.message}
 
     def do_test_connection(self, options):
-        raise NotImplemented
+        raise NotImplementedError
 
     def _load_records(self, options):
         """
@@ -473,7 +484,7 @@ class BaseConnector(object):
         :param options: currently always {}
         :return: nothing, but yields records wither singly or in a list
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def server_handler(self, body, wsgi_env, options):
         """
@@ -543,7 +554,6 @@ class BaseConnector(object):
                 incoming_value = f_type(incoming_value)
 
             if specs.get('required', False) in TrueValues and not incoming_value:
-                LOG.debug("Record missing %r. Record = %r", field, incoming_record)
                 missing_fields.add(field)
 
             outgoing_record[field] = incoming_value
@@ -557,8 +567,7 @@ class BaseConnector(object):
 
         return outgoing_record
 
-    @classmethod
-    def get_field_value(cls, field, data, default=None):
+    def get_field_value(self, field, data, default=None):
         """
         Will return the field value out of data.
         Field can contain '.', which will be followed.

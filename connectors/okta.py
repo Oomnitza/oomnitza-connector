@@ -1,7 +1,4 @@
-import errno
-import json
 import logging
-import os
 
 from requests import ConnectionError, HTTPError
 
@@ -50,21 +47,6 @@ class Connector(UserConnector):
         except HTTPError as exp:
             return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
 
-    def dump_data(self, name, data):
-        """
-        Dump data to files
-        """
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-            with open("./saved_data/{}.json".format(str(name)), "w") as save_file:
-                save_file.write(json.dumps(data))
-
     def not_deprovisioned_users_generator(self, options):
         """
         Generator returning the users with status != 'DEPROVISIONED'
@@ -76,7 +58,6 @@ class Connector(UserConnector):
         while page:
             response = self.get(page)
             for user in response.json():
-                self.dump_data(index, user)
                 index += 1
                 yield user
 
@@ -93,7 +74,6 @@ class Connector(UserConnector):
         while page:
             response = self.get(page)
             for user in response.json():
-                self.dump_data(str(index) + '_DEPROVISIONED', user)
                 index += 1
                 yield user
 

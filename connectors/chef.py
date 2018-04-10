@@ -314,15 +314,6 @@ class Connector(AuditConnector):
         """
         Generate audit payload for each unique computer resource.
         """
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-
         for resource in self.query():
             yield resource
 
@@ -332,14 +323,6 @@ class Connector(AuditConnector):
         """
         try:
             audit = AuditFactory.create(node)
-
-            file_name = audit['hardware']['serial_number']
-            if not file_name:
-                file_name = audit['hardware']['hostname']
-
-            if self.settings.get("__save_data__", False):
-                with open("./saved_data/{}.json".format(file_name), "w") as save_file:
-                    save_file.write(json.dumps(audit, indent=2))
 
             return audit
         except Exception:

@@ -1,10 +1,8 @@
-import os
-import errno
-import json
 import base64
 import logging
 
 from requests import ConnectionError, HTTPError
+
 from lib.connector import UserConnector
 
 logger = logging.getLogger("connectors/bamboohr")  # pylint:disable=invalid-name
@@ -56,17 +54,6 @@ class Connector(UserConnector):
         url = self.url_temlate.format("v1/employees/directory")
         response = self.get(url)
         employees = response.json()['employees']
-
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-            with open("./saved_data/{}.json".format("bamboohr.json"), "w") as save_file:
-                json.dump(employees, save_file)
 
         for employee in employees:
             yield employee

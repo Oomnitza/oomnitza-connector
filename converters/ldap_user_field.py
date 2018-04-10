@@ -10,7 +10,6 @@ def converter(field, record, value, params):
     :param value: field value
     :return: value from defined source, value from sAMAccountName, or None.
     """
-    logger.debug("converter(%r, %r, %r)", field, record, value)
     if value:
         return value
 

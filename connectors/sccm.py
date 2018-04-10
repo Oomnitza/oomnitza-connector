@@ -1,8 +1,7 @@
-import os
-import errno
 import logging
-import json
+
 import pyodbc
+
 from lib.connector import AuditConnector
 
 logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
@@ -116,17 +115,7 @@ class Connector(AuditConnector):
         """
         Generate audit payload for each unique computer resource.
         """
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-
         for resource in self.query(MainSQL):
-            # logger.info("processing resource %s" % str(resource['ResourceID']))
             yield self.build_audit(resource)
 
     def build_audit(self, resource):
@@ -141,12 +130,8 @@ class Connector(AuditConnector):
                 "software": self.get_installed_software(resource['resource_id'])
             }
 
-            if self.settings.get("__save_data__", False):
-                with open("./saved_data/{}.json".format(str(resource['resource_id'])), "w") as save_file:
-                    save_file.write(json.dumps(audit, indent=2))
-
             return audit
-        except Exception as e:
+        except Exception:
             logger.exception("Unhandled exception in build audit")
             return None
 
@@ -169,8 +154,8 @@ class Connector(AuditConnector):
                     "publisher": software.get("publisher"),
                     "path": None
                 })
-            except Exception as exception:
-                logger.exception("Exception in get_installed_software: %s" % (exception))
+            except:
+                logger.exception("Exception in get_installed_software")
 
         return installed_software
 

@@ -75,35 +75,14 @@ On Ubuntu, the build tools are installed using:
 
 ### Windows Environment
 For MS Windows you have to install Windows C++ compilers as build tools. Please visit the [Python Wiki](https://wiki.python.org/moin/WindowsCompilers)
- to check what is appropriate compiler you have to download and install.
- 
+ To check what is appropriate compiler you have to download and install.
+
+
 ### OS X Environment
 For OS X environment you have to install the build tools using the following command:
 
     xcode-select --install
     
-### Connector GUI
-Optional feature. GUI provides the convenient interface to the config editing. 
- To support the GUI functionality you have to install wxPython package.
- 
-    pip install wxPython
-
-### Packaging the connector
-Sometimes you need the connector not as plain python script but as standalone executable. 
- In the repository there are 2 specification files for the [PyInstaller](http://www.pyinstaller.org/) tool. 
- You can easily package the connector into single executable for MS Windows and OS X. 
- First install the tool:
-    
-    pip install pyinstaller
-    
- Next package the connector for target OS:
- 
-    pyinstaller pyinstaller.win.spec
-   
- or
- 
-    pyinstaller pyinstaller.mac.spec
-
 ## Storage for Connector secrets
 
 To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
@@ -202,11 +181,10 @@ $ vault write secret/zendesk \
     api_token=123456789ABCD$$$
 Success! Data written to: secret/zendesk
 ```
+4. Create a json/hcl file with policy:
 
-4.Create a json/hcl file with policy:
-
-# This section grants all access on "secret/zendesk*". 
-# Further restrictions can be applied to this broad policy.
+This section grants all access on __"*secret/zendesk**"__. 
+Further restrictions can be applied to this broad policy.
 
 ```hcl
 path "secret/zendesk/*" {
@@ -214,14 +192,14 @@ path "secret/zendesk/*" {
 }
 ```
 
-5. To add this policy to the Vault  KMS system policies list use the following
+5. To add this policy to the Vault KMS system policies list use the following
    command or API:
 
 ```sh
 vault write sys/policy/zendesk-read policy=@/root/vault/zendesk-read.hcl
 ```
 
-6.To create a token with assigned policy:
+6. To create a token with assigned policy:
 
 ```sh
 vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
@@ -238,7 +216,7 @@ vault_backend = vault
 vault_keys = api_token username password
 ```
 
-9. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
+8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
    be added to system keyring via vault cli.
 
 Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
@@ -261,10 +239,10 @@ The connector is meant to be run from the command line and as such as multiple c
                         [--version] [--workers WORKERS] [--show-mappings]
                         [--testmode] [--save-data] [--ini INI]
                         [--logging-config LOGGING_CONFIG]
-                        {upload,generate-ini,gui} [connectors [connectors ...]]
+                        {upload,generate-ini} [connectors [connectors ...]]
     
     positional arguments:
-      {upload,generate-ini,gui}
+      {upload,generate-ini}
                             Action to perform.
       connectors            Connectors to run.
     
@@ -288,8 +266,7 @@ The connector is meant to be run from the command line and as such as multiple c
 
 The available actions are:
 
-* `gui` (default if wxPython is installed): launch the config gui. Not accessible if wxPython is not installed.
-* `generate-ini`: generate an example config.ini file.
+* `generate-ini`: generate an example `config.ini` file.
 * `upload`: uploads the data from the indicated connectors to Oomnitza. The connector values are taken
    from the section names in the ini file.
 
@@ -299,7 +276,7 @@ The available actions are:
 `--logging-config` is used to specify an alternate logging config file.
 
 `--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
-   config.ini mappings, and mappings setup via the website.
+   `config.ini` mappings, and mappings setup via the website.
 
 `--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
    can be used to see what, exactly, is getting sent to the server.
@@ -358,6 +335,14 @@ The available arguments for the connector server are serving for the same purpos
 
 `--port` is used to specify the server's port. Default is 8000
 
+The url pointing to the connector server instance should ends with the name of the connector:
+
+Examples:
+
+    https://my-connector-server.com/it/does/not/matter/casper
+    https://my-connector-server.com/it/does/not/matter/casper.MDM
+    https://my-connector-server.com/it/does/not/matter/casper.1
+
 **Note:** Now only the Casper (JAMF Pro) Webhooks are supported out of the box by the connector server.
 First you have to enable webhooks with JSON payloads (http://docs.jamf.com/9.96/casper-suite/administrator-guide/Webhooks.html)
 Out of the box the following webhooks are supported:
@@ -373,18 +358,17 @@ Out of the box the following webhooks are supported:
 * MobileDevicePushSent
 * MobileDeviceUnEnrolled
 
-The url pointing to the connector server instance should ends with the name of the connector:
+As soon as the connector server is receiving the message from the Casper (JAMF Pro) it is initiating the request to fetch the details of the asset triggered that webhook request and sync it with Oomnitza. 
+This allows efficiently and fast keep the Oomnitza in the up-to-date state.
 
-Examples:
-
-    https://my-connector-server.com/it/does/not/matter/casper
-    https://my-connector-server.com/it/does/not/matter/casper.MDM
-    https://my-connector-server.com/it/does/not/matter/casper.1
+Also please keep in mind that the webhooks from the Casper (JAMF Pro) **do not add any authorization information** in the requests to the connector server. 
+Because of that server cannot verify incoming requests in any way, so if you want somehow forbid access to the connector's server interface configured to listen to Casper (JAMF Pro) webhooks, 
+you have to use something else, like firewalls with configured allowed IPs, etc.
 
 ## Connector Configs
 
 Now you should be able to generate a default config file. Running `python connector.py generate-ini` will regenerate
- the config.ini file, and create a backup if the file already exists. When you edit this file, it will have one section
+ the `config.ini` file, and create a backup if the file already exists. When you edit this file, it will have one section
  per connection. You can safely remove the section for the connections you will not be using to keep the file small and
  manageable.
 
@@ -392,7 +376,7 @@ If you require multiple different configurations of a single connector, such as 
  additional sections can be added by appending a '.' and a unique identifier to the section name. For example, having both a
  `[ldap]` and `[ldap.Contractors]` section will allow you to pull users from a default and Contractor OU.
 
-An example generated config.ini follows.
+An example generated `config.ini` follows.
 
     [oomnitza]
     url = https://example.oomnitza.com
@@ -624,7 +608,7 @@ For fields which require processing before being brought into Oomnitza must be d
 The `[casper]` section contains a similar set of preferences; your JSS URL, and the login credentials for an auditor
 account in Casper (See the [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585), pg. 42).
 
-The identifier section of the config.ini file should contain a mapping to a unique field in Oomnitza, which you want to
+The identifier section of the `config.ini` file should contain a mapping to a unique field in Oomnitza, which you want to
 use as the identifier for an asset. Serial Number is the most commonly used identifier since no two assets should share
 one. This will determine if the script creates a new record for a given serial number on its next sync, or if it updates
 an existing record that has new information.
@@ -640,7 +624,7 @@ an existing record that has new information.
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 `sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. 
-**Note**: If you need to pull computers AND mobile devices info from Casper, copy Casper configuration section to the same config.ini and name it as 'casper.MDM'. 
+**Note**: If you need to pull computers AND mobile devices info from Casper, copy Casper configuration section to the same `config.ini` and name it as 'casper.MDM'. 
 Set the field mapping related to computers in the 'casper' section and set **sync_type = computers**. Set the field mapping related to mobile devices in the 'casper.MDM' section and set **sync_type = mobiledevices**
 
 `group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
@@ -830,7 +814,7 @@ Set the field mapping related to computers in the 'casper' section and set **syn
 ### Chef Configuration
 The `[chef]` section contains a similar set of preferences.
 
-The identifier section of the config.ini file should contain a mapping to a unique field in Oomnitza, which you want to use as the identifier for an asset.
+The identifier section of the `config.ini` file should contain a mapping to a unique field in Oomnitza, which you want to use as the identifier for an asset.
 
 `url`: the full url of the Chef server with organization e.g. https://chef-server/organizations/ORG/
 
@@ -860,7 +844,7 @@ The identifier section of the config.ini file should contain a mapping to a uniq
     'hardware.uptime_seconds'
 
 #### Attribute Extension
-The connector config.ini allows for additional node attributes to be extracted.
+The connector `config.ini` allows for additional node attributes to be extracted.
 
 Example: `attribute_extension = {"__default__": {"kernel_name": "automatic.kernel.name"}}`
 
@@ -1075,24 +1059,16 @@ For example, the following filter will only  process records with the `asset_typ
 This is a very new feature, with many options, and we are still working on the documentation. If you are interested in
  using this feature, please contact [support@oomnitza.com](mailto://support@oomnitza.com) for assistance.
 
-# The GUI
-
-If you have installed [wxPython](https://wxpython.org/) in your system you will have an additional command line argument `gui` for the connector client.
- 
-    python connector.py gui
-
-This will run the connector with graphical interface. This interface is used to configure the config.ini file. 
-Unfortunately now this interface does not support all the sections of the config.ini, for example you cannot edit the custom converters or filters.
 
 # Current limitations
 
 ###### Software mapping
 There is no possibility to set the mapping for the software info associated with IT assets (SCCM, JAMF). The only thing can be done is to disable the mapping at all. 
-To do this set the following custom mapping in your config.ini file:
+To do this set the following custom mapping in your `config.ini` file:
 
     mapping.APPLICATIONS = {"hardcoded": []}
 
 ###### MS Windows environment
 In MS Windows environment the "Task Scheduler" is the natural tool to schedule the connector execution. Please note that when the task is scheduled via "Task Scheduler" the "working directory" is not 
 the directory of connector executable, but other one. So if you are using this tool to schedule the connector job, please also set the path to the configuration files via the command line arguments. 
-Or schedule not the connector itself, but the .bat file which is triggering the connector  
+Or schedule not the connector itself, but the __*.bat*__ file which is triggering the connector. 

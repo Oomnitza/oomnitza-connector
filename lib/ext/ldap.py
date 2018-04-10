@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import errno
 import logging
 import os
 import re
@@ -9,7 +8,6 @@ import ldap
 import ldapurl
 from ldap.controls.libldap import SimplePagedResultsControl
 from ldap.controls.sss import SSSRequestControl
-from unicodecsv import DictWriter as DictUnicodeWriter
 
 from lib import TrueValues
 from lib.connector import AuthenticationError
@@ -116,7 +114,7 @@ class LdapConnection(object):
         if self.settings.get('verify_ssl', True) in TrueValues:
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
         else:
-            LOG.info("ldap.verify_ssl = '%s' so SSL certificate validation has been disabled.", self.settings.get('verify_ssl', True))
+            LOG.warning("verify_ssl = '%s' so SSL certificate validation has been disabled.", self.settings.get('verify_ssl', True))
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_ALLOW)
 
         try:
@@ -142,14 +140,6 @@ class LdapConnection(object):
         save_data = self.settings.get("__save_data__", False)
         if save_data:
             options['full_record'] = True
-            try:
-                os.makedirs("./saved_data")
-                LOG.info("Saving data to %s.", os.path.abspath("./saved_data"))
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
 
         if self.settings['protocol_version'] == '2':
             if self.settings['groups_dn']:
@@ -174,18 +164,6 @@ class LdapConnection(object):
                 #       all the users to make sure we don't miss any fields.
                 keys.update(user.keys())
                 data.append(user)
-
-            used_keys = set(self.ldap_query_fields)
-            unused_keys = set(keys) - used_keys
-            if unused_keys:
-                keys = sorted(used_keys) + ['unmapped ->'] + sorted(unused_keys)
-            else:
-                keys = sorted(used_keys)
-
-            with open('./saved_data/ldap.csv', 'w') as save_file:
-                writer = DictUnicodeWriter(save_file, keys)
-                writer.writeheader()
-                writer.writerows(data)
 
             users = data
 
@@ -250,11 +228,11 @@ class LdapConnection(object):
         """
         # search the server for users
         full_record = options.get('full_record', False)
-
         fields = self.ldap_query_fields
         if full_record:
             fields = None
 
+        ldap_users = []
         if self.settings.get('page_criterium'):
             ldap_users = self.query_objects_iteratively(fields)
         else:

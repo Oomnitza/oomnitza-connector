@@ -99,7 +99,6 @@ class Connector(AuditConnector):
                 # yield result['searchResults']
                 results = [r for r in result['searchResults'] if r['lastCheckin'] >= cutoff]
                 if results:
-                    LOG.info("yield %s results", len(results))
                     yield results
                 else:
                     LOG.info("No more records found after cutoff date.")

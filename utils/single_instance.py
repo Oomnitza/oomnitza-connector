@@ -114,7 +114,7 @@ class SingleInstance:
                     self._fh.close()  # ???
                     os.unlink(self._lock_path)
         except OSError as exp:
-            LOGGER.warning("OSError in SingleInstance.clean_up(): %s", str(exp))
+            LOGGER.exception("OSError in SingleInstance.clean_up(): %s", str(exp))
         except Exception as exp:
             # raise # for debugging porpuses, do not raise it on production
             LOGGER.exception("Exception in SingleInstance.clean_up(): %s", str(exp))
