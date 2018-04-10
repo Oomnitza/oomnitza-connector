@@ -23,6 +23,6 @@ def converter(field, record, value, params):
 
         return value.split(split_on)[index]
     except:
-        logger.debug("Error running split() converter on %r.", value)
+        logger.error("Error running split() converter on %r.", value)
         return value
 

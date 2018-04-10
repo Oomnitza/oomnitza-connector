@@ -247,7 +247,7 @@ def parse_config(args):
                         raise ConfigError("Authentication failure: %s" % exp.message)
                     except KeyError as exp:
                         raise ConfigError("Unknown ini setting: %r" % exp.message)
-                    except Exception as exp:
+                    except:
                         LOG.exception("Error initializing connector: %r" % section)
                         raise ConfigError("Error initializing connector: %r" % section)
 

@@ -43,7 +43,7 @@ class VaultKeyring(KeyringBackend):
             ret = self.client.read('secret/{}'.format(service))
             return ret['data'][key]
         except:
-            LOG.info(
+            LOG.error(
                 "Unable to get secret key for the service: "
                 "service={} key={}".format(service, key)
             )
@@ -86,21 +86,12 @@ class Strongbox(object):
                 "The vault backend is selected to access the "
                 "secret storage for {}".format(service_name)
             )
-
-            LOG.info(
-                "Get the vault URL from system keyring "
-                "for {}".format(service_name)
-            )
             vault_url = keyring_backend.get_password(
                 service_name, 'vault_url'
             )
             if vault_url is None:
                 self._raise_config_error(key='vault_url')
 
-            LOG.info(
-                "Get the vault token from system keyring "
-                "for {}".format(service_name)
-            )
             vault_token = keyring_backend.get_password(
                 service_name, 'vault_token'
             )
@@ -110,10 +101,7 @@ class Strongbox(object):
             keyring_backend = VaultKeyring(
                 vault_url=vault_url, vault_token=vault_token
             )
-            LOG.info(
-                "The vault backend is used to access the secret storage "
-                "for {}".format(service_name)
-            )
+
         else:
             raise ConfigError(
                 "Invalid strongbox backend: '{}', e.g. only 'keyring' "
@@ -157,7 +145,7 @@ def _get_strongbox_attrs(args):
     connector_name= args.connector
     secret_key = args.key
     secret_value = args.value
-    return connector_name, secret_key, secret_value
+    return (connector_name, secret_key, secret_value)
 
 
 def save_secret_to_strongbox(args):

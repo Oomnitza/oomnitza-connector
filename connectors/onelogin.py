@@ -1,12 +1,10 @@
 import base64
-import errno
 import json
 import logging
-import os
 
 import xmltodict
 from requests import ConnectionError, HTTPError
-
+from enum import Enum
 from lib.connector import UserConnector
 
 LOG = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
@@ -14,6 +12,7 @@ LOG = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
 
 class Connector(UserConnector):
     MappingName = 'OneLogin'
+    Version = Enum('Version', ['v1_to_v3', 'slash_one'])
     Settings = {
         'url':              {'order': 1, 'default': "https://api.us.onelogin.com/api/1/users"},
         'client_id':        {'order': 2, 'example': 'qwerty12345678901234567890', 'default': ""},
@@ -32,7 +31,8 @@ class Connector(UserConnector):
         'PERMISSIONS_ID': {'setting': "default_role"},
     }
 
-    StandardFields = {
+    # API: v1-v3 APIs have been deprecated. But they won't be shut off until 2017.
+    V1ToV3Fields = {
         'activated-at',
         'created-at',
         'directory-id',
@@ -57,22 +57,70 @@ class Connector(UserConnector):
         'username',
     }
 
-    access_token = None
+    # API: /1 is the newest OneLogin API which is based on RESTful principles and secured by OAuth 2.0.
+    SlashOneFields = {
+        'activated_at',
+        'created_at',
+        'email',
+        'username',
+        'firstname',
+        'group_id',
+        'id',
+        'invalid_login_attempts',
+        'invitation_sent_at',
+        'last_login',
+        'lastname',
+        'locked_until',
+        'comment',
+        'openid_name',
+        'locale_code',
+        'password_changed_at',
+        'phone',
+        'status',
+        'updated_at',
+        'distinguished_name',
+        'external_id',
+        'directory_id',
+        'member_of',
+        'samaccountname',
+        'userprincipalname',
+        'manager_ad_id',
+        'role_id',
+        'company',
+        'department',
+        'title',
+        'state',
+        'trusted_idp_id',
+    }
 
-    old_api = False
+    access_token = None
+    api_version = None
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
+        self._decide_api_version()
+        self._init_url_template()
+
+    def _decide_api_version(self):
         if self.settings.get('client_id') and self.settings.get('client_secret'):
-            self.url_template = "%s?after_cursor={0}" % self.settings['url']
+            self.api_version = Connector.Version.slash_one
         elif self.settings.get('api_token'):
             LOG.warning('Deprecated API used! Please switch to the new OneLogin API')
-            self.old_api = True
-            self.url_template = "%s?include_custom_attributes=true&page={0}" % self.settings['url']
+            self.api_version = Connector.Version.v1_to_v3
         else:
             raise RuntimeError('OneLogin connector configured improperly')
 
-    def get_headers_old(self):
+    def _init_url_template(self):
+        if self.api_version == Connector.Version.slash_one:
+            self.url_template = "%s?after_cursor={0}" % self.settings['url']
+            self.test_conn_url = self.url_template.format('')
+        elif self.api_version == Connector.Version.v1_to_v3:
+            self.url_template = "%s?include_custom_attributes=true&page={0}" % self.settings['url']
+            self.test_conn_url = self.url_template.format(1)
+        else:
+            raise RuntimeError('OneLogin connector url template cannot be initialized with invalid version')
+
+    def get_headers_v1_to_v3(self):
         """
         DEPRECATED
         """
@@ -80,7 +128,7 @@ class Connector(UserConnector):
             'Authorization': "Basic %s" % base64.standard_b64encode(self.settings['api_token'] + ":x")
         }
 
-    def get_headers_new(self):
+    def get_headers_slash_one(self):
         # Load OAuth 2.0 token if need
         if not self.access_token:
             client_id = self.settings['client_id']
@@ -104,18 +152,16 @@ class Connector(UserConnector):
         }
 
     def get_headers(self):
-        if self.old_api:
-            return self.get_headers_old()
+        if self.api_version == Connector.Version.v1_to_v3:
+            return self.get_headers_v1_to_v3()
+        elif self.api_version == Connector.Version.slash_one:
+            return self.get_headers_slash_one()
         else:
-            return self.get_headers_new()
+            raise RuntimeError('OneLogin connector headers cannot be fetched with invalid version')
 
     def do_test_connection(self, options):
         try:
-            if self.old_api:
-                url = self.url_template.format(1)
-            else:
-                url = self.url_template.format('')
-            response = self.get(url)
+            response = self.get(self.test_conn_url)
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
@@ -123,7 +169,7 @@ class Connector(UserConnector):
         except HTTPError as exp:
             return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
 
-    def get_users_old(self):
+    def get_users_v1_to_v3(self):
         """
         DEPRECATED
         """
@@ -136,18 +182,6 @@ class Connector(UserConnector):
             url = self.url_template.format(page)
             response = self.get(url)
             response.raise_for_status()
-
-            if self.settings.get("__save_data__", False):
-                try:
-                    os.makedirs("./saved_data")
-                    LOG.info("Saving data to %s.", os.path.abspath("./saved_data"))
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                        pass
-                    else:
-                        raise
-                with open("./saved_data/onelogin.{}.xml".format(page), "w") as output_file:
-                    output_file.write(response.text)
 
             users = xmltodict.parse(response.text).get('users', {}).get('user', [])
             if not users:
@@ -168,7 +202,7 @@ class Connector(UserConnector):
 
             page += 1
 
-    def get_users_new(self):
+    def get_users_slash_one(self):
 
         # The OneLogin API returns 50 results at a time. We'll start from empty after_cursor
         # set after_cursor from response['pagination']['after_cursor']
@@ -179,18 +213,6 @@ class Connector(UserConnector):
             url = self.url_template.format(after_cursor)
             response = self.get(url)
             response.raise_for_status()
-
-            if self.settings.get("__save_data__", False):
-                try:
-                    os.makedirs("./saved_data")
-                    LOG.info("Saving data to %s.", os.path.abspath("./saved_data"))
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                        pass
-                    else:
-                        raise
-                with open("./saved_data/onelogin.{}.xml".format(after_cursor), "w") as output_file:
-                    output_file.write(response.text.encode('utf-8'))
 
             response = json.loads(response.text)
             if 'pagination' not in response:
@@ -239,16 +261,23 @@ class Connector(UserConnector):
             return
         # endregion
 
-        if self.old_api:
-            generator = self.get_users_old()
+        if self.api_version == Connector.Version.v1_to_v3:
+            generator = self.get_users_v1_to_v3()
+        elif self.api_version == Connector.Version.slash_one:
+            generator = self.get_users_slash_one()
         else:
-            generator = self.get_users_new()
+            raise RuntimeError('OneLogin connector users cannot be fetched with invalid version')
 
         for user in generator:
             yield user
 
-    @classmethod
-    def get_field_value(cls, field, data, default=None):
-        if field not in cls.StandardFields and not field.startswith("custom_attribute_"):
-            field = "custom_attribute_{}".format(field)
-        return UserConnector.get_field_value(field, data, default)
+    def get_field_value(self, field, data, default=None):
+        custom_prefix = "custom_attributes."
+        standard_fields = Connector.SlashOneFields
+        if self.api_version == Connector.Version.v1_to_v3:
+            custom_prefix = "custom_attribute_"
+            standard_fields = Connector.V1ToV3Fields
+
+        if field not in standard_fields and not field.startswith(custom_prefix):
+            field = "{}{}".format(custom_prefix, field)
+        return super(Connector, self).get_field_value(field, data, default)

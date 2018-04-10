@@ -1,9 +1,5 @@
 import base64
-import errno
-import json
 import logging
-import os
-import uuid
 
 from gevent.pool import Pool
 from requests import ConnectionError, HTTPError
@@ -139,16 +135,6 @@ class Connector(AuditConnector):
         else:
             processed_devices = devices
 
-        if self.settings.get("__save_data__", False):
-            try:
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
-            with open("./saved_data/{}.json".format(uuid.uuid4().hex), "w") as save_file:
-                save_file.write(json.dumps(processed_devices))
         return processed_devices
 
     def _load_records(self, options):

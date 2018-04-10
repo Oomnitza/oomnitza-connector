@@ -1,7 +1,5 @@
-import errno
 import json
 import logging
-import os
 import urllib
 
 import gevent
@@ -177,17 +175,6 @@ class Connector(AuditConnector):
             # print url
             details = self.get(url).json()[self.sync_type['data']]
 
-            if self.settings.get("__save_data__", False):
-                try:
-                    os.makedirs("./saved_data")
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                        pass
-                    else:
-                        raise
-                with open("./saved_data/{}.json".format(str(device_id)), "w") as save_file:
-                    save_file.write(json.dumps(details))
-
             return details
         except:
             LOG.exception("fetch_asset_details( %s ) failed." % device_id)
@@ -205,8 +192,6 @@ class Connector(AuditConnector):
             object_id = payload['event'].get('jssID')
 
             if object_id:
-                LOG.info('Casper webhook event %s triggered for device #%s' % (event_type, object_id))
-
                 if self.is_authorized():
 
                     if event_type.startswith('Computer'):
@@ -214,7 +199,7 @@ class Connector(AuditConnector):
                     elif event_type.startswith('MobileDevice'):
                         device = self.get(self.get_details_url("mobiledevices").format(object_id)).json()['mobile_device']
                     else:
-                        LOG.warning('Casper unknown event %s caught. Cannot handle' % event_type)
+                        LOG.warning('Casper unknown event caught. Cannot handle')
                         return
 
                     # sync retrieved device with Oomnitza
