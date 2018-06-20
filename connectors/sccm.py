@@ -56,6 +56,7 @@ class Connector(AuditConnector):
         'password':          {'order': 4, 'example': 'change-me'},
         'authentication':    {'order': 5, 'default': "SQL Server", 'choices': ("SQL Server", "Windows")},
         'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'driver':            {'order': 7, 'default': "{SQL Server}"},
     }
     DefaultConverters = {
         # FORMAT: "{source field}": "{converter to be applied by default}",
@@ -91,6 +92,7 @@ class Connector(AuditConnector):
         if self.settings['authentication'] == "Windows":
             connect_args['trusted_connection'] = "yes"
         else:
+            connect_args["driver"] = self.settings['driver']
             connect_args["user"] = self.settings['username']
             connect_args["password"] = self.settings['password']
 
