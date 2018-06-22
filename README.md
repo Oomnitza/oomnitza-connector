@@ -46,8 +46,7 @@ The Oomnitza Connector can also be downloaded from within your Oomnitza instance
 
 
 ## Runtime Environment Setup
-If you choose to run the binary version of the connector, you can skip this section. If you choose
- to install and run the python code, you will need to install Python 2.7.X as well as the packages which the connector
+You will need to install Python 2.7.X as well as the packages which the connector
  relies upon. Some of the python packages may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
@@ -71,7 +70,7 @@ Also if you need the SCCM functionality you have to separately install the `pyod
 ### Linux Environment
 On Ubuntu, the build tools are installed using:
 
-    sudo apt-get install build-essential
+    sudo apt-get install build-essential unixodbc unixodbc-dev
 
 ### Windows Environment
 For MS Windows you have to install Windows C++ compilers as build tools. Please visit the [Python Wiki](https://wiki.python.org/moin/WindowsCompilers)
@@ -965,8 +964,6 @@ If you have an issues during the connection to the OneLogin, please switch to th
 
 ### SCCM Configuration
 The account used to connect to the SCCM database requires at least read-only access.
-**Note:** The SCCM connector currently requires a Windows host. While it should be possible to run the
-connector on a non-Windows host, such as Linux, we do not provide support for this configuration at this time.
 
 `server`: The server hosting the SCCM database.
 
@@ -977,6 +974,12 @@ requires read-only access to the DB. Ignored when using `Windows` authentication
 
 `password`: The password to use when connecting to the server using `SQL Server` authentication.
 Ignored when using `Windows` authentication.
+
+`driver`: The driver name used to communicate with SCCM database. In most of the cases has to be left empty; if left empty the connector will try to use the most recent driver. 
+
+In Windows environment there is always should be at least one legacy driver named "SQL Server". In other environments you may have to explicitly install drivers ([download drivers](https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server)). 
+
+Please refer to this [page](https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-SQL-Server-from-Windows) for the list of currently supported drivers.
 
 `env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 

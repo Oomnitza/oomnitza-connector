@@ -2,7 +2,10 @@ import logging
 
 import pyodbc
 
+import re
+
 from lib.connector import AuditConnector
+from lib.error import ConfigError
 
 logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
 
@@ -56,6 +59,7 @@ class Connector(AuditConnector):
         'password':          {'order': 4, 'example': 'change-me'},
         'authentication':    {'order': 5, 'default': "SQL Server", 'choices': ("SQL Server", "Windows")},
         'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'driver':            {'order': 7, 'default': ''},
     }
     DefaultConverters = {
         # FORMAT: "{source field}": "{converter to be applied by default}",
@@ -73,7 +77,40 @@ class Connector(AuditConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+
+    @staticmethod
+    def pick_odbc_driver(driver_candidate):
+        """
+        Pick suitable ODBC driver to communicate with SCCM DB
+        :type driver_candidate: str or None
+        :rtype: str
+        """
+        drivers = pyodbc.drivers()
+        if not driver_candidate:
+
+            # if driver is empty, choose the best one from allowed
+            new_drivers_regexp = r'^ODBC Driver .* for SQL Server$'
+            supported_new_drivers = sorted(filter(lambda _: re.match(new_drivers_regexp, _), drivers))
+            if supported_new_drivers:
+                driver_candidate = supported_new_drivers[-1]  # choose the last one
+
+            # if we have no new ODBC drivers, use the legacy one built-in for Windows
+            elif 'SQL Server' in drivers:
+                driver_candidate = 'SQL Server'
+
+        else:
+            # given `driver` string is not empty, validate it against allowed drivers
+            if driver_candidate not in drivers:
+                raise ConfigError('Given driver "%s" is not supported. The available drivers are: %s' %
+                                  (driver_candidate, ', '.join(map(lambda _: '"%s"' % _, drivers))))
+
+        # final check to be sure driver not empty
+        if not driver_candidate:
+            raise ConfigError('Your environment has no supported drivers to use. '
+                              'The drivers can be downloaded from here: \n'
+                              'https://docs.microsoft.com/en-us/sql/connect/odbc/download-odbc-driver-for-sql-server')
+        return driver_candidate
 
     def authenticate(self):
         """
@@ -84,7 +121,8 @@ class Connector(AuditConnector):
             return
 
         connect_args = {
-            "driver": "{SQL Server}",
+            "driver": "{%s}" % self.pick_odbc_driver(self.settings['driver']),
+            # NOTE: driver string has to be enclosed with curvy brackets like "{SQL Server}" or "{ODBC Driver 17 for SQL Server}",
             "server": self.settings['server'],
             "database": self.settings['database'],
         }
@@ -158,4 +196,3 @@ class Connector(AuditConnector):
                 logger.exception("Exception in get_installed_software")
 
         return installed_software
-
