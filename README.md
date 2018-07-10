@@ -33,21 +33,10 @@ Since Oomnitza is highly customizable, there are many possibilities with the con
  (Refer to our [Guide to creating custom fields in Oomnitza](https://wiki.oomnitza.com/wiki/Creating_Fields_in_Oomnitza)
  to get started.)
 
-## Getting the Connector
-The Oomnitza Connector code is hosted at
-[https://github.com/Oomnitza/oomnitza-connector](https://github.com/Oomnitza/oomnitza-connector).
-
-The Oomnitza Connector can also be downloaded from within your Oomnitza instance. Log into your instance and
- navigate to the System Settings page. Scroll to the bottom of the Integrations page and download either the
- correct binary or the “Source Code” Package.
-* If you will be hosting the connector on a Windows or Mac server, we recommend using the binary version.
-* The Source Code package can be use on a Linux server, as well as Windows and Mac. This package requires
-  that a python environment be setup properly, which the binary version avoids.
-
 
 ## Runtime Environment Setup
 You will need to install Python 2.7.X as well as the packages which the connector
- relies upon. Some of the python packages may require build tools to be installed.
+ relies upon. Some of the python package    s may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
 
