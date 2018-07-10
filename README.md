@@ -36,7 +36,7 @@ Since Oomnitza is highly customizable, there are many possibilities with the con
 
 ## Runtime Environment Setup
 You will need to install Python 2.7.X as well as the packages which the connector
- relies upon. Some of the python package    s may require build tools to be installed.
+ relies upon. Some of the python packages may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
 
