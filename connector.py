@@ -25,8 +25,7 @@ from lib import config
 from lib import connector
 from lib import version
 
-from utils.relative_path import relative_app_path, relative_path
-from utils.single_instance import SingleInstance
+from utils.relative_path import relative_app_path
 from lib.converters import Converter
 
 LOG = logging.getLogger("connector.py")
@@ -85,11 +84,6 @@ def parse_command_line_args(for_server=False):
     action_nargs = None
     logging_setting_path = relative_app_path('logging.json')
 
-    if getattr(sys, 'frozen', False):
-        action_default = 'gui'
-        action_nargs = '?'
-        logging_setting_path = relative_path('logging.json')
-
     actions = [
         'upload',      # action which pulls data from remote system and push to Oomnitza.
         'generate-ini' # action which generates an example config.ini file.
@@ -104,8 +98,6 @@ def parse_command_line_args(for_server=False):
         parser.add_argument("action", default=action_default, nargs=action_nargs, choices=actions, help="Action to perform.")
         parser.add_argument("connectors", nargs='*', default=[], help="Connectors to run.")
         parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection.")
-        parser.add_argument('--singleton', type=int, default=1, help="Control the behavior of connector. Limiting the number of "
-                                                                     "simultaneously running connectors")
         parser.add_argument('--workers', type=int, default=2, help="Number of async IO workers used to pull & push records.")
 
     parser.add_argument('--version', action='store_true', help="Show the connector version.")
@@ -139,12 +131,11 @@ if __name__ == "__main__":
     if args.testmode:
         LOG.info("Connector started in Test Mode.")
 
-    with SingleInstance(bool(args.singleton), "Connector is already running."):
-        if args.action == 'generate-ini':
-            config.generate_ini_file(args)
-        else:
-            if not args.connectors:
-                LOG.error("No connectors specified.")
-                sys.exit(1)
+    if args.action == 'generate-ini':
+        config.generate_ini_file(args)
+    else:
+        if not args.connectors:
+            LOG.error("No connectors specified.")
+            sys.exit(1)
 
-            main(args)
+        main(args)
