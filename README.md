@@ -14,7 +14,6 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
-* Apple DEP [http://www.apple.com/business/dep/](http://www.apple.com/business/dep/)
 * Plain CSV files
 
 The Oomnitza Connector can be hosted on Oomnitza's
@@ -373,12 +372,6 @@ An example generated `config.ini` follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     dep_uuid = 
 
-    [appledep]
-    enable = False
-    url = https://mdmenrollment.apple.com
-    api_token = YOUR APPLE DEP SERVER TOKEN
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
-
     [bamboohr]
     enable = False
     url = https://api.bamboohr.com/api/gateway.php
@@ -526,17 +519,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 `dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
-
-#### Default Field Mappings
-    To Be Determined
-
-
-### Apple DEP Configuration
-`url`: the url of the Apple DEP MDM server
-
-`api_token`: the server token that should be obtained from Apple DEP MDM server
-
-`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     To Be Determined

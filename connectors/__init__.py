@@ -13,10 +13,6 @@ EnabledConnectors = {
     'onelogin',
     'sccm',
     'zendesk',
-    'appledep',
     'csv_assets',
     'csv_users',
-    #
-    # 'googleusers',
-    # 'chromebooks',
 }
