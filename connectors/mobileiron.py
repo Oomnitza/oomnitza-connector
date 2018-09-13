@@ -1,13 +1,15 @@
-
 import base64
 import logging
-import time
 import math
+import time
 
-from requests import ConnectionError, HTTPError
+from enum import Enum
+
 from lib.connector import AuditConnector
 
 LOG = logging.getLogger("connectors/mobileiron")
+
+Version = Enum('Version', ['v1', 'v2'])  # TODO: set proper cases
 
 
 class Connector(AuditConnector):
@@ -20,10 +22,17 @@ class Connector(AuditConnector):
         'password':   {'order': 3, 'example': "change-me"},
         'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True},
         'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'api_version': {'order': 6, 'example': '1', 'default': '1'}
     }
+
+    api_version = None
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
+        if self.settings.get('api_version') == '2':
+            self.api_version = Version.v2
+        else:
+            self.api_version = Version.v1
         self._retry_counter = 0
 
     def get_headers(self):
@@ -34,24 +43,65 @@ class Connector(AuditConnector):
         }
         return headers
 
-    def do_test_connection(self, options):
-        try:
-            url = self.settings['url'] + "/api/v1/tenant/partition/device?start=0&rows=1"
-            response = self.get(url)
-            response.raise_for_status()
-            return {'result': True, 'error': ''}
-        except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
-        except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
-
-    def _load_records(self, options):
+    def load_devices_api_v1(self, *a, **kw):
         for partition in self.fetch_all_partitions():
             if self.settings['partitions'] == "All" or partition['name'] in self.settings['partitions']:
                 for device in self.fetch_all_devices_for_partition(partition['id']):
                     yield device
             else:
                 LOG.debug("Skipping partition %r", partition)
+
+    def load_spaces_api_v2(self):
+        url = self.settings['url'] + "/api/v2/device_spaces/mine?limit={limit}&offset={offset}"
+
+        response = self.get(url)
+        spaces = response.json()['results']
+
+        for space in spaces:
+            yield space['id']
+
+    def load_space_fields_api_v2(self, space):
+        url = self.settings['url'] + "/api/v2/device_spaces/criteria?adminDeviceSpaceId={space}".format(space=space)
+
+        response = self.get(url)
+        fields = response.json()['results']
+
+        return [_['name'] for _ in fields]
+
+    def load_devices_api_v2(self, *a, **kw):
+
+        url_template = self.settings['url'] + "/api/v2/devices?adminDeviceSpaceId={space}&fields={fields}&labelId=-1&limit={limit}&offset={offset}"
+
+        for space in self.load_spaces_api_v2():
+
+            limit = 50
+            offset = 0
+
+            fields = ','.join(self.load_space_fields_api_v2(space))
+            while True:
+                response = self.get(url_template.format(limit=limit, offset=offset, space=space, fields=fields))
+                response_body = response.json()
+                devices = response_body['results']
+
+                for device in devices:
+                    yield device
+
+                if not response_body['hasMore']:
+                    break
+
+                offset += limit
+
+    def _load_records(self, options):
+        generator = {
+
+            Version.v1: self.load_devices_api_v1(),
+            Version.v2: self.load_devices_api_v2()
+
+        }[self.api_version]
+
+        # noinspection PyTypeChecker
+        for device in generator:
+            yield device
 
     def fetch_all_partitions(self):
         """
@@ -90,7 +140,6 @@ class Connector(AuditConnector):
                 start = 0
             try:
                 response = self.get(url.format(self.settings['url'], partition_id, rows, start))
-                response.raise_for_status()
                 result = response.json()['result']
                 if total_count == 0:
                     total_count = result['totalCount']

@@ -163,7 +163,6 @@ class CsvConnectorMixin(FileConnectorMixin):
     """
     file_mask = "*.csv"
 
-    @persistence_decorator('csv_persistence.sqlite')
     def _load_file(self, filename):
         with open(filename, 'rb') as input_file:
             LOGGER.info("Processing input file: %s", filename)

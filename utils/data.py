@@ -23,7 +23,6 @@ def get_field_value(data, field, default=None):
                 return get_field_value(data[int(current)], rest, default)
             if current in data:
                 return get_field_value(data[current], rest, default)
-            return default
 
         return data.get(field, default)
     except:

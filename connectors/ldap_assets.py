@@ -1,12 +1,21 @@
 from __future__ import absolute_import
 
+import json
 import logging
+
 import ldap
 
 from lib.connector import AuditConnector, AuthenticationError
 from lib.ext.ldap import LdapConnection
 
 LOG = logging.getLogger("connectors/ldap_assets")  # pylint:disable=invalid-name
+
+
+def json_validator(value):
+    try:
+        return json.loads(value)
+    except ValueError:
+        raise RuntimeError('setting is incorrect json expected but %r found' % value)
 
 
 class Connector(AuditConnector):
@@ -20,11 +29,15 @@ class Connector(AuditConnector):
         'protocol_version': {'order':  6, 'default': "3"},
         'filter':           {'order':  7, 'default': "(objectClass=*)"},
         'sync_field':       {'order':  8, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'page_criterium': {'order': 9, 'example': "someField[somechar]", 'default': ""},
+        'groups_dn': {'order': 10, 'default': "[]",
+                      'example': '["some.group", "other.group"]',
+                      'validator': json_validator},
+        'group_members_attr': {'order': 11, 'default': 'member'},
+        'group_member_filter': {'order': 12, 'default': ''},
     }
 
-
-    FieldMappings = {
-    }
+    FieldMappings = {}
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
@@ -48,5 +61,3 @@ class Connector(AuditConnector):
     def _load_records(self, options):
         for asset in self.ldap_connection.load_data(options):
             yield asset
-
-

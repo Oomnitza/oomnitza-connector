@@ -1,12 +1,12 @@
 from __future__ import absolute_import
 
+import json
 import logging
+
 import ldap
 
 from lib.connector import UserConnector, AuthenticationError
 from lib.ext.ldap import LdapConnection
-import json
-
 
 LOG = logging.getLogger("connectors/ldap_users")  # pylint:disable=invalid-name
 

@@ -132,7 +132,7 @@ For Linux, you may have to install **dbus-python** package and configure KeyRing
 
 ```sh
 $ python strongbox.py --help
-usage: strongbox.py [-h] [--version] --connector CONNECTOR --key KEY --value VALUE
+usage: strongbox.py [-h] [--version] --connector=CONNECTOR --key=KEY --value=VALUE
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -146,7 +146,7 @@ To prevent password disclosure you will be asked to provide your secret value
 in the console.
 
 ```sh
-python strongbox.py --connector=oomnitza --key=api_token --value
+python strongbox.py --connector=oomnitza --key=api_token --value=
 Your secret: your-secret
 ```
 
@@ -217,6 +217,115 @@ Your secret: 6c1247-413f-4816-5f=a72-2ertc1d2165e
 ```
 
 __It is recomended to use read-only token.__
+
+### The CyberArk secret storage
+
+In order to use CyberArk as secret storage:
+
+1. Install and configure CyberArk storage (use self-hosted storage or use
+   dedicated storage provided by [CyberArk](https://www.cyberark.com/))
+
+2. Write secrets to CyberArk storage
+
+3. Configure connector to use CyberArk secret backend
+
+#### Self-hosted CyberArk installation
+
+- Use [official documentation](https://docs.conjur.org/Latest/en/Content/Get%20Started/install-open-source.htm) to install and configure CyberArk Conjur service
+
+    ```
+    # In your terminal, download the Conjur Open Source quick-start configuration
+    curl -o docker-compose.yml https://www.conjur.org/get-started/docker-compose.quickstart.yml
+
+    # Pull all of the required Docker images from DockerHub.
+    docker-compose pull
+
+    # Generate a master data key:
+    docker-compose run --no-deps --rm conjur data-key generate > data_key
+
+    # Load the data key into the environment:
+    export CONJUR_DATA_KEY="$(< data_key)"
+
+    # Run the Conjur server, database, and client:
+    docker-compose up -d
+    ```
+
+    If you want to confirm that CyberArk was installed properly, you can open a
+    browser and go to localhost:8080 and view the included status UI page.
+
+- Create new account (name should be equal to your connector configration
+    section)
+
+    ```
+    docker-compose exec conjur conjurctl account create zendesk
+    # API key for admin: <cyberark_api_key>
+    ```
+
+- Start a bash shell for the Conjur client CLI
+
+    ```
+    docker-compose exec client bash
+    ```
+
+- Login into your account
+
+    ```
+    conjur init -u conjur -a zendesk
+    conjur authn login -u admin
+    ```
+
+- Create root policy, e.g. [use more complex / nested configuration for
+  granular permissions](https://docs.conjur.org/Latest/en/Content/Operations/Policy/PolicyGuideConcepts%20and%20Best%20Practices%20_%20Conjur%20Developer%20Docs.html)
+
+    ```
+    $ cat /root/policy/zendesk-policy.yml
+
+    ---
+    - !variable api_token
+    - !variable some_secret_key
+    ```
+
+- Apply policy to your account (this allow you manage the specified secrets
+    via command line or api)
+
+    ```
+    conjur policy load root /root/policy/zendesk-policy.yml
+    ```
+
+#### Managing secrets via CyberArk
+
+- Push all required secrets into storage
+
+    ```
+    conjur variable values add api_token secret-api-token
+    conjur variable values add some_secret_key some-secret-value
+    ```
+
+#### Connector configuration
+
+- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
+  be added to system keyring via cli.
+
+Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
+
+```sh
+python strongbox.py --connector=zendesk --key=vault_url --value=
+Your secret: https://cyberark-secret-storage-sever.example.com
+
+python strongbox.py --connector=zendesk --key=vault_token --value=
+Your secret: <cyberark_api_key>
+```
+
+- Update connector configuration to use CyberArk secret storage
+
+```ini
+[zendesk]
+enable = true
+url = https://example.com
+vault_backend = cyberark
+vault_keys = api_token some_secret_key
+```
+
 
 ## Running the connector client
 The connector is meant to be run from the command line and as such as multiple command line options:
@@ -424,6 +533,7 @@ An example generated `config.ini` follows.
     password = change-me
     partitions = ["Drivers"]
     sync_field = 24DCF85294E411E38A52066B556BA4EE
+    api_version = 1
 
     [okta]
     enable = False
@@ -873,9 +983,12 @@ The above example will introduce a new mappable attribute "hardware.machine_name
 
 `env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
-`partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`
+`partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`. Used for API v1 and ignored for API v2.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier.
+
+`api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
+The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
 
 #### Default Field Mappings
     To Be Determined

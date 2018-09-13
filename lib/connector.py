@@ -3,7 +3,6 @@ import errno
 import json
 import logging
 import os
-import sys
 
 import requests
 from gevent.pool import Pool
@@ -16,8 +15,8 @@ from .converters import Converter
 from .error import ConfigError, AuthenticationError
 from .filter import DynamicException
 from .httpadapters import AdapterMap, retries
-from .version import VERSION
 from .strongbox import Strongbox, StrongboxBackend
+from .version import VERSION
 
 LOG = logging.getLogger("lib/connector")
 
@@ -83,7 +82,8 @@ class BaseConnector(object):
         'insert_only':    {'order': 8, 'default': "False"},
         'update_only':    {'order': 9, 'default': "False"},
         'vault_keys':     {'order': 10, 'default': ""},
-        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING}
+        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING},
+        'user_pem_file':  {'order': 12, 'default': ''}
     }
 
     def __init__(self, section, settings):
@@ -235,6 +235,9 @@ class BaseConnector(object):
         if not self._session:
             self._session = requests.Session()
             protocol = self.settings.get('ssl_protocol', "")
+            user_pem_file = self.settings.get('user_pem_file')
+            if user_pem_file:
+                self._session.cert = user_pem_file
             if protocol:
                 LOG.info("Forcing SSL Protocol to: %s", protocol)
                 if protocol.lower() in AdapterMap:
@@ -293,19 +296,7 @@ class BaseConnector(object):
         Returns the value of verification.
         :return: True (Path_to_cacert in binary) / False
         """
-        verify_ssl = self.settings.get('verify_ssl', True) in TrueValues
-        if verify_ssl:
-            # 'frozen' is added by PyInstaller which is necessary to learn at run-time
-            # whether the app is running from source or part of bundle
-            # Please refer to http://pythonhosted.org/PyInstaller/#adapting-to-being-frozen
-            if getattr(sys, 'frozen', False):
-                # '_MEIPASS' is added by PyInstaller which is the path variable to temp directory at run-time
-                # and cacert.pem (Certified Authority) is included in building binary time (defined in PyInstaller spec)
-                return os.path.join(getattr(sys, '_MEIPASS', os.path.abspath(".")), 'cacert.pem')
-            else:
-                return True
-        else:
-            return False
+        return self.settings.get('verify_ssl', True) in TrueValues
 
     def get_headers(self):
         """
