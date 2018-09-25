@@ -521,10 +521,30 @@ An example generated `config.ini` follows.
     username = cn=read-only-admin,dc=example,dc=com
     password =
     base_dn = dc=example,dc=com
+    group_dn = 
     protocol_version = 3
     filter = (objectClass=*)
     default_role = 25
     default_position = Employee
+    page_criterium = 
+    groups_dn = []
+    group_members_attr = member
+    group_member_filter = 
+
+    [ldap_assets]
+    enable = False
+    url = ldap://ldap.forumsys.com:389
+    username = cn=read-only-admin,dc=example,dc=com
+    password =
+    base_dn = dc=example,dc=com
+    group_dn = 
+    protocol_version = 3
+    filter = (objectClass=*)
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+    page_criterium = 
+    groups_dn = []
+    group_members_attr = member
+    group_member_filter = 
 
     [mobileiron]
     enable = False
@@ -965,13 +985,60 @@ The above example will introduce a new mappable attribute "hardware.machine_name
 
 `base_dn`: The Base DN to use for the connection.
 
-`protocol_version`: The LDAP Protocol version to use. Defaults to: 3.
+`group_dn`: Identifies the group to which the users we want to fetch have to belong. _The attribute is a legacy one, see the `groups_dn` attribute below_
 
-`filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects under the base_db. This is a very reasonable default.
+`groups_dn`: Identifies the list of groups to which the users we want to fetch have to belong. 
+
+_NOTE: the attributes `base_dn`, `group_dn` and `groups_dn` define the DN where to fetch the data from. 
+**And these attributes have a priority**. If the `groups_dn` is defined, the data will be fetched from the mentioned groups and the `group_dn` and `base_dn` will be ignored. 
+Next goes the `group_dn` attribute. The lowest priority has the `base_dn`, it will be taken into the account only if `groups_dn` and `group_dn` are empty._
+
+`group_members_attr`: Identifies the name of the attribute in the LDAP linking the record inside the group with the group. 
+Default is "member" but can vary in different LDAP systems.
+
+`group_member_filter`: Identifies the additional optional filter used to extract the details of the user in the group. Empty by default.
+
+`protocol_version`: The LDAP Protocol version to use. Defaults to: `3`.
+
+`filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
 
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+
+### LDAP Assets Configuration
+
+This is for `[ldap_assets]` section and actually contains the same set of configuration as for `[ldap]` used to fetch the user records.
+
+`url`: The full URI for the LDAP server. For example: `ldap://ldap.forumsys.com:389`
+
+`username`: the LDAP username to use. Can be a DN, such as `cn=read-only-admin,dc=example,dc=com`.
+
+`password`: the LDAP password to use
+
+`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
+
+`base_dn`: The Base DN to use for the connection.
+
+`group_dn`: Identifies the group to which the users we want to fetch have to belong. _The attribute is a legacy one, see the `groups_dn` attribute below_
+
+`groups_dn`: Identifies the list of groups to which the users we want to fetch have to belong. 
+
+_NOTE: the attributes `base_dn`, `group_dn` and `groups_dn` define the DN where to fetch the data from. 
+**And these attributes have a priority**. The highest priority is for `groups_dn`, the data will be fetched from the mentioned groups and the `group_dn` and `base_dn` will be ignored. 
+Next goes the `group_dn` attribute. The lowest priority has the `base_dn`, it will be taken into the account only if `groups_dn` and `group_dn` are empty._
+
+`group_members_attr`: Identifies the name of the attribute in the LDAP linking the record inside the group with the group. 
+Default is "member" but can vary in different LDAP systems.
+
+`group_member_filter`: Identifies the additional optional filter used to extract the details of the user in the group. Empty by default.
+
+`protocol_version`: The LDAP Protocol version to use. Defaults to: `3`.
+
+`filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
 
 ### MobileIron Configuration
@@ -1031,7 +1098,7 @@ If you have an issues during the connection to the OneLogin, please switch to th
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-#### Defualt Field Mappings
+#### Default Field Mappings
     mapping.USER =           {'source': "username"}
     mapping.FIRST_NAME =     {'source': "firstname"}
     mapping.LAST_NAME =      {'source': "lastname"}

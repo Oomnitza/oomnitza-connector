@@ -2,7 +2,6 @@ from __future__ import absolute_import
 
 import logging
 import os
-import re
 
 import ldap
 import ldapurl
@@ -14,36 +13,6 @@ from lib.connector import AuthenticationError
 from lib.error import ConfigError
 
 LOG = logging.getLogger("ext/ldap")  # pylint:disable=invalid-name
-
-ErrorDescriptions = """ From: https://community.hortonworks.com/questions/5322/ranger-user-sync-error-javaxnamingauthenticationex.html
-
-The cause of the LDAP 49 error can vary. You need to check the data code to determine what the actual cause is. Here is a table of the various 49 errors/data codes and what they mean:
-
-49 - LDAP_INVALID_CREDENTIALS - Indicates that during a bind operation one of the following occurred: The client passed either an incorrect DN or password, or the password is incorrect because it has expired, intruder detection has locked the account, or another similar reason. See the data code for more information.
-
-49 / 52e - AD_INVALID CREDENTIALS - Indicates an Active Directory (AD) AcceptSecurityContexterror, which is returned when the username is valid but the combination of password and user credential is invalid. This is the AD equivalent of LDAP error code 49.
-Note: I got this error, 52e, with a clearly invalid username.
-
-49 / 525 - USER NOT FOUND - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is returned when the username is invalid.
-
-49 / 530 - NOT_PERMITTED_TO_LOGON_AT_THIS_TIME - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is logon failure caused because the user is not permitted to log on at this time. Returns only when presented with a valid username and valid password credential.
-
-49 / 531 - RESTRICTED_TO_SPECIFIC_MACHINES - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is logon failure caused because the user is not permitted to log on from this computer. Returns only when presented with a valid username and valid password credential.
-
-49 / 532 - PASSWORD_EXPIRED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The specified account password has expired. Returns only when presented with valid username and password credential.
-
-49 / 533 - ACCOUNT_DISABLED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The account is currently disabled. Returns only when presented with valid username and password credential.
-
-49 / 568 - ERROR_TOO_MANY_CONTEXT_IDS - Indicates that during a log-on attempt, the user's security context accumulated too many security IDs. This is an issue with the specific LDAP user object/account which should be investigated by the LDAP administrator.
-
-49 / 701 - ACCOUNT_EXPIRED - Indicates an Active Directory (AD) AcceptSecurityContextdata error that is a logon failure. The user's account has expired. Returns only when presented with valid username and password credential.
-
-49 / 773 - USER MUST RESET PASSWORD - Indicates an Active Directory (AD) AcceptSecurityContextdata error. The user's password must be changed before logging on the first time. Returns only when presented with valid user-name and password credential.
-
-"""
-
-SIZELIMIT = 1000
-PREFIX_LENGTH_LIMIT = 5
 
 
 class LdapConnection(object):
@@ -91,7 +60,7 @@ class LdapConnection(object):
             parsed_url = ldapurl.LDAPUrl(self.settings['url'])
         except ValueError:
             raise AuthenticationError("Invalid url to LDAP service. "
-                                      "Check config examples at https://github.com/Oomnitza.")  # FixMe: get new url
+                                      "Check config examples at https://github.com/Oomnitza/oomnitza-connector")
         self.ldap_connection = ldap.initialize(parsed_url.unparse())
 
         cacert_file = self.settings.get('cacert_file', '')
@@ -170,58 +139,6 @@ class LdapConnection(object):
         for user in users:
             yield user
 
-    def query_objects_iteratively(self, fields):
-        page_criterium = re.findall(
-            '(.*)\[(.*)\]', self.settings.get('page_criterium'))
-        if not (len(page_criterium) == 1 and len(page_criterium[0]) == 2):
-            LOG.error("incorrect page_criterium setting for ldap")
-            return []
-        page_criterium_field, page_criterium_data = page_criterium[0]
-
-        def get_users_portion(pagination_prefix):
-            if len(pagination_prefix) > PREFIX_LENGTH_LIMIT:
-                LOG.error(
-                    'prefix size limit was exceeded with prefix %s ' % pagination_prefix)
-                return []
-
-            users_portion = []
-            current_filter = "(&{}({}={}*))".format(
-                self.settings['filter'],
-                page_criterium_field,
-                pagination_prefix,
-                sizelimit=SIZELIMIT
-            )
-            try:
-                users_portion.extend(
-                    self.ldap_connection.search_s(
-                        self.settings['base_dn'],
-                        ldap.SCOPE_SUBTREE,
-                        current_filter,
-                        fields
-                    )
-                )
-            except Exception as exception:
-                LOG.info(
-                    'exception %s was raised while fetching data %s' % (
-                        exception, current_filter)
-                )
-            else:
-                if len(users_portion) < SIZELIMIT:
-                    return users_portion
-                LOG.info(
-                    'got %s result for filter %s with sizelimit %s' % (
-                        len(users_portion), current_filter, SIZELIMIT)
-                )
-            users_portion = []
-
-            for i in page_criterium_data:
-                u_p = get_users_portion(pagination_prefix + i)
-                users_portion.extend(u_p)
-            return users_portion
-
-        result = get_users_portion('')
-        return result
-
     def query_objects(self, options):
         """
         Connects to LDAP server and attempts to query and return all users.
@@ -232,14 +149,10 @@ class LdapConnection(object):
         if full_record:
             fields = None
 
-        ldap_users = []
-        if self.settings.get('page_criterium'):
-            ldap_users = self.query_objects_iteratively(fields)
-        else:
-            ldap_users = self.ldap_connection.search_s(
-                self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
-                fields
-            )
+        ldap_users = self.ldap_connection.search_s(
+            self.settings['base_dn'], ldap.SCOPE_SUBTREE, self.settings['filter'],
+            fields
+        )
         # disconnect and return results
         self.ldap_connection.unbind_s()
         for user in ldap_users:
