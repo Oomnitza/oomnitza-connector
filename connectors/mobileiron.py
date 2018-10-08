@@ -52,7 +52,7 @@ class Connector(AuditConnector):
                 LOG.debug("Skipping partition %r", partition)
 
     def load_spaces_api_v2(self):
-        url = self.settings['url'] + "/api/v2/device_spaces/mine?limit={limit}&offset={offset}"
+        url = self.settings['url'] + "/api/v2/device_spaces/mine"
 
         response = self.get(url)
         spaces = response.json()['results']
