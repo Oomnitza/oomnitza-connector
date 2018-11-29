@@ -24,7 +24,7 @@ SELECT cs.ResourceID AS resource_id,
        net.IPAddress0 AS ipv4_address,
        net.MACAddress0 AS mac_address,
        mem.TotalPhysicalMemory0 AS memory_total_kb,
-       enc.SerialNumber0 AS serial_number,
+       bios.SerialNumber0 AS serial_number,
        os.Caption0 AS os_version
   FROM dbo.v_GS_COMPUTER_SYSTEM AS cs
     LEFT OUTER JOIN dbo.v_GS_PROCESSOR AS processor ON cs.ResourceID = processor.ResourceID
@@ -34,7 +34,7 @@ SELECT cs.ResourceID AS resource_id,
             AND MACAddress0 IS NOT NULL
             AND IPAddress0 IS NOT NULL
     LEFT OUTER JOIN dbo.v_GS_X86_PC_MEMORY AS mem ON cs.ResourceID = mem.ResourceID
-    LEFT OUTER JOIN dbo.v_GS_SYSTEM_ENCLOSURE AS enc ON cs.ResourceID = enc.ResourceID
+    LEFT OUTER JOIN dbo.v_GS_PC_BIOS AS bios ON cs.ResourceID = bios.ResourceID
     LEFT OUTER JOIN dbo.v_GS_OPERATING_SYSTEM AS os ON cs.ResourceID = os.ResourceID;"""
 
 SoftwareSQL = """

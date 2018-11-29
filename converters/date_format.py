@@ -14,9 +14,9 @@ def converter(field, record, value, params):
         return arrow.get(value).timestamp
 
     try:
-        if 'T' in value:
-            return arrow.get(value).timestamp
-        elif ' ' in value:
+        if ' ' in value:
             return arrow.get(value, "YYYY-MM-DD HH:mm:ss").timestamp
+        else:
+            return arrow.get(value).timestamp
     except:
         return value
