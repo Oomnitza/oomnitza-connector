@@ -6,6 +6,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
+* Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
@@ -27,8 +28,8 @@ The most current version of this documentation can always be found on
 
 Since Oomnitza is highly customizable, there are many possibilities with the connector. Because of this, it is
  important to think ahead about what data you want to bring in and how you want to store it. Before we
- begin, take time to think about what information you want, and what Oomnitza fields you want filled out with Casper
- data. If the fields you want to map in haven’t been created yet, now is a good time to do so.
+ begin, take time to think about what information you want, and what Oomnitza fields you want filled out with data. 
+ If the fields you want to map in haven’t been created yet, now is a good time to do so.
  (Refer to our [Guide to creating custom fields in Oomnitza](https://wiki.oomnitza.com/wiki/Creating_Fields_in_Oomnitza)
  to get started.)
 
@@ -48,12 +49,7 @@ We suggest you setup a [virtual environment](http://docs.python-guide.org/en/lat
     virtualenv .
     source bin/activate
     pip install --upgrade pip
-    pip install -r requirements.txt
-    
-Also if you need the SCCM functionality you have to separately install the `pyodbc` package 
-(by default it is commented in the requirements.txt)
-    
-    pip install pyodbc    
+    pip install -r requirements.txt 
 
 ### Linux Environment
 On Ubuntu, the build tools are installed using:
@@ -62,7 +58,7 @@ On Ubuntu, the build tools are installed using:
 
 ### Windows Environment
 For MS Windows you have to install Windows C++ compilers as build tools. Please visit the [Python Wiki](https://wiki.python.org/moin/WindowsCompilers)
- To check what is appropriate compiler you have to download and install.
+ To check what is appropriate compiler you have to download and install. 
 
 
 ### OS X Environment
@@ -504,6 +500,12 @@ An example generated `config.ini` follows.
     key_file = /home/user/user.pem
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     attribute_extension = 
+    
+    [chromebooks]
+    enable = False
+    service_account_impersonate = username@example.com
+    service_account_json_key = {}
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [jasper]
     enable = False
@@ -951,6 +953,30 @@ The above example will introduce a new mappable attribute "hardware.kernel_name"
 }`
 
 The above example will introduce a new mappable attribute "hardware.machine_name" for mac_os_x and windows nodes only.
+
+### Google Chrome Devices
+
+NOTE: The Google chrome connector does not have a UI and must be configured using the config file.  The Google Chrome device API reference with attributes description can be found [here](https://developers.google.com/admin-sdk/directory/v1/reference/chromeosdevices).
+
+The following steps need to be taken to allow automated retrieval from Google Admin API:
+
+ 1) [Enable API access for your G Suite domain](https://support.google.com/a/answer/60757)
+ 2) Create a new project in [Google Developers Console](https://console.developers.google.com/) and enable the Admin SDK.
+ 3) Create a service account in this project and delegate a domain-wide authority to it.  For more details, please refer to [Using OAuth 2.0 for Server to Server Applications](https://developers.google.com/identity/protocols/OAuth2ServiceAccount) and follow the instructions.
+The Oomnitza connector requires read-only API scope enable to successfully operate _`https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly`_
+
+The `[chromebooks]` section contains the following attributes:
+
+`service_account_impersonate`: the email of the real G Suite administrator to be impersonated by the service account.
+
+`service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
+
+`sync_field`: The Oomnitza field which contains the asset&#39;s unique identifier (i.e. serial number).
+
+#### **Default Field Mappings**
+
+There is no default mapping. All mappings need to be defined in the config file.
+
 
 ### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.

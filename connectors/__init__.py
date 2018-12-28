@@ -15,4 +15,5 @@ EnabledConnectors = {
     'zendesk',
     'csv_assets',
     'csv_users',
+    'chromebooks',
 }
