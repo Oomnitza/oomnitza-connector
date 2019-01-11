@@ -30,8 +30,8 @@ class Connector(AuditConnector):
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        self.url_template = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['url']
-        self.network_url_template = "%s/api/v1/mdm/devices/macaddress/{mac}/network" % self.settings['url']
+        self.url_template = "%s/api/mdm/devices/search?pagesize={0}&page={1}" % self.settings['url']
+        self.network_url_template = "%s/api/mdm/devices/{device_id}/network" % self.settings['url']
         self.dep_devices = {}  # this is the storage for the device info retrieved through the DEP-specific API
 
         self.__load_network_data = False
@@ -113,7 +113,7 @@ class Connector(AuditConnector):
         :return:
         """
         def set_network_info(device):
-            device['network'] = self._load_network_information(device.get('MacAddress', ''))
+            device['network'] = self._load_network_information(device.get('Id', {}).get('Value', ''))
             return device
 
         def set_dep_info(device):
@@ -155,15 +155,14 @@ class Connector(AuditConnector):
                 raise StopIteration
             yield device_info
 
-    def _load_network_information(self, mac_address):
+    def _load_network_information(self, device_id):
         try:
-            mac_address = mac_address.strip()
-            if not mac_address:
+            if not device_id:
                 return {}
 
-            url = self.network_url_template.format(mac=mac_address)
+            url = self.network_url_template.format(device_id=device_id)
             response = self.get(url).json()
             return response
         except HTTPError:
-            logger.exception("Error trying to load network details for device: %s", mac_address)
+            logger.exception("Error trying to load network details for device: %s", device_id)
             return {}
