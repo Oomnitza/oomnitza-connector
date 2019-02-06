@@ -603,12 +603,12 @@ class UserConnector(BaseConnector):
         if 'USER' in self.field_mappings:
             self.field_mappings['USER']['required'] = True
         else:
-            raise Exception("Missing mapping filed USER is required for records will be sent to Oomnitza.")
+            raise ConfigError("Missing mapping filed USER is required for records will be sent to Oomnitza.")
 
         if 'EMAIL' in self.field_mappings:
             self.field_mappings['EMAIL']['required'] = True
         else:
-            raise Exception("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
+            raise ConfigError("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
 
         if self.settings['default_position'].lower() == 'unused':
             self.normal_position = True

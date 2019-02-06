@@ -282,10 +282,6 @@ def get_default_ini():
     from connectors import EnabledConnectors
     prefix = 'connectors.'
 
-    # pkgutil.iter_modules iterates over the modules in the path
-    # Note(daniel): pkgutil.iter_modules stopped working when built with pyinstaller.
-    #               I don't know why and it was easier to switch to a hardcoded set of values.
-    # for importer, modname, ispkg in pkgutil.iter_modules([relative_path('connectors')], prefix):
     for modname in [prefix+name for name in EnabledConnectors]:
         # Don't process these as they are internal
         if modname in ['connectors.base'] or modname.startswith('connectors.test'):

@@ -6,6 +6,7 @@ import logging
 import ldap
 
 from lib.connector import AuditConnector, AuthenticationError
+from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
 
 LOG = logging.getLogger("connectors/ldap_assets")  # pylint:disable=invalid-name
@@ -15,26 +16,24 @@ def json_validator(value):
     try:
         return json.loads(value)
     except ValueError:
-        raise RuntimeError('setting is incorrect json expected but %r found' % value)
+        raise ConfigError('setting is incorrect json expected but %r found' % value)
 
 
 class Connector(AuditConnector):
     MappingName = 'LDAP_assets'
     Settings = {
-        'url':              {'order':  1, 'example': "ldap://ldap.forumsys.com:389"},
-        'username':         {'order':  2, 'example': "cn=read-only-admin,dc=example,dc=com"},
-        'password':         {'order':  3, 'default': ""},
-        'base_dn':          {'order':  4, 'example': "dc=example,dc=com"},
-        'group_dn':         {'order':  5, 'default': ""},
-        'protocol_version': {'order':  6, 'default': "3"},
-        'filter':           {'order':  7, 'default': "(objectClass=*)"},
-        'sync_field':       {'order':  8, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-        'page_criterium': {'order': 9, 'example': "someField[somechar]", 'default': ""},
-        'groups_dn': {'order': 10, 'default': "[]",
-                      'example': '["some.group", "other.group"]',
-                      'validator': json_validator},
-        'group_members_attr': {'order': 11, 'default': 'member'},
-        'group_member_filter': {'order': 12, 'default': ''},
+        'url':                  {'order': 1, 'example': "ldaps://ldap.com:389"},
+        'username':             {'order': 2, 'example': "cn=read-only-admin,dc=example,dc=com"},
+        'password':             {'order': 3, 'default': ""},
+        'base_dn':              {'order': 4, 'example': "dc=example,dc=com"},
+        'group_dn':             {'order': 5, 'default': ""},
+        'protocol_version':     {'order': 6, 'default': "3"},
+        'filter':               {'order': 7, 'default': "(objectClass=*)"},
+        'sync_field':           {'order': 8, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'page_criterium':       {'order': 9, 'example': "", 'default': ""},
+        'groups_dn':            {'order': 10, 'default': "[]", 'example': '[]', 'validator': json_validator},
+        'group_members_attr':   {'order': 11, 'default': 'member'},
+        'group_member_filter':  {'order': 12, 'default': ''},
     }
 
     FieldMappings = {}

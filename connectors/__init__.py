@@ -1,10 +1,14 @@
-EnabledConnectors = {
+EnabledConnectors = (
     'oomnitza',
 
     'airwatch',
+    'azureusers',
     'bamboohr',
     'casper',
     'chef',
+    'chromebooks',
+    'csv_assets',
+    'csv_users',
     'jasper',
     'ldap',
     'ldap_assets',
@@ -16,4 +20,4 @@ EnabledConnectors = {
     'csv_assets',
     'csv_users',
     'chromebooks',
-}
+)

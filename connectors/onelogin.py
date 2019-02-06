@@ -3,9 +3,11 @@ import json
 import logging
 
 import xmltodict
-from requests import ConnectionError, HTTPError
 from enum import Enum
+from requests import ConnectionError, HTTPError
+
 from lib.connector import UserConnector
+from lib.error import ConfigError, AuthenticationError
 
 LOG = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
 
@@ -108,7 +110,7 @@ class Connector(UserConnector):
             LOG.warning('Deprecated API used! Please switch to the new OneLogin API')
             self.api_version = Connector.Version.v1_to_v3
         else:
-            raise RuntimeError('OneLogin connector configured improperly')
+            raise ConfigError('OneLogin connector configured improperly')
 
     def _init_url_template(self):
         if self.api_version == Connector.Version.slash_one:
@@ -118,7 +120,7 @@ class Connector(UserConnector):
             self.url_template = "%s?include_custom_attributes=true&page={0}" % self.settings['url']
             self.test_conn_url = self.url_template.format(1)
         else:
-            raise RuntimeError('OneLogin connector url template cannot be initialized with invalid version')
+            raise ConfigError('OneLogin connector url template cannot be initialized with invalid version')
 
     def get_headers_v1_to_v3(self):
         """
@@ -143,8 +145,8 @@ class Connector(UserConnector):
             response = self.post('https://api.us.onelogin.com/auth/oauth2/token', data, headers)
             response = json.loads(response.text)
             if response['status']['code'] != 200:
-                raise RuntimeError("Unexpected response from OneLogin. Got code: {}, message: {}".format(response['status']['code'],
-                                                                                                         response['status']['message']))
+                raise AuthenticationError("Unexpected response from OneLogin. Got code: {}, message: {}".format(
+                    response['status']['code'], response['status']['message']))
             self.access_token = response['data'][0]['access_token']
 
         return {

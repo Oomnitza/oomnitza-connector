@@ -4,6 +4,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
  presently pull data from the following sources, with more planned in the future.
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
+* Azure Active Directory Users [https://azure.microsoft.com/en-us/services/active-directory/](https://azure.microsoft.com/en-us/services/active-directory/)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
@@ -477,6 +478,14 @@ An example generated `config.ini` follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     dep_uuid = 
 
+    [azureusers]
+    enable = False
+    tenant_id = 
+    client_id = 
+    secret = 
+    default_role = 25
+    default_position = Employee
+
     [bamboohr]
     enable = False
     url = https://api.bamboohr.com/api/gateway.php
@@ -519,7 +528,7 @@ An example generated `config.ini` follows.
 
     [ldap]
     enable = False
-    url = ldap://ldap.forumsys.com:389
+    url = ldaps://ldap.com:389
     username = cn=read-only-admin,dc=example,dc=com
     password =
     base_dn = dc=example,dc=com
@@ -535,7 +544,7 @@ An example generated `config.ini` follows.
 
     [ldap_assets]
     enable = False
-    url = ldap://ldap.forumsys.com:389
+    url = ldaps://ldap.com:389
     username = cn=read-only-admin,dc=example,dc=com
     password =
     base_dn = dc=example,dc=com
@@ -630,8 +639,6 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `password`: the Oomnitza password to use
 
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
-
 `api_token`: The API Token belonging to the Oomnitza user. If provided, `password` will not be used.
 
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
@@ -644,8 +651,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `password`: the Airwatch password to use
 
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
-
 `api_token`: API token for the connection
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
@@ -653,7 +658,7 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
 
 #### Default Field Mappings
-    To Be Determined
+    No default mappings
 
 
 ### CSV Assets Configuration
@@ -664,7 +669,7 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
-    No default mapping. Everything should be defined in the config
+    No default mappings. Everything should be defined in the config
 
 
 ### CSV Users Configuration
@@ -692,13 +697,13 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 #### Default Field Mappings
-    mapping.USER =            {'source': "workEmail"}
-    mapping.FIRST_NAME' =     {'source': "firstName"}
-    mapping.LAST_NAME' =      {'source': "lastName"}
-    mapping.EMAIL' =          {'source': "workEmail"}
-    mapping.PHONE' =          {'source': "mobilePhone"}
-    mapping.POSITION' =       {'source': "jobTitle"}
-    mapping.PERMISSIONS_ID' = {'setting': "default_role"}
+    mapping.USER =           {'source': "workEmail"}
+    mapping.FIRST_NAME =     {'source': "firstName"}
+    mapping.LAST_NAME =      {'source': "lastName"}
+    mapping.EMAIL =          {'source': "workEmail"}
+    mapping.PHONE =          {'source': "mobilePhone"}
+    mapping.POSITION =       {'source': "jobTitle"}
+    mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
 ### Casper Configuration
@@ -715,8 +720,6 @@ an existing record that has new information.
 `username`: the Casper username to use
 
 `password`: the Casper password to use. Note: the Casper API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
-
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
@@ -906,7 +909,8 @@ Set the field mapping related to computers in the 'casper' section and set **syn
     'security.passcode_present'
     
 #### Default Field Mappings
-    To Be Determined
+    No default mappings
+
 
 ### Chef Configuration
 The `[chef]` section contains a similar set of preferences.
@@ -975,7 +979,7 @@ The `[chromebooks]` section contains the following attributes:
 
 #### **Default Field Mappings**
 
-There is no default mapping. All mappings need to be defined in the config file.
+    No default mappings. All mappings need to be defined in the config file.
 
 
 ### Jasper Configuration
@@ -984,8 +988,6 @@ There is no default mapping. All mappings need to be defined in the config file.
 `username`: the Jasper username to use
 
 `password`: the Jasper password to use
-
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `storage`: The path to the storage file used to maintain state about the connector. Defaults to: `storage.db`
 
@@ -996,18 +998,16 @@ There is no default mapping. All mappings need to be defined in the config file.
 `update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
 
 #### Default Field Mappings
-    To Be Determined
+    No default mappings
 
 
 ### LDAP Configuration
 
-`url`: The full URI for the LDAP server. For example: `ldap://ldap.forumsys.com:389`
+`url`: The full URI for the LDAP server.
 
 `username`: the LDAP username to use. Can be a DN, such as `cn=read-only-admin,dc=example,dc=com`.
 
 `password`: the LDAP password to use
-
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `base_dn`: The Base DN to use for the connection.
 
@@ -1032,18 +1032,40 @@ Default is "member" but can vary in different LDAP systems.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
+#### Default Field Mappings
+    mapping.USER =           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
+    mapping.FIRST_NAME =     {'source': "givenName"},
+    mapping.LAST_NAME =      {'source': "sn"},
+    mapping.EMAIL =          {'source': "mail", 'required': True},
+    mapping.PERMISSIONS_ID = {'setting': "default_role"},
+
+
+### Azure Active Directory Users Configuration
+
+`tenant_id`: The ID of your tenant.
+
+`client_id`: The ID of the Service Principal used to access the user's data. 
+Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
+
+`secret`: The Service Principal secret/key value
+
+`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
+
+`default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+#### Default Field Mappings
+    No default mappings
+
 
 ### LDAP Assets Configuration
 
 This is for `[ldap_assets]` section and actually contains the same set of configuration as for `[ldap]` used to fetch the user records.
 
-`url`: The full URI for the LDAP server. For example: `ldap://ldap.forumsys.com:389`
+`url`: The full URI for the LDAP server.
 
 `username`: the LDAP username to use. Can be a DN, such as `cn=read-only-admin,dc=example,dc=com`.
 
 `password`: the LDAP password to use
-
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `base_dn`: The Base DN to use for the connection.
 
@@ -1066,6 +1088,9 @@ Default is "member" but can vary in different LDAP systems.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
+#### Default Field Mappings
+    No default mappings
+
 
 ### MobileIron Configuration
 `url`: The full URI for the MobileIron server. For example: `https://na1.mobileiron.com`
@@ -1073,8 +1098,6 @@ Default is "member" but can vary in different LDAP systems.
 `username`: the MobileIron username to use.
 
 `password`: the MobileIron password to use.
-
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
 
 `partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`. Used for API v1 and ignored for API v2.
 
@@ -1084,7 +1107,7 @@ Default is "member" but can vary in different LDAP systems.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
 
 #### Default Field Mappings
-    To Be Determined
+    No default mappings
 
 
 ### Okta Configuration
@@ -1153,8 +1176,6 @@ In Windows environment there is always should be at least one legacy driver name
 
 Please refer to this [page](https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-SQL-Server-from-Windows) for the list of currently supported drivers.
 
-`env_password`: (optional) the name of the environment variable containing the password value to use. The `password` field will be ignored.
-
 `authentication`: Sets the type of authentication to use when connecting to the server.
 Options are `SQL Server` or `Windows`. The default is to use SQL Server Authentication.
 When using `Windows` authentication, the `username` and `password` fields are ignored and the credentials
@@ -1163,7 +1184,7 @@ for the currently logged in user will be used when making the connection to the 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
-    To Be Determined
+    No default mappings
 
 
 ### Zendesk Configuration
