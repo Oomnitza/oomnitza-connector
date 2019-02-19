@@ -2,6 +2,7 @@ EnabledConnectors = (
     'oomnitza',
 
     'airwatch',
+    'azuredevices',
     'azureusers',
     'bamboohr',
     'casper',

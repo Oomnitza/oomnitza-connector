@@ -4,7 +4,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
  presently pull data from the following sources, with more planned in the future.
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
-* Azure Active Directory Users [https://azure.microsoft.com/en-us/services/active-directory/](https://azure.microsoft.com/en-us/services/active-directory/)
+* Azure Users & Devices [https://azure.microsoft.com](https://azure.microsoft.com)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
@@ -477,6 +477,13 @@ An example generated `config.ini` follows.
     api_token = YOUR AirWatch API TOKEN
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     dep_uuid = 
+
+    [azuredevices]
+    enable = False
+    tenant_id = 
+    client_id = 
+    secret =
+    sync_field = 24DCF85294E411E38A52066B556BA4EE    
 
     [azureusers]
     enable = False
@@ -1038,6 +1045,20 @@ Default is "member" but can vary in different LDAP systems.
     mapping.LAST_NAME =      {'source': "sn"},
     mapping.EMAIL =          {'source': "mail", 'required': True},
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
+
+### Azure Active Directory Devices Configuration
+
+`tenant_id`: The ID of your tenant.
+
+`client_id`: The ID of the Service Principal used to access the user's data. 
+Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
+
+`secret`: The Service Principal secret/key value
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier.
+
+#### Default Field Mappings
+    No default mappings
 
 
 ### Azure Active Directory Users Configuration
