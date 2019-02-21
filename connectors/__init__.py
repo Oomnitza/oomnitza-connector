@@ -13,6 +13,7 @@ EnabledConnectors = (
     'jasper',
     'ldap',
     'ldap_assets',
+    'merakism',
     'mobileiron',
     'okta',
     'onelogin',

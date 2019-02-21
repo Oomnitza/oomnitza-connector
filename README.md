@@ -12,6 +12,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
+* Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
 * Okta [https://www.okta.com](https://www.okta.com/)
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
@@ -564,6 +565,12 @@ An example generated `config.ini` follows.
     group_members_attr = member
     group_member_filter = 
 
+    [merakism]
+    enable = False
+    meraki_api_key = 
+    network_id = N_**************
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
     [mobileiron]
     enable = False
     url = https://na1.mobileiron.com
@@ -1108,6 +1115,17 @@ Default is "member" but can vary in different LDAP systems.
 `filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier.
+
+#### Default Field Mappings
+    No default mappings
+
+
+### Meraki Systems Manager Configuration
+`meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
+ 
+`network_id` = Meraki network identifier.
+ 
+`sync_field` = The Oomnitza field which contains the asset's unique identifier.
 
 #### Default Field Mappings
     No default mappings
