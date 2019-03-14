@@ -1,9 +1,7 @@
 import ssl
 
 from requests.adapters import HTTPAdapter, DEFAULT_POOLBLOCK
-from requests.packages.urllib3.poolmanager import PoolManager
-from requests.packages.urllib3.util.retry import Retry
-
+from urllib3 import Retry, PoolManager
 
 retries = Retry(total=10,
                 backoff_factor=0.5,
@@ -45,4 +43,3 @@ if getattr(ssl, '_SSLv2_IF_EXISTS', False):
         Protocol = ssl.PROTOCOL_SSLv2
 
     AdapterMap['sslv2'] = Sslv2HttpAdapter
-

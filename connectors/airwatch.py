@@ -3,18 +3,11 @@ import logging
 
 from gevent.pool import Pool
 from requests import ConnectionError, HTTPError
+from requests.exceptions import RetryError
 
 from lib.connector import AuditConnector
 
 logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
-
-"""
-Curl Auth Test:
-curl -v --user [USERNAME]:[PASSWORD] \
-        --header "aw-tenant-code: [API-TOKEN]" \
-        --header "Accept: application/json" \
-        https://[HOST]/api/v1/help
-"""
 
 
 class Connector(AuditConnector):
@@ -163,6 +156,6 @@ class Connector(AuditConnector):
             url = self.network_url_template.format(device_id=device_id)
             response = self.get(url).json()
             return response
-        except HTTPError:
+        except (HTTPError, RetryError):
             logger.exception("Error trying to load network details for device: %s", device_id)
             return {}
