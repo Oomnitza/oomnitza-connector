@@ -8,6 +8,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
+* Google mobile devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
@@ -15,6 +16,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
 * Okta [https://www.okta.com](https://www.okta.com/)
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
+* Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
@@ -595,6 +597,13 @@ An example generated `config.ini` follows.
     default_role = 25
     default_position = Employee
 
+    [open_audit]
+    enable = False
+    url = http://192.168.XXX.XXX
+    username = change-me
+    password = change-me
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
     [sccm]
     enable = False
     server = server.example.com
@@ -995,6 +1004,29 @@ The `[chromebooks]` section contains the following attributes:
 
     No default mappings. All mappings need to be defined in the config file.
 
+### Google Mobile Devices
+
+NOTE: The Google mobile devices connector does not have a UI and must be configured using the config file.  The Google mobile devices management API reference with attributes description can be found [here](https://developers.google.com/admin-sdk/directory/v1/reference/mobiledevices).
+
+The following steps need to be taken to allow automated retrieval from Google Admin API:
+
+ 1) [Enable API access for your G Suite domain](https://support.google.com/a/answer/60757)
+ 2) Create a new project in [Google Developers Console](https://console.developers.google.com/) and enable the Admin SDK.
+ 3) Create a service account in this project and delegate a domain-wide authority to it.  For more details, please refer to [Using OAuth 2.0 for Server to Server Applications](https://developers.google.com/identity/protocols/OAuth2ServiceAccount) and follow the instructions.
+The Oomnitza connector requires read-only API scope enable to successfully operate _`https://www.googleapis.com/auth/admin.directory.device.mobile.readonly`_
+
+The `[google_mobile_devices]` section contains the following attributes:
+
+`service_account_impersonate`: the email of the real G Suite administrator to be impersonated by the service account.
+
+`service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
+
+`sync_field`: The Oomnitza field which contains the asset&#39;s unique identifier (i.e. serial number).
+
+#### **Default Field Mappings**
+
+    No default mappings. All mappings need to be defined in the config file.
+
 
 ### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.
@@ -1194,6 +1226,56 @@ If you have an issues during the connection to the OneLogin, please switch to th
     mapping.PHONE =          {'source': "phone"}
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
     mapping.POSITION =       {'setting': "default_position"}
+
+
+### Open-AudIT Configuration
+`url`: The full URI for the Open-AudIT server. For example: `http://192.168.111.145`
+
+`username`: The Open-AudIT username used to connect to the API.
+
+`password`: The Open-AudIT password used to connect to the API.
+
+#### Default Field Mappings
+    No default mappings
+
+#### List of currently supported Open-AudIT attributes
+    'hardware.name'
+    'hardware.ip'
+    'hardware.dbus_identifier'
+    'hardware.description'
+    'hardware.dns_hostname'
+    'hardware.domain'
+    'hardware.end_of_life'
+    'hardware.end_of_service'
+    'hardware.environment'
+    'hardware.first_seen'
+    'hardware.form_factor'
+    'hardware.fqdn'
+    'hardware.hostname'
+    'hardware.identification'
+    'hardware.last_seen'
+    'hardware.mac_vendor'
+    'hardware.mac'
+    'hardware.manufacturer'
+    'hardware.memory_count'
+    'hardware.model'
+    'hardware.os_bit'
+    'hardware.os_family'
+    'hardware.os_group'
+    'hardware.os_installation_date'
+    'hardware.os_name'
+    'hardware.os_version'
+    'hardware.processor_count'
+    'hardware.purchase_invoice'
+    'hardware.purchase_order_number'
+    'hardware.serial_imei'
+    'hardware.serial_sim'
+    'hardware.serial'
+    'hardware.storage_count'
+    'hardware.uptime_formatted'
+    'hardware.uptime'
+    'hardware.uuid'
+    'hardware.warranty_expires'
 
 
 ### SCCM Configuration
