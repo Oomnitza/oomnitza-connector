@@ -52,6 +52,8 @@ SELECT DisplayName0 AS 'name',
   FROM dbo.v_GS_ADD_REMOVE_PROGRAMS_64
  WHERE ResourceID = ?
  """
+
+
 class Connector(AuditConnector):
     MappingName = 'SCCM'
     Settings = {
@@ -63,9 +65,11 @@ class Connector(AuditConnector):
         'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'driver':            {'order': 7, 'default': ''},
     }
+
     DefaultConverters = {
-        # FORMAT: "{source field}": "{converter to be applied by default}",
+        "hardware.last_logon":   "date_format"
     }
+
     FieldMappings = {
         'APPLICATIONS':      {'source': "software"},
     }

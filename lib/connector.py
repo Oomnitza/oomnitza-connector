@@ -3,6 +3,7 @@ import errno
 import json
 import logging
 import os
+from datetime import datetime, date
 
 import requests
 from gevent.pool import Pool
@@ -149,6 +150,16 @@ class BaseConnector(object):
         self._strongbox = Strongbox(section, backend_name)
         self._preload_secrets()
 
+    @staticmethod
+    def json_serializer(value):
+        """
+        In the `--save-data` mode we are dumping the data to the JSON notation.
+        So the we should pre-process the values to be sure these can be represented as the 
+        JSON (https://docs.python.org/2/library/json.html#py-to-json-table)
+        """
+        if isinstance(value, (date, datetime)):
+            return value.isoformat()
+
     def _get_secrets(self, keys=None):
         """
         Get secrets from vault for specified keys. Raises ``ConfigError``
@@ -282,10 +293,8 @@ class BaseConnector(object):
 
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        # LOG.debug("headers: %r", headers)
-        # LOG.debug("payload = %s", json.dumps(data))
         if post_as_json:
-            data = json.dumps(data)
+            data = json.dumps(data, default=self.json_serializer)
         response = session.post(url, data=data, headers=headers, auth=auth,
                                 verify=self.get_verification())
         response.raise_for_status()
@@ -391,7 +400,7 @@ class BaseConnector(object):
                     filename = "./saved_data/{}.json".format(str(index))
                     with open(filename, "w") as save_file:
                         LOG.info("Saving fetched payload data to %s.", filename)
-                        json.dump(record, save_file, indent=2)
+                        json.dump(record, save_file, indent=2, default=self.json_serializer)
 
                 if not isinstance(record, list):
                     record = [record]
@@ -443,7 +452,7 @@ class BaseConnector(object):
                 LOG.info("Saving processed payload data to %s.", filename)
                 with open(filename, 'w') as save_file:
                     self.send_counter += 1
-                    json.dump(data, save_file, indent=2)
+                    json.dump(data, save_file, indent=2, default=self.json_serializer)
             except:
                 LOG.exception("Error saving data.")
 
