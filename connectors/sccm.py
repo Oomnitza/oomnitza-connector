@@ -26,6 +26,8 @@ SELECT cs.ResourceID AS resource_id,
        mem.TotalPhysicalMemory0 AS memory_total_kb,
        bios.SerialNumber0 AS serial_number,
        rsys.Last_Logon_Timestamp0 as last_logon,
+       encrypted_volume.ProtectionStatus0 as c_drive_encrypted,
+       antivirus.AntivirusEnabled as antivirus_enabled,
        os.Caption0 AS os_version
   FROM dbo.v_GS_COMPUTER_SYSTEM AS cs
     LEFT OUTER JOIN dbo.v_GS_PROCESSOR AS processor ON cs.ResourceID = processor.ResourceID
@@ -34,6 +36,9 @@ SELECT cs.ResourceID AS resource_id,
     LEFT OUTER JOIN dbo.v_GS_NETWORK_ADAPTER_CONFIGURATION AS net ON cs.ResourceID = net.ResourceID
             AND MACAddress0 IS NOT NULL
             AND IPAddress0 IS NOT NULL
+    LEFT OUTER JOIN dbo.v_GS_ENCRYPTABLE_VOLUME AS encrypted_volume ON cs.ResourceID = encrypted_volume.ResourceID
+            AND DriveLetter0 = 'C:'
+    LEFT OUTER JOIN dbo.v_GS_AntimalwareHealthStatus as antivirus ON cs.ResourceID = antivirus.ResourceID
     LEFT OUTER JOIN dbo.v_GS_X86_PC_MEMORY AS mem ON cs.ResourceID = mem.ResourceID
     LEFT OUTER JOIN dbo.v_GS_PC_BIOS AS bios ON cs.ResourceID = bios.ResourceID
     LEFT OUTER JOIN dbo.v_R_System AS rsys ON cs.ResourceID = rsys.ResourceID
