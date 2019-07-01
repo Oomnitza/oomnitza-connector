@@ -35,6 +35,7 @@ class Connector(UserConnector):
         'groups_dn':            {'order': 11, 'default': "[]", 'example': '[]', 'validator': json_validator},
         'group_members_attr':   {'order': 12, 'default': 'member'},
         'group_member_filter':  {'order': 13, 'default': ''},
+        'sync_field':           {'order': 14, 'default': 'USER'}
     }
 
     FieldMappings = {

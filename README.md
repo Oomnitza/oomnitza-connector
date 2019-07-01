@@ -4,7 +4,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
  presently pull data from the following sources, with more planned in the future.
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
-* Azure Users & Devices [https://azure.microsoft.com](https://azure.microsoft.com)
+* Azure Users [https://azure.microsoft.com](https://azure.microsoft.com)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
 * Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
@@ -481,13 +481,6 @@ An example generated `config.ini` follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     dep_uuid = 
 
-    [azuredevices]
-    enable = False
-    tenant_id = 
-    client_id = 
-    secret =
-    sync_field = 24DCF85294E411E38A52066B556BA4EE    
-
     [azureusers]
     enable = False
     tenant_id = 
@@ -495,6 +488,7 @@ An example generated `config.ini` follows.
     secret = 
     default_role = 25
     default_position = Employee
+    sync_field = USER
 
     [bamboohr]
     enable = False
@@ -502,6 +496,7 @@ An example generated `config.ini` follows.
     system_name = YOUR BambooHR SYSTEM NAME
     api_token = YOUR BambooHR API TOKEN
     default_role = 25
+    sync_field = USER
 
     [casper]
     enable = False
@@ -551,6 +546,7 @@ An example generated `config.ini` follows.
     groups_dn = []
     group_members_attr = member
     group_member_filter = 
+    sync_field = USER
 
     [ldap_assets]
     enable = False
@@ -589,6 +585,7 @@ An example generated `config.ini` follows.
     default_role = 25
     default_position = Employee
     deprovisioned = false
+    sync_field = USER
 
     [onelogin]
     enable = False
@@ -596,6 +593,7 @@ An example generated `config.ini` follows.
     api_token = YOUR OneLogin API TOKEN
     default_role = 25
     default_position = Employee
+    sync_field = USER
 
     [open_audit]
     enable = False
@@ -620,6 +618,7 @@ An example generated `config.ini` follows.
     username = username@example.com
     default_role = 25
     default_position = Employee
+    sync_field = USER
     
     [csv_assets]
     enable = False
@@ -633,6 +632,7 @@ An example generated `config.ini` follows.
     directory = /some/path/to/files
     default_role = 25
     default_position = Employee
+    sync_field = USER
 
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
@@ -662,7 +662,7 @@ For fields which require processing before being brought into Oomnitza must be d
 
 `password`: the Oomnitza password to use
 
-`api_token`: The API Token belonging to the Oomnitza user. If provided, `password` will not be used.
+`api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used.
 
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
 Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Settings / Certificates" page.
@@ -704,6 +704,8 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
+
 #### Default Field Mappings
     No default mapping. Everything should be defined in the config
 
@@ -718,6 +720,8 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "workEmail"}
@@ -1078,26 +1082,14 @@ Default is "member" but can vary in different LDAP systems.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
+
 #### Default Field Mappings
     mapping.USER =           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
     mapping.FIRST_NAME =     {'source': "givenName"},
     mapping.LAST_NAME =      {'source': "sn"},
     mapping.EMAIL =          {'source': "mail", 'required': True},
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
-
-### Azure Active Directory Devices Configuration
-
-`tenant_id`: The ID of your tenant.
-
-`client_id`: The ID of the Service Principal used to access the user's data. 
-Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
-
-`secret`: The Service Principal secret/key value
-
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
-
-#### Default Field Mappings
-    No default mappings
 
 
 ### Azure Active Directory Users Configuration
@@ -1112,6 +1104,8 @@ Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-direc
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     No default mappings
@@ -1192,6 +1186,8 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
 
 `deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
 
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
+
 #### Default Field Mappings
     mapping.USER =           {'source': "profile.login"},
     mapping.FIRST_NAME =     {'source': "profile.firstName"},
@@ -1217,6 +1213,8 @@ If you have an issues during the connection to the OneLogin, please switch to th
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "username"}
@@ -1318,6 +1316,8 @@ for the currently logged in user will be used when making the connection to the 
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "email"}

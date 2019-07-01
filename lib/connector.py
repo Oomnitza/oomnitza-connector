@@ -612,7 +612,7 @@ class UserConnector(BaseConnector):
         if 'USER' in self.field_mappings:
             self.field_mappings['USER']['required'] = True
         else:
-            raise ConfigError("Missing mapping filed USER is required for records will be sent to Oomnitza.")
+            raise ConfigError("Missing mapping USER field is required for records will be sent to Oomnitza.")
 
         if 'EMAIL' in self.field_mappings:
             self.field_mappings['EMAIL']['required'] = True
@@ -630,10 +630,21 @@ class UserConnector(BaseConnector):
         if 'PERMISSIONS_ID' not in self.field_mappings:
             self.field_mappings['PERMISSIONS_ID'] = {"setting": 'default_role'}
 
+        # this is the compatibility logic. We may not have a sync_field explicitly
+        # added to the config file, so if it is not so, we will add it here
+        # with the backward fallback to the default `USER`
+        self.settings['sync_field'] = self.settings.get('sync_field', 'USER')
+        if self.settings['sync_field'] not in self.field_mappings:
+            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced." %
+                              (self.settings['sync_field'], self.MappingName))
+        self.field_mappings[self.settings['sync_field']]['required'] = True
+
     def send_to_oomnitza(self, oomnitza_connector, record, options):
         options['agent_id'] = self.MappingName
         if self.normal_position:
             options['normal_position'] = True
+
+        options['sync_field'] = self.settings['sync_field']
 
         return super(UserConnector, self).send_to_oomnitza(oomnitza_connector, record, options)
 
@@ -646,10 +657,8 @@ class AuditConnector(BaseConnector):
         super(AuditConnector, self).__init__(section, settings)
 
         if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced. "
-                              "Please check your field mappings under System Settings > Connectors then select "
-                              "'%s' from the drop down." %
-                              (self.settings['sync_field'], self.MappingName, self.MappingName))
+            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced." %
+                              (self.settings['sync_field'], self.MappingName))
 
         self.field_mappings[self.settings['sync_field']]['required'] = True
 

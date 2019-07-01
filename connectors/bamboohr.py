@@ -15,7 +15,8 @@ class Connector(UserConnector):
         'system_name':      {'order': 2, 'example': "YOUR BambooHR SYSTEM NAME"},
         'api_token':        {'order': 3, 'example': "YOUR BambooHR API TOKEN"},
         'default_role':     {'order': 4, 'example': '25'},
-        'default_position': {'order': 9, 'example': 'Employee'},
+        'default_position': {'order': 5, 'example': 'Employee'},
+        'sync_field':       {'order': 6, 'default': 'USER'}
     }
 
     FieldMappings = {

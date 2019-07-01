@@ -73,7 +73,10 @@ class Connector(BaseConnector):
         url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
         if 'normal_position' in options:
             url += "&normal_position={}".format(options['normal_position'])
-        url += "&agent_id={}".format(options.get('agent_id', 'Unknown'))
+        url += "&agent_id={0}&sync_field={1}".format(
+            options.get('agent_id', 'Unknown'),
+            options.get('sync_field', 'USER')
+        )
 
         response = self.post(url, users)
         # logger.debug("response = %r", response.text)
