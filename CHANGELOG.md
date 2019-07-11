@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.10]
+
+### Added
+
+- Added possibility to set up the mapping for the Jamf (Casper) mobile connector on the Oomnitza Portal side. This feature is supported by Oomnitza Portal starting from version 4.4.9.
+
 ## [1.9.9]
 
 ### Changed

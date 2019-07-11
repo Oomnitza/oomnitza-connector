@@ -54,14 +54,6 @@ def run_connector(oomnitza_connector, connector, options):
         LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
 
 
-def stop_connector(connector):
-    try:
-        conn = connector["__connector__"]
-        conn.stop_sync()
-    except Exception as ex:
-        LOG.exception(str(ex))
-
-
 class BaseConnector(object):
     Converters = {}
     FieldMappings = {}
@@ -114,12 +106,7 @@ class BaseConnector(object):
                     self.settings[key] = value
                     continue
 
-                if key in self.Settings:
-                    setting = self.Settings[key]
-                elif key in self.CommonSettings:
-                    setting = self.CommonSettings[key]
-                else:
-                    # raise ConfigError("Invalid setting %r." % key)
+                if key not in self.Settings and key not in self.CommonSettings:
                     LOG.warning("Invalid setting in %r section: %r." % (section, key))
                     continue
 
@@ -202,6 +189,13 @@ class BaseConnector(object):
 
         return mappings
 
+    def get_mapping_from_oomnitza(self):
+        """
+        Connect to the DSS service for the mapping
+        :return: 
+        """
+        return self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+
     def get_default_mappings(self):
         """
         Returns the default mappings, as defined in the class level FieldMappings dict.
@@ -212,7 +206,7 @@ class BaseConnector(object):
         default_mappings = copy.deepcopy(self.FieldMappings)
 
         if self.settings.get('use_server_map', True) in TrueValues:
-            server_mappings = self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+            server_mappings = self.get_mapping_from_oomnitza()
 
             for source, fields in server_mappings.items():
                 if isinstance(fields, basestring):

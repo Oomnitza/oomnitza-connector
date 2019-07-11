@@ -12,14 +12,18 @@ from lib.error import ConfigError
 LOG = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
 
 
+COMPUTERS = 'computers'
+MOBILE_DEVICES = 'mobiledevices'
+
+
 SyncTypes = {
-    "computers": dict(
+    COMPUTERS: dict(
         all_ids_path="JSSResource/computers",
         group_ids_path="JSSResource/computergroups/name/{name}",
         array="computers",
         data="computer",
     ),
-    "mobiledevices": dict(
+    MOBILE_DEVICES: dict(
         all_ids_path="JSSResource/mobiledevices",
         group_ids_path="JSSResource/mobiledevicegroups/name/{name}",
         array="mobile_devices",
@@ -32,12 +36,14 @@ class Connector(AuditConnector):
     MappingName = 'Casper'
     RetryCount = 10
 
+    sync_config = None
+
     Settings = {
         'url':         {'order': 1, 'default': "https://jss.jamfcloud.com/example"},
         'username':    {'order': 2, 'example': "username@example.com"},
         'password':    {'order': 3, 'example': "change-me"},
         'sync_field':  {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-        'sync_type':   {'order': 5, 'default': "computers", 'choices': ("computers", "mobiledevices")},
+        'sync_type':   {'order': 5, 'default': COMPUTERS, 'choices': (COMPUTERS, MOBILE_DEVICES)},
         'update_only': {'order': 6, 'default': "False"},
         'group_name':  {'order': 7, 'default': ""},
     }
@@ -75,48 +81,65 @@ class Connector(AuditConnector):
 
         return details_url
 
+    def get_mapping_from_oomnitza(self):
+        name = self.get_name_for_mapping_and_connection()
+        return self.settings['__oomnitza_connector__'].get_mappings(name)
+
+    def get_sync_type_from_settings(self):
+        sync_type = self.settings.get('sync_type', None)
+        if not sync_type:
+            LOG.warning("No sync_type configured or set as empty. Defaulting to '%s'." % COMPUTERS)
+            sync_type = COMPUTERS
+
+        if sync_type not in SyncTypes:
+            raise ConfigError("Invalid sync_type: %r", self.sync_type)
+
+        return sync_type
+
+    def get_name_for_mapping_and_connection(self):
+        """
+        Depending on the sync type we have to ask for the mapping and send the data 
+        to the Oomnitza as "Casper.MDM" or as "Casper"
+        :return: 
+        """
+        sync_type = self.get_sync_type_from_settings()
+
+        if sync_type == MOBILE_DEVICES:
+            return self.MappingName + ".MDM"
+
+        return self.MappingName
+
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
 
         # ensure URL does not end with a trailing '/'
-        if self.settings['url'].endswith('/'):
-            LOG.warning("Casper URL should not end with a '/'.")
-            self.settings['url'] = self.settings['url'][:-1]
+        self.settings['url'] = self.settings['url'].strip('/')
 
         self.url_template = "%s/{0}" % self.settings['url']
-        sync_type = self.settings.get('sync_type', None)
-        if sync_type is None:
-            LOG.warning("No sync_type configured. Defaulting to 'computers'.")
-            sync_type = "computers"
-        elif not sync_type:
-            LOG.warning("Empty sync_type configured. Defaulting to 'computers'.")
-            sync_type = "computers"
 
-        self.sync_type = SyncTypes.get(sync_type, None)
-        if self.sync_type is None:
-            raise ConfigError("Invalid sync_type: %r", self.sync_type)
-
-        if sync_type == "computers":
-            # print self.field_mappings.keys()
+        self.sync_type = self.get_sync_type_from_settings()
+        if self.sync_type == COMPUTERS:
             if 'APPLICATIONS' not in self.field_mappings:
                 self.field_mappings['APPLICATIONS'] = {"source": "software.applications"}
-        else:
-            self.MappingName = Connector.MappingName+".MDM"
 
+        # set the mapping name to be used in the
+        self.MappingName = self.get_name_for_mapping_and_connection()
+
+        self.sync_config = SyncTypes[self.sync_type]
         self.group_name = self.settings.get("group_name", "")
         if self.group_name:
             LOG.info("Loading assets from group: %r", self.group_name)
             self.ids_url = self.url_template.format(
-                self.sync_type['group_ids_path'].format(
+                self.sync_config['group_ids_path'].format(
                     name=urllib.quote(self.group_name)
                 )
             )
-            self.ids_converter = lambda data: data['{}_group'.format(self.sync_type['data'])][self.sync_type['array']]
+            self.ids_converter = lambda data: data['{}_group'.format(self.sync_config['data'])][self.sync_config['array']]
         else:
-            self.ids_url = self.url_template.format(self.sync_type['all_ids_path'])
-            self.ids_converter = lambda data: data[self.sync_type['array']]
+            self.ids_url = self.url_template.format(self.sync_config['all_ids_path'])
+            self.ids_converter = lambda data: data[self.sync_config['array']]
 
-        self.details_url = self.get_details_url(sync_type)
+        self.details_url = self.get_details_url(self.sync_type)
 
     def get_headers(self):
         return {
@@ -170,10 +193,11 @@ class Connector(AuditConnector):
         """
         This method is used to retrieve the details of an asset by its Casper's ID
         """
+        # noinspection PyBroadException
         try:
             url = self.details_url.format(str(device_id))
             # print url
-            details = self.get(url).json()[self.sync_type['data']]
+            details = self.get(url).json()[self.sync_config['data']]
 
             return details
         except:
@@ -185,6 +209,7 @@ class Connector(AuditConnector):
         Webhook handler (https://github.com/brysontyrrell/Example-JSS-Webhooks)
         It will consume incoming POST request and perform a sync for a certain record
         """
+        # noinspection PyBroadException
         try:
             payload = json.loads(body)
 
@@ -195,9 +220,9 @@ class Connector(AuditConnector):
                 if self.is_authorized():
 
                     if event_type.startswith('Computer'):
-                        device = self.get(self.get_details_url("computers").format(object_id)).json()['computer']
+                        device = self.get(self.get_details_url(COMPUTERS).format(object_id)).json()['computer']
                     elif event_type.startswith('MobileDevice'):
-                        device = self.get(self.get_details_url("mobiledevices").format(object_id)).json()['mobile_device']
+                        device = self.get(self.get_details_url(MOBILE_DEVICES).format(object_id)).json()['mobile_device']
                     else:
                         LOG.warning('Casper unknown event caught. Cannot handle')
                         return
