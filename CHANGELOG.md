@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.12]
+
+### Added
+
+- Added KACE SMA support.
+
+## [1.9.11]
+
+### Added
+
+- Added SimpleMDM support.
+
 ## [1.9.10]
 
 ### Added

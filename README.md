@@ -11,6 +11,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Google mobile devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
+* KACE Systems Management Appliance [https://www.quest.com/kace/](https://www.quest.com/kace/) 
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
 * Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
@@ -18,6 +19,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
+* SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
 
@@ -531,6 +533,15 @@ An example generated `config.ini` follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     update_only = False
 
+    [kace]
+    enable = False
+    url = https://KACE_SMA
+    username = ***
+    password = ***
+    organization_name = Default
+    api_version = 8
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
     [ldap]
     enable = False
     url = ldaps://ldap.com:389
@@ -609,6 +620,14 @@ An example generated `config.ini` follows.
     username = change-me
     password = change-me
     authentication = SQL Server
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
+    [simplemdm]
+    enable = False
+    secret_access_key = ***
+    device_groups = 
+    device_types = computers,mobiledevices
+    custom_attributes = 0
     sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [zendesk]
@@ -1051,6 +1070,24 @@ The `[google_mobile_devices]` section contains the following attributes:
     No default mappings
 
 
+### KACE SMA Configuration
+
+`url`: The URL for the KACE SMA system.
+
+`username`: the KACE SMA username to use
+
+`password`: the KACE SMA password to use
+
+`organization_name`: Organization name used to authorize. Default is "Default"
+
+`api_version`: KACE SMA API version numeric identifier. Default is "8"
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier.
+
+#### Default Field Mappings
+    No default mappings
+
+
 ### LDAP Configuration
 
 `url`: The full URI for the LDAP server.
@@ -1301,6 +1338,24 @@ When using `Windows` authentication, the `username` and `password` fields are ig
 for the currently logged in user will be used when making the connection to the SCCM database.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+#### Default Field Mappings
+    No default mappings
+
+
+### SimpleMDM Configuration
+`secret_access_key`: The API keys used to authenticate. You can retrieve your API key by signing into your SimpleMDM account, visiting “Settings” and then selecting the “API” tab.
+
+`device_groups`: IDs of device groups to process as the set of integer values separated with comma. Example: `1,2,3`. 
+If empty all the device groups will be processed.
+
+`device_types`: Device types to process. Can be `computers`, `mobiledevices` or `computers,mobiledevices` (default)
+
+`custom_attributes`: Flag used to inform the connector to fetch the custom attributes of devices. These attributes then will be accessible in the manually configured mapping via the `custom_attribute` prefix.
+Example, for the custom attribute named "TEST ATTRIBUTE" the mapping will be
+    
+    mapping.BARCODE = {"source": "custom_attributes.TEST_ATTRIBUTE}
+The default value for this flag is "0" - to not fetch the custom attributes
 
 #### Default Field Mappings
     No default mappings
