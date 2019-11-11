@@ -30,6 +30,10 @@ class Connector(AuditConnector):
 
     csrf_token = None
 
+    def __init__(self, *args, **kwargs):
+        super(Connector, self).__init__(*args, **kwargs)
+        self.settings['url'] = self.settings['url'].rstrip('/')
+
     def authorize(self):
         """authorize in the KACE SMA"""
         auth_url = '{url}/ams/shared/api/security/login'.format(url=self.settings['url'])

@@ -20,6 +20,8 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
+* Tanium [https://www.tanium.com/](https://www.tanium.com/)
+* Workday [https://www.workday.com](https://www.workday.com)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
 
@@ -498,6 +500,7 @@ An example generated `config.ini` follows.
     system_name = YOUR BambooHR SYSTEM NAME
     api_token = YOUR BambooHR API TOKEN
     default_role = 25
+    default_position = Employee
     sync_field = USER
 
     [casper]
@@ -508,12 +511,13 @@ An example generated `config.ini` follows.
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     sync_type = computers
     update_only = False
+    group_name = 
     
     [chef]
     enable = False
-    url = https://chef-server/organizations/ORG/
+    url = https://example.com/organizations/org
     client = user
-    key_file = /home/user/user.pem
+    key_file = /path/to/user.pem
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     attribute_extension = 
     
@@ -522,7 +526,27 @@ An example generated `config.ini` follows.
     service_account_impersonate = username@example.com
     service_account_json_key = {}
     sync_field = 24DCF85294E411E38A52066B556BA4EE
-
+    
+    [csv_assets]
+    enable = False
+    filename = /some/path/to/file/assets.csv
+    directory = /some/path/to/files/
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+    
+    [csv_users]
+    enable = False
+    filename = /some/path/to/file/users.csv
+    directory = /some/path/to/files/
+    default_role = 25
+    default_position = Employee
+    sync_field = USER
+    
+    [google_mobile_devices]
+    enable = False
+    service_account_impersonate = username@example.com
+    service_account_json_key = {}
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+    
     [jasper]
     enable = False
     wsdl_path = http://api.jasperwireless.com/ws/schema/Terminal.wsdl
@@ -600,17 +624,19 @@ An example generated `config.ini` follows.
 
     [onelogin]
     enable = False
-    url = https://app.onelogin.com/api/v2/users.xml
-    api_token = YOUR OneLogin API TOKEN
+    url = https://api.us.onelogin.com/api/1/users
+    client_id = qwerty12345678901234567890
+    client_secret = qwerty12345678901234567890
     default_role = 25
     default_position = Employee
+    api_token = 
     sync_field = USER
 
     [open_audit]
     enable = False
-    url = http://192.168.XXX.XXX
-    username = change-me
-    password = change-me
+    url = http://XXX.XXX.XXX.XXX
+    username = 
+    password = 
     sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [sccm]
@@ -621,6 +647,7 @@ An example generated `config.ini` follows.
     password = change-me
     authentication = SQL Server
     sync_field = 24DCF85294E411E38A52066B556BA4EE
+    driver = 
 
     [simplemdm]
     enable = False
@@ -630,6 +657,24 @@ An example generated `config.ini` follows.
     custom_attributes = 0
     sync_field = 24DCF85294E411E38A52066B556BA4EE
 
+    [tanium]
+    enable = False
+    url = https://TANIUM_SERVER
+    username = ***
+    password = ***
+    domain =
+    view =
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
+
+    [workday]
+    enable = False
+    report_url = 
+    username = change-me
+    password = ***
+    default_role = 25
+    default_position = Employee
+    sync_field = USER
+    
     [zendesk]
     enable = False
     system_name = oomnitza
@@ -637,20 +682,7 @@ An example generated `config.ini` follows.
     username = username@example.com
     default_role = 25
     default_position = Employee
-    sync_field = USER
-    
-    [csv_assets]
-    enable = False
-    filename = /some/path/to/file/assets.csv
-    directory = /some/path/to/files
-    sync_field = BARCODE
-
-    [csv_users]
-    enable = False
-    filename = /some/path/to/file/users.csv
-    directory = /some/path/to/files
-    default_role = 25
-    default_position = Employee
+    load_organizations = false
     sync_field = USER
 
 
@@ -1021,7 +1053,7 @@ The `[chromebooks]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-`sync_field`: The Oomnitza field which contains the asset&#39;s unique identifier (i.e. serial number).
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### **Default Field Mappings**
 
@@ -1044,7 +1076,7 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-`sync_field`: The Oomnitza field which contains the asset&#39;s unique identifier (i.e. serial number).
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### **Default Field Mappings**
 
@@ -1082,7 +1114,7 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `api_version`: KACE SMA API version numeric identifier. Default is "8"
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1232,7 +1264,6 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
     mapping.EMAIL =          {'source': "profile.email"},
     mapping.PHONE =          {'source': "profile.mobilePhone"},
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
-    mapping.POSITION =       {'setting': "default_position"},
 
 
 ### OneLogin Configuration
@@ -1260,7 +1291,6 @@ If you have an issues during the connection to the OneLogin, please switch to th
     mapping.EMAIL =          {'source': "email"}
     mapping.PHONE =          {'source': "phone"}
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
-    mapping.POSITION =       {'setting': "default_position"}
 
 
 ### Open-AudIT Configuration
@@ -1357,8 +1387,49 @@ Example, for the custom attribute named "TEST ATTRIBUTE" the mapping will be
     mapping.BARCODE = {"source": "custom_attributes.TEST_ATTRIBUTE}
 The default value for this flag is "0" - to not fetch the custom attributes
 
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
 #### Default Field Mappings
     No default mappings
+
+
+#### Tanium Configuration
+`url`: The URL for the Tanium instance
+
+`username`: The username used to authorize. Please note, the account should have the "Asset Report Read" permission
+
+`password`: The password used to authorize.
+
+`domain`: The domain of the account, used for authorization. Optional, can be empty.
+
+`view`: The numeric ID of the view used to fetch the assets. Optional, can be empty; if empty, all the available attributes of the assets will be retrieved. 
+**WARNING**: the view usage may limit the set of attributes fetched from Tanium system and not all the attributes visible on the Web UI mapping will be actually available. 
+If these not available attributes will be mapped on UI, null values will be pushed to Oomnitza.
+  
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+#### Default Field Mappings
+    No default mappings
+
+
+#### Workday Configuration
+Oomnitza Connector is utilizing the Workday Report-as-a-Service (RaaS) feature. You have to configure the Custom Report 
+and copy the JSON link generated for this report.
+
+`report_url`: The Custom Report JSON link.
+
+`username`: The Workday account's username used to access the report.
+
+`password`: The Workday account's password.
+
+`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
+
+`default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
+
+#### Default Field Mappings
+    mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
 ### Zendesk Configuration
@@ -1381,7 +1452,6 @@ The default value for this flag is "0" - to not fetch the custom attributes
     mapping.EMAIL =          {'source': "email"}
     mapping.PHONE =          {'source': "phone"}
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
-    mapping.POSITION =       {'setting': "default_position"}
 
 
 ## Advanced usage

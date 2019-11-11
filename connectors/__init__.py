@@ -20,6 +20,8 @@ EnabledConnectors = (
     'onelogin',
     'sccm',
     'simplemdm',
+    'tanium',
+    'workday',
     'zendesk',
     'csv_assets',
     'csv_users',

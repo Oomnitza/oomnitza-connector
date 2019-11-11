@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.9.15]
+
+### Fixed
+
+- Handle the Tanium API empty installed software issue
+
+## [1.9.14]
+
+### Added
+
+- Added Workday support (via RaaS).
+
+## [1.9.13]
+
+### Added
+
+- Added Tanium support.
+
 ## [1.9.12]
 
 ### Added

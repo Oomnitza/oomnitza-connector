@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import logging
 import os
+import struct
 
 import ldap
 import ldapurl
@@ -15,7 +16,59 @@ from lib.error import ConfigError
 LOG = logging.getLogger("ext/ldap")  # pylint:disable=invalid-name
 
 
+class LdapBinaryField(object):
+
+    _FIELD_NAME = ''
+
+    @classmethod
+    def check_if_handle(cls, field_name):
+        return cls._FIELD_NAME == field_name
+
+    @classmethod
+    def bin_to_str(cls, bin_value):
+        raise NotImplemented
+
+
+class ObjectSidField(LdapBinaryField):
+
+    _FIELD_NAME = 'objectSid'
+
+    @classmethod
+    def bin_to_str(cls, bin_value):
+        # SID Format: S-Revision-Authority-SubAuthority[n]...
+        # SID Example: S-1-5-21-1270288957-3800934213-3019856503-500
+        # SID Binary Example: '\x01\x05\x00\x00\x00\x00\x00\x05\x15\x00
+        #                      \x00\x00k\xd6b\x04\xfdw\xb1V#_ck\xf5]\x00\x00'
+
+        # byte(0): The revision level of the SID structure
+        revision = ord(bin_value[0])
+
+        # byte(2 - 7): A 48-bit identifier authority value that identifies
+        # the authority that issued this SID (in Big-Endian format)
+        identifier_auth_value = struct.unpack('>Q', b'\x00\x00' + bin_value[2:8])[0]
+
+        # byte(1): Count of sub-authorities
+        count_of_sub_authorities = ord(bin_value[1])
+
+        # byte(8 - last): A variable number of Relative IDentifier (RID) values
+        # that uniquely identify the trustee relative to the authority
+        # that issued this SID
+        bytes_each_chunk = 4
+        start_byte = 8
+        end_byte = 12
+        relative_ids = [struct.unpack('<I', bin_value[start_byte + bytes_each_chunk * i:end_byte + bytes_each_chunk * i])[0]
+                        for i in range(count_of_sub_authorities)]
+
+        return 'S-{0}-{1}-{2}'.format(revision, identifier_auth_value, '-'.join(
+            [str(sub_id) for sub_id in relative_ids]))
+
+
 class LdapConnection(object):
+
+    _BINARY_FIELD_HANDLERS = [
+        ObjectSidField
+    ]
+
     @classmethod
     def clean_record(cls, record):
         clean_record = {}
@@ -29,12 +82,26 @@ class LdapConnection(object):
                             value = value[0]
                         else:
                             value = u""
-                    clean_record[key] = value.decode('unicode_escape').encode('iso8859-1').decode('utf8')
-            except ValueError:
-                clean_record[key] = "*BINARY*"
+                    clean_record[key] = value.decode('unicode_escape').encode(
+                        'iso8859-1').decode('utf8')
+            except ValueError as ex:
+                try:
+                    bin_to_str_handler = cls._select_binary_field_handler(key)
+                    if not bin_to_str_handler:
+                        raise ValueError
+                    clean_record[key] = bin_to_str_handler.bin_to_str(value)
+                except ValueError as ex:
+                    clean_record[key] = "*BINARY*"
             except AttributeError:
                 clean_record[key] = repr(value)
         return clean_record
+
+    @classmethod
+    def _select_binary_field_handler(cls, field_name):
+        for handler in cls._BINARY_FIELD_HANDLERS:
+            if handler.check_if_handle(field_name):
+                return handler
+        return None
 
     def __init__(self, settings, fields):
         self.pg_ctrl = None
