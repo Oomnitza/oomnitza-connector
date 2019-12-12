@@ -19,6 +19,7 @@ EnabledConnectors = (
     'okta',
     'onelogin',
     'sccm',
+    'servicenow',
     'simplemdm',
     'tanium',
     'workday',

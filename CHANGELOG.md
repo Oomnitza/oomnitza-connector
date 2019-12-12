@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.16]
+
+### Added
+
+- Added ServiceNow support.
+
 ## [1.9.15]
 
 ### Fixed

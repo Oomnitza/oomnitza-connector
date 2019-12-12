@@ -20,6 +20,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
+* ServiceNow [https://www.servicenow.com/](https://www.servicenow.com/)
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
 * Workday [https://www.workday.com](https://www.workday.com)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
@@ -648,6 +649,13 @@ An example generated `config.ini` follows.
     authentication = SQL Server
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     driver = 
+
+    [servicenow]
+    enable = False
+    url = https://xxx.service-now.com
+    username = ***
+    password = ***
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [simplemdm]
     enable = False
@@ -1366,6 +1374,20 @@ Please refer to this [page](https://github.com/mkleehammer/pyodbc/wiki/Connectin
 Options are `SQL Server` or `Windows`. The default is to use SQL Server Authentication.
 When using `Windows` authentication, the `username` and `password` fields are ignored and the credentials
 for the currently logged in user will be used when making the connection to the SCCM database.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
+
+#### Default Field Mappings
+    No default mappings
+
+### ServiceNow Configuration
+Note: the connector has been designed to work with the `New York` version of the ServiceNow API. 
+
+`url`: The ServiceNow instance url.
+
+`username`: The username used to authorize.
+
+`password`: The password used to authorize.
 
 `sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
