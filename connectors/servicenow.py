@@ -79,15 +79,15 @@ class Connector(AuditConnector):
                 } for record in software
         ]
 
-    def prepare_asset_payload(self, device):
+    def prepare_asset_payload(self, asset):
         """
         Gather the software and hardware representation
         """
-        ci_id = device['ci']['value']
+        ci_id = asset['ci']['value']
 
         device_info = dict({
-            'hardware': self.prepare_representation(device),
-            'software': self.get_asset_associated_software(ci_id)
+            'hardware': self.prepare_representation(asset),
+            'software': self.get_asset_associated_software(ci_id) if ci_id else []
         })
         return device_info
 
@@ -96,13 +96,13 @@ class Connector(AuditConnector):
 
         connection_pool = Pool(size=pool_size)
 
-        # fetch all the hardware assets ordered by asset tag value
-        hardware_asset_url = self.settings['url'] + "/api/now/table/alm_hardware?" \
-                                                    "sysparm_display_value=all&" \
-                                                    "sysparm_query=^ORDERBYasset_tag"
+        # fetch all the assets ordered by unique sys_id value
+        all_asset_url = self.settings['url'] + "/api/now/table/alm_asset?" \
+                                               "sysparm_display_value=all&" \
+                                               "sysparm_query=^ORDERBYsys_id"
 
         for asset in connection_pool.imap(
                 self.prepare_asset_payload,
-                self.paginator(hardware_asset_url),
+                self.paginator(all_asset_url),
                 maxsize=pool_size):
             yield asset

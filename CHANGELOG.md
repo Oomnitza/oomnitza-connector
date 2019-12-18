@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.17]
+
+### Changed
+
+- Altered logic for ServiceNow: pull all the assets, not only the "hardware" ones.
+
 ## [1.9.16]
 
 ### Added
