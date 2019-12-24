@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.18]
+
+### Changed
+
+- Altered logic for ServiceNow: pull more computer-specific attributes.
+
 ## [1.9.17]
 
 ### Changed

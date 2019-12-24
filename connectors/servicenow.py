@@ -61,23 +61,51 @@ class Connector(AuditConnector):
 
             offset += limit
 
+    def get_asset_associated_computer_info(self, asset_ci_id):
+        """
+        Fetch the general computer-specific information associated with the asset
+        """
+        fields = (
+            'manufacturer', 'model_number', 'operational_status',
+            'hardware_status', 'ip_address', 'cpu_name', 'cpu_speed', 'cpu_count',
+            'os', 'os_version', 'disk_space', 'ram'
+        )
+        if asset_ci_id:
+
+            url = self.settings['url'] + "/api/now/table/cmdb_ci_computer?" \
+                                         "sysparm_query=sys_id={asset_ci_id}&" \
+                                         "sysparm_display_value=all&" \
+                                         "sysparm_fields={fields}".format(asset_ci_id=asset_ci_id,
+                                                                          fields=','.join(fields))
+            hardware_stuff = self.get(url).json()['result']
+
+            if hardware_stuff:
+                return self.prepare_representation(hardware_stuff[0])
+
+        # nothing found or no CI id, return empty dict
+        return {field: '' for field in fields}
+
     def get_asset_associated_software(self, asset_ci_id):
         """
         Fetch all the software installed
         """
-        url = self.settings['url'] + "/api/now/table/cmdb_software_instance?" \
-                                     "sysparm_query=installed_on={asset_ci_id}&" \
-                                     "sysparm_fields=software.version,software.name".format(asset_ci_id=asset_ci_id)
+        if asset_ci_id:
+            url = self.settings['url'] + "/api/now/table/cmdb_software_instance?" \
+                                         "sysparm_query=installed_on={asset_ci_id}&" \
+                                         "sysparm_fields=software.version,software.name".format(asset_ci_id=asset_ci_id)
 
-        software = map(self.prepare_representation, list(self.paginator(url)))
+            software = map(self.prepare_representation, list(self.paginator(url)))
 
-        return [
-                {
-                    'name': record['software.name'],
-                    'version': record['software.version'],
-                    'path': None  # < -- to keep compatibility
-                } for record in software
-        ]
+            return [
+                    {
+                        'name': record['software.name'],
+                        'version': record['software.version'],
+                        'path': None  # < -- to keep compatibility
+                    } for record in software
+            ]
+
+        # nothing found or no CI id, return empty list
+        return []
 
     def prepare_asset_payload(self, asset):
         """
@@ -85,9 +113,15 @@ class Connector(AuditConnector):
         """
         ci_id = asset['ci']['value']
 
+        asset_info = self.prepare_representation(asset)
+        computer_info = self.get_asset_associated_computer_info(ci_id)
+        asset_info.update(computer_info)
+
+        software = self.get_asset_associated_software(ci_id)
+
         device_info = dict({
-            'hardware': self.prepare_representation(asset),
-            'software': self.get_asset_associated_software(ci_id) if ci_id else []
+            'hardware': asset_info,
+            'software': software
         })
         return device_info
 
