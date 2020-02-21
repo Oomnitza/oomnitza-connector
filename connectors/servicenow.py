@@ -1,5 +1,6 @@
 import logging
 
+import arrow
 from gevent.pool import Pool
 from requests.auth import _basic_auth_str
 
@@ -61,6 +62,22 @@ class Connector(AuditConnector):
 
             offset += limit
 
+    def get_custom_hardware_asset_attributes(self, asset_ci_id):
+        """
+        Fetch the custom user-created hardware-specific attributes associated with the asset
+        """
+        if asset_ci_id:
+            url = self.settings['url'] + "/api/now/table/alm_hardware?" \
+                                         "sysparm_query=ci={asset_ci_id}&" \
+                                         "sysparm_display_value=all".format(asset_ci_id=asset_ci_id)
+            hardware_stuff = self.get(url).json()['result']
+
+            if hardware_stuff:
+                hardware_repr = self.prepare_representation(hardware_stuff[0])
+
+                return {k: v for k, v in hardware_repr.items() if k.startswith('u_')}
+        return {}
+
     def get_asset_associated_computer_info(self, asset_ci_id):
         """
         Fetch the general computer-specific information associated with the asset
@@ -68,7 +85,8 @@ class Connector(AuditConnector):
         fields = (
             'manufacturer', 'model_number', 'operational_status',
             'hardware_status', 'ip_address', 'cpu_name', 'cpu_speed', 'cpu_count',
-            'os', 'os_version', 'disk_space', 'ram'
+            'os', 'os_version', 'disk_space', 'ram',
+            'sys_created_on', 'mac_address', 'warranty_expiration', 'model_id'
         )
         if asset_ci_id:
 
@@ -80,7 +98,20 @@ class Connector(AuditConnector):
             hardware_stuff = self.get(url).json()['result']
 
             if hardware_stuff:
-                return self.prepare_representation(hardware_stuff[0])
+                hardware_repr = self.prepare_representation(hardware_stuff[0])
+
+                # note 1: the `sys_created_on` is represented not in ISO 8601,
+                # convert it ISO 8601 to be able to process on Oomnitza side
+                # note 2: the `warranty_expiration` is represented as the date in ISO 8601,
+                # but because on Oomnitza side we have american / european dates formats, we
+                # should not send the date as is, but convert to ISO 8601 as well to remove
+                # the implicit
+                if hardware_repr.get('warranty_expiration'):
+                    hardware_repr['warranty_expiration'] = str(arrow.get(hardware_repr['warranty_expiration']))
+                if hardware_repr.get('sys_created_on'):
+                    hardware_repr['sys_created_on'] = str(arrow.get(hardware_repr['sys_created_on']))
+
+                return hardware_repr
 
         # nothing found or no CI id, return empty dict
         return {field: '' for field in fields}
@@ -107,15 +138,23 @@ class Connector(AuditConnector):
         # nothing found or no CI id, return empty list
         return []
 
-    def prepare_asset_payload(self, asset):
+    def is_asset_hardware(self, asset_full_repr):
+        return asset_full_repr['sys_class_name']['value'] == 'alm_hardware'
+
+    def prepare_asset_payload(self, asset_full_repr):
         """
         Gather the software and hardware representation
         """
-        ci_id = asset['ci']['value']
+        ci_id = asset_full_repr['ci']['value']
 
-        asset_info = self.prepare_representation(asset)
+        asset_info = self.prepare_representation(asset_full_repr)
         computer_info = self.get_asset_associated_computer_info(ci_id)
         asset_info.update(computer_info)
+
+        # update the record with custom hardware attributes
+        if self.is_asset_hardware(asset_full_repr):
+            custom_hardware_info = self.get_custom_hardware_asset_attributes(ci_id)
+            asset_info.update(custom_hardware_info)
 
         software = self.get_asset_associated_software(ci_id)
 

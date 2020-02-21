@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.19]
+
+### Changed
+
+- Altered logic for ServiceNow: pull more computer-specific attributes and custom "alm_hardware" attributes.
+
 ## [1.9.18]
 
 ### Changed
