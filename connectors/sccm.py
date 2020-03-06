@@ -28,6 +28,7 @@ SELECT cs.ResourceID AS resource_id,
        rsys.Last_Logon_Timestamp0 as last_logon,
        encrypted_volume.ProtectionStatus0 as c_drive_encrypted,
        antivirus.AntivirusEnabled as antivirus_enabled,
+       umr.UniqueUserName AS primary_user,
        os.Caption0 AS os_version
   FROM dbo.v_GS_COMPUTER_SYSTEM AS cs
     LEFT OUTER JOIN dbo.v_GS_PROCESSOR AS processor ON cs.ResourceID = processor.ResourceID
@@ -42,6 +43,7 @@ SELECT cs.ResourceID AS resource_id,
     LEFT OUTER JOIN dbo.v_GS_X86_PC_MEMORY AS mem ON cs.ResourceID = mem.ResourceID
     LEFT OUTER JOIN dbo.v_GS_PC_BIOS AS bios ON cs.ResourceID = bios.ResourceID
     LEFT OUTER JOIN dbo.v_R_System AS rsys ON cs.ResourceID = rsys.ResourceID
+    LEFT OUTER JOIN dbo.v_UserMachineRelationship AS umr ON cs.ResourceID = umr.MachineResourceID
     LEFT OUTER JOIN dbo.v_GS_OPERATING_SYSTEM AS os ON cs.ResourceID = os.ResourceID;"""
 
 SoftwareSQL = """

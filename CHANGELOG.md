@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.20]
+
+### Added
+
+- Added the "Primary User" extraction for the SCCM connector.
+
 ## [1.9.19]
 
 ### Changed
