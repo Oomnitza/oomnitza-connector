@@ -16,6 +16,7 @@ EnabledConnectors = (
     'ldap_assets',
     'merakism',
     'mobileiron',
+    'netbox',
     'okta',
     'onelogin',
     'sccm',

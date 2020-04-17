@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.21]
+
+### Added
+
+- Added Netbox support.
+
 ## [1.9.20]
 
 ### Added

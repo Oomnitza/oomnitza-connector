@@ -15,6 +15,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
 * Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
+* Netbox [https://netbox.readthedocs.io/en/stable/](https://netbox.readthedocs.io/en/stable/)
 * Okta [https://www.okta.com](https://www.okta.com/)
 * OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
@@ -42,6 +43,15 @@ Since Oomnitza is highly customizable, there are many possibilities with the con
  (Refer to our [Guide to creating custom fields in Oomnitza](https://wiki.oomnitza.com/wiki/Creating_Fields_in_Oomnitza)
  to get started.)
 
+## System Requirements
+The Oomnitza Connector supports Linux, Windows, and Mac OS. 
+For Linux, we recommend the Ubuntu OS.
+Recommended Requirements: 2-4 vCPU, 4-8 GB RAM, 2 GB disk space. 
+Overall the Connector has a small footprint and only utilizes CPU and 
+RAM during the scheduled synchronization jobs. With log rotation enabled for 
+the generated Connector logs, the consumed disk space will remain within limits. 
+Depending on the number of integrations and volume of data, 
+the Connector can be configured to use additional workers.
 
 ## Runtime Environment Setup
 You will need to install Python 2.7.X as well as the packages which the connector
@@ -613,6 +623,12 @@ An example generated `config.ini` follows.
     partitions = ["Drivers"]
     sync_field = 24DCF85294E411E38A52066B556BA4EE
     api_version = 1
+
+    [netbox]
+    enable = False
+    url = https://NETBOX
+    auth_token = *******
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [okta]
     enable = False
@@ -1247,6 +1263,17 @@ Default is "member" but can vary in different LDAP systems.
 
 `api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
+
+#### Default Field Mappings
+    No default mappings
+
+
+### Netbox Configuration
+`url`: The full URI for the Netbox server.
+
+`auth_token`: the authorization token to use.
+
+`sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
 #### Default Field Mappings
     No default mappings
