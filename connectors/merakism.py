@@ -1,7 +1,7 @@
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     """
     Meraki SM (EMM solution) connector 
     """
@@ -9,7 +9,6 @@ class Connector(AuditConnector):
     Settings = {
         'meraki_api_key':   {'order': 1, 'example': '', 'default': ""},
         'network_id':       {'order': 2, 'example': 'N_**************', 'default': ""},
-        'sync_field':       {'order': 3, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     def __init__(self, section, settings):

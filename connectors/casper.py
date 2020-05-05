@@ -6,7 +6,7 @@ import gevent
 from gevent.pool import Pool
 from requests import ConnectionError, HTTPError
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from lib.error import ConfigError
 
 LOG = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
@@ -32,7 +32,7 @@ SyncTypes = {
 }
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'Casper'
     RetryCount = 10
 
@@ -42,9 +42,7 @@ class Connector(AuditConnector):
         'url':         {'order': 1, 'default': "https://jss.jamfcloud.com/example"},
         'username':    {'order': 2, 'example': "username@example.com"},
         'password':    {'order': 3, 'example': "change-me"},
-        'sync_field':  {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'sync_type':   {'order': 5, 'default': COMPUTERS, 'choices': (COMPUTERS, MOBILE_DEVICES)},
-        'update_only': {'order': 6, 'default': "False"},
         'group_name':  {'order': 7, 'default': ""},
     }
     DefaultConverters = {
@@ -228,6 +226,6 @@ class Connector(AuditConnector):
                         return
 
                     # sync retrieved device with Oomnitza
-                    gevent.spawn(self.sender, *(self.OomnitzaConnector, options, device)).start()
+                    gevent.spawn(self.sender, *(self.OomnitzaConnector, device)).start()
         except:
             LOG.exception('Casper server handler failed')

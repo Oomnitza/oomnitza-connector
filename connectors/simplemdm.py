@@ -4,7 +4,7 @@ from gevent.pool import Pool
 from requests.auth import _basic_auth_str
 
 from lib import TrueValues
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from lib.error import ConfigError
 
 
@@ -15,7 +15,7 @@ MOBILE_DEVICES = 'mobiledevices'
 LOG = logging.getLogger("connectors/simplemdm")
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     """
     SimpleMDM integration
     """
@@ -26,7 +26,6 @@ class Connector(AuditConnector):
         'device_types':         {'order': 3, 'example': '{0},{1}'.format(COMPUTERS, MOBILE_DEVICES),
                                  'default': '{0},{1}'.format(COMPUTERS, MOBILE_DEVICES)},
         'custom_attributes':    {'order': 4, 'example': '0', 'default': '0'},
-        'sync_field':           {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
 
     }
 

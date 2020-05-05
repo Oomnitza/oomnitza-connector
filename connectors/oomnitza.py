@@ -68,34 +68,14 @@ class Connector(BaseConnector):
             raise AuthenticationError(str(exp))
         # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
-    def upload_users(self, users, options):
-        # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/users?VERSION={VERSION}".format(**self.settings)
-        if 'normal_position' in options:
-            url += "&normal_position={}".format(options['normal_position'])
-        url += "&agent_id={0}&sync_field={1}".format(
-            options.get('agent_id', 'Unknown'),
-            options.get('sync_field', 'USER')
-        )
-
-        response = self.post(url, users)
-        # logger.debug("response = %r", response.text)
-        return response
-
-    def upload_audit(self, computers, options):
-        # logger.debug("upload_users( %r )", users)
-        url = "{url}/api/v2/bulk/audit?VERSION={VERSION}".format(**self.settings)
-        response = self.post(url, computers)
-        # logger.debug("response = %r", response.text)
+    def upload(self, payload):
+        url = "{}/api/v3/bulk".format(self.settings['url'])
+        response = self.post(url, payload)
         return response
 
     @staticmethod
-    def _test_upload_users(users, options):
-        pprint.pprint(users)
-
-    @staticmethod
-    def _test_upload_audit(computers, options):
-        pprint.pprint(computers)
+    def test_upload(records):
+        pprint.pprint(records)
 
     def perform_sync(self, oomnitza_connector, options):
         """

@@ -16,7 +16,6 @@ class Connector(UserConnector):
         'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
         'deprovisioned':    {'order': 5, 'default': 'false', 'example': 'false'},
-        'sync_field':       {'order': 6, 'default': 'USER'}
     }
 
     FieldMappings = {

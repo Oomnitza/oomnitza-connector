@@ -12,18 +12,17 @@ import codecs
 import glob
 
 from ldap.controls import SimplePagedResultsControl
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from lib.error import ConfigError
 
 
 LOGGER = logging.getLogger("connectors/json_assets")  # pylint:disable=invalid-name
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'JSON-assets'
     Settings = {
         'directory':   {'order': 1, 'example': "/Users/daniel/Documents/development/Oomnitza/Connector/test_data"},
-        'sync_field':  {'order': 2, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {

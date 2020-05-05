@@ -1,11 +1,11 @@
 import logging
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 LOG = logging.getLogger("connectors/kace")
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     """
     KACE SMA integration
     """
@@ -16,7 +16,6 @@ class Connector(AuditConnector):
         'password':             {'order': 3, 'example': '***', 'default': ''},
         'organization_name':    {'order': 4, 'example': 'Default', 'default': 'Default'},
         'api_version':          {'order': 5, 'example': '8', 'default': '8'},
-        'sync_field':           {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {

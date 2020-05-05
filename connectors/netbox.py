@@ -1,7 +1,7 @@
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     """
     Netbox devices connector 
     """
@@ -9,7 +9,6 @@ class Connector(AuditConnector):
     Settings = {
         'url':          {'order': 1, 'example': 'https://NETBOX', 'default': ""},
         'auth_token':   {'order': 2, 'example': '*******', 'default': ""},
-        'sync_field':   {'order': 3, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     def get_headers(self):

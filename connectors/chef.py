@@ -6,7 +6,7 @@ import json
 import re
 import chef
 from lib import TrueValues
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from utils.data import get_field_value
 
 
@@ -250,13 +250,12 @@ class AuditUtil(object):
         return None
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'Chef'
     Settings = {
         'url':                 {'order': 1, 'example': 'https://example.com/organizations/org'},
         'client':              {'order': 2, 'example': 'user'},
         'key_file':            {'order': 3, 'example': '/path/to/user.pem'},
-        'sync_field':          {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'attribute_extension': {'order': 5, 'default': ''},
     }
     DefaultConverters = {

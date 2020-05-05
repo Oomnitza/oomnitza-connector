@@ -5,19 +5,18 @@ from gevent.pool import Pool
 from requests import ConnectionError, HTTPError
 from requests.exceptions import RetryError
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'AirWatch'
     Settings = {
         'url':        {'order': 1, 'default': "https://apidev.awmdm.com"},
         'username':   {'order': 2, 'example': "username@example.com"},
         'password':   {'order': 3, 'example': "change-me"},
         'api_token':  {'order': 4, 'example': "YOUR AirWatch API TOKEN"},
-        'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'dep_uuid':   {'order': 6, 'default': ''}
     }
 

@@ -1,11 +1,11 @@
 import logging
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 LOG = logging.getLogger("connectors/tanium")
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'Tanium'
     Settings = {
         'url':              {'order': 1, 'example': 'https://TANIUM_SERVER', 'default': ''},
@@ -13,7 +13,6 @@ class Connector(AuditConnector):
         'password':         {'order': 3, 'example': '***', 'default': ''},
         'domain':           {'order': 4, 'example': '', 'default': ''},
         'view':             {'order': 5, 'example': '', 'default': ''},
-        'sync_field':       {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {

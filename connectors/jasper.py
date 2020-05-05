@@ -5,12 +5,12 @@ import logging
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
 
-from lib.connector import AuditConnector, AuthenticationError
+from lib.connector import AssetsConnector, AuthenticationError
 
 logger = logging.getLogger("connectors/jasper")  # pylint:disable=invalid-name
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'Jasper'
 
     Settings = {
@@ -19,8 +19,6 @@ class Connector(AuditConnector):
         'password':    {'order': 3, 'example': "change-me"},
         'api_token':   {'order': 4, 'example': "YOUR Jasper API TOKEN"},
         'storage':     {'order': 4, 'default': "storage.db"},
-        'sync_field':  {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
-        'update_only': {'order': 6, 'default': "False"},
     }
 
     def __init__(self, section, settings):

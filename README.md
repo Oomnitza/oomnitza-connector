@@ -493,7 +493,6 @@ An example generated `config.ini` follows.
     username = username@example.com
     password = change-me
     api_token = YOUR AirWatch API TOKEN
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     dep_uuid = 
 
     [azureusers]
@@ -503,7 +502,6 @@ An example generated `config.ini` follows.
     secret = 
     default_role = 25
     default_position = Employee
-    sync_field = USER
 
     [bamboohr]
     enable = False
@@ -512,16 +510,13 @@ An example generated `config.ini` follows.
     api_token = YOUR BambooHR API TOKEN
     default_role = 25
     default_position = Employee
-    sync_field = USER
 
     [casper]
     enable = False
     url = https://jss.jamfcloud.com/example
     username = username@example.com
     password = change-me
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     sync_type = computers
-    update_only = False
     group_name = 
     
     [chef]
@@ -529,14 +524,12 @@ An example generated `config.ini` follows.
     url = https://example.com/organizations/org
     client = user
     key_file = /path/to/user.pem
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     attribute_extension = 
     
     [chromebooks]
     enable = False
     service_account_impersonate = username@example.com
     service_account_json_key = {}
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     
     [csv_assets]
     enable = False
@@ -556,7 +549,6 @@ An example generated `config.ini` follows.
     enable = False
     service_account_impersonate = username@example.com
     service_account_json_key = {}
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     
     [jasper]
     enable = False
@@ -565,8 +557,6 @@ An example generated `config.ini` follows.
     password = change-me
     storage = storage.db
     api_token = YOUR Jasper API TOKEN
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
-    update_only = False
 
     [kace]
     enable = False
@@ -575,7 +565,6 @@ An example generated `config.ini` follows.
     password = ***
     organization_name = Default
     api_version = 8
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [ldap]
     enable = False
@@ -592,7 +581,6 @@ An example generated `config.ini` follows.
     groups_dn = []
     group_members_attr = member
     group_member_filter = 
-    sync_field = USER
 
     [ldap_assets]
     enable = False
@@ -603,17 +591,16 @@ An example generated `config.ini` follows.
     group_dn = 
     protocol_version = 3
     filter = (objectClass=*)
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     page_criterium = 
     groups_dn = []
     group_members_attr = member
     group_member_filter = 
+    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [merakism]
     enable = False
     meraki_api_key = 
     network_id = N_**************
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [mobileiron]
     enable = False
@@ -621,7 +608,6 @@ An example generated `config.ini` follows.
     username = username@example.com
     password = change-me
     partitions = ["Drivers"]
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     api_version = 1
 
     [netbox]
@@ -630,6 +616,11 @@ An example generated `config.ini` follows.
     auth_token = *******
     sync_field = 24DCF85294E411E38A52066B556BA4EE
 
+    [netbox]
+    enable = False
+    url = https://NETBOX
+    auth_token = *******
+
     [okta]
     enable = False
     url = https://example-admin.okta.com
@@ -637,7 +628,6 @@ An example generated `config.ini` follows.
     default_role = 25
     default_position = Employee
     deprovisioned = false
-    sync_field = USER
 
     [onelogin]
     enable = False
@@ -647,14 +637,12 @@ An example generated `config.ini` follows.
     default_role = 25
     default_position = Employee
     api_token = 
-    sync_field = USER
 
     [open_audit]
     enable = False
     url = http://XXX.XXX.XXX.XXX
     username = 
     password = 
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [sccm]
     enable = False
@@ -663,7 +651,6 @@ An example generated `config.ini` follows.
     username = change-me
     password = change-me
     authentication = SQL Server
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
     driver = 
 
     [servicenow]
@@ -671,7 +658,6 @@ An example generated `config.ini` follows.
     url = https://xxx.service-now.com
     username = ***
     password = ***
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [simplemdm]
     enable = False
@@ -679,7 +665,6 @@ An example generated `config.ini` follows.
     device_groups = 
     device_types = computers,mobiledevices
     custom_attributes = 0
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [tanium]
     enable = False
@@ -688,7 +673,6 @@ An example generated `config.ini` follows.
     password = ***
     domain =
     view =
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
 
     [workday]
     enable = False
@@ -697,7 +681,6 @@ An example generated `config.ini` follows.
     password = ***
     default_role = 25
     default_position = Employee
-    sync_field = USER
     
     [zendesk]
     enable = False
@@ -707,7 +690,6 @@ An example generated `config.ini` follows.
     default_role = 25
     default_position = Employee
     load_organizations = false
-    sync_field = USER
 
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
@@ -730,6 +712,22 @@ For fields which require processing before being brought into Oomnitza must be d
 
     mapping.[Oomnitza Field] = {"source": "[external field]", "converter": "[converter name]"}
 
+### Common optional settings
+`sync_field`: The Oomnitza field (fields) which contains the object's unique identifier. 
+We typically recommend username or email for users and serial_number for assets.
+Will be loaded from Oomnitza mapping if not set. To create multiple sync field, split it by comma,
+for example `sync_field = USER,EMAIL`.
+The exceptions for this rule are the LDAP assets & CSV files because there is no way to
+set the mapping in Oomnitza for these data sources at the current moment.
+
+`insert_only`: set this to True to only create records in Oomnitza. Records for existing objects will not be updated.
+
+`update_only`: set this to True to only update records in Oomnitza. Records for new objects will not be created.
+
+`insert_only` and `update_only` can not be both of true value.
+
+`verify_ssl`: set to false if the Casper server is running with a self signed SSL certificate.
+
 ### Oomnitza Configuration
 `url`: the url of the Oomnitza application. For example: `https://example.oomnitza.com`
 
@@ -751,8 +749,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `api_token`: API token for the connection
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
-
 `dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
 
 #### Default Field Mappings
@@ -763,8 +759,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `filename`: CSV file with assets inside
 
 `directory`: directory with CSV files with assets inside. Note: `filename` and `directory` are mutually exclusive
-
-`sync_field`:  The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings. Everything should be defined in the config
@@ -779,7 +773,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     No default mapping. Everything should be defined in the config
@@ -796,7 +789,6 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "workEmail"}
@@ -823,7 +815,6 @@ an existing record that has new information.
 
 `password`: the Casper password to use. Note: the Casper API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 `sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. 
 **Note**: If you need to pull computers AND mobile devices info from Casper, copy Casper configuration section to the same `config.ini` and name it as 'casper.MDM'. 
@@ -831,10 +822,6 @@ Set the field mapping related to computers in the 'casper' section and set **syn
 
 `group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
   If present, only assets from this Group will be processed.
-  
-`verify_ssl`: set to false if the Casper server is running with a self signed SSL certificate.
-
-`update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
 
 #### List of currently supported Casper external fields (computers)
     'general.alt_mac_address'
@@ -1025,7 +1012,6 @@ The identifier section of the `config.ini` file should contain a mapping to a un
 
 `key_file`: the Chef RSA private key for authentication
 
-`sync_field`: The Oomnitza field internal id which contains the asset's unique identifier.
 
 `attribute_extension`: [optional] dictionary of additional node attributes to extract
 
@@ -1077,7 +1063,6 @@ The `[chromebooks]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### **Default Field Mappings**
 
@@ -1100,7 +1085,6 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### **Default Field Mappings**
 
@@ -1118,10 +1102,6 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `api_token`: The Jasper API Token.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
-
-`update_only`: set this to True to only update records in Oomnitza. Records for new assets will not be created.
-
 #### Default Field Mappings
     No default mappings
 
@@ -1138,7 +1118,6 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `api_version`: KACE SMA API version numeric identifier. Default is "8"
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1175,7 +1154,6 @@ Default is "member" but can vary in different LDAP systems.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
@@ -1198,7 +1176,6 @@ Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-direc
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     No default mappings
@@ -1233,7 +1210,6 @@ Default is "member" but can vary in different LDAP systems.
 
 `filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
 #### Default Field Mappings
     No default mappings
@@ -1244,7 +1220,6 @@ Default is "member" but can vary in different LDAP systems.
  
 `network_id` = Meraki network identifier.
  
-`sync_field` = The Oomnitza field which contains the asset's unique identifier.
 
 #### Default Field Mappings
     No default mappings
@@ -1259,7 +1234,6 @@ Default is "member" but can vary in different LDAP systems.
 
 `partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`. Used for API v1 and ignored for API v2.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
 `api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
@@ -1279,6 +1253,15 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
     No default mappings
 
 
+### Netbox Configuration
+`url`: The full URI for the Netbox server.
+
+`auth_token`: the authorization token to use.
+
+#### Default Field Mappings
+    No default mappings
+
+
 ### Okta Configuration
 `url`: The full URI for the Okta server. For example: `https://oomnitza-admin.okta.com`
 
@@ -1290,7 +1273,6 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
 
 `deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "profile.login"},
@@ -1317,7 +1299,6 @@ If you have an issues during the connection to the OneLogin, please switch to th
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "username"}
@@ -1402,7 +1383,6 @@ Options are `SQL Server` or `Windows`. The default is to use SQL Server Authenti
 When using `Windows` authentication, the `username` and `password` fields are ignored and the credentials
 for the currently logged in user will be used when making the connection to the SCCM database.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1416,7 +1396,6 @@ Note: the connector has been designed to work with the `New York` version of the
 
 `password`: The password used to authorize.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1436,7 +1415,6 @@ Example, for the custom attribute named "TEST ATTRIBUTE" the mapping will be
     mapping.BARCODE = {"source": "custom_attributes.TEST_ATTRIBUTE}
 The default value for this flag is "0" - to not fetch the custom attributes
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1455,7 +1433,6 @@ The default value for this flag is "0" - to not fetch the custom attributes
 **WARNING**: the view usage may limit the set of attributes fetched from Tanium system and not all the attributes visible on the Web UI mapping will be actually available. 
 If these not available attributes will be mapped on UI, null values will be pushed to Oomnitza.
   
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend serial number).
 
 #### Default Field Mappings
     No default mappings
@@ -1475,7 +1452,6 @@ and copy the JSON link generated for this report.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
@@ -1492,7 +1468,6 @@ and copy the JSON link generated for this report.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-`sync_field`: The Oomnitza field which contains the asset's unique identifier (we typically recommend username or email).
 
 #### Default Field Mappings
     mapping.USER =           {'source': "email"}

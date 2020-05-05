@@ -5,14 +5,14 @@ import time
 
 from enum import Enum
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 LOG = logging.getLogger("connectors/mobileiron")
 
 Version = Enum('Version', ['v1', 'v2'])  # TODO: set proper cases
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'MobileIron'
     RetryCount = 10
 
@@ -21,7 +21,6 @@ class Connector(AuditConnector):
         'username':   {'order': 2, 'example': "username@example.com"},
         'password':   {'order': 3, 'example': "change-me"},
         'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True},
-        'sync_field': {'order': 5, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'api_version': {'order': 6, 'example': '1', 'default': '1'}
     }
 

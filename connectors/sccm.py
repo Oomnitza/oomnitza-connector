@@ -4,7 +4,7 @@ import pyodbc
 
 import re
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from lib.error import ConfigError
 
 logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
@@ -61,7 +61,7 @@ SELECT DisplayName0 AS 'name',
  """
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'SCCM'
     Settings = {
         'server':            {'order': 1, 'example': 'server.example.com'},
@@ -69,7 +69,6 @@ class Connector(AuditConnector):
         'username':          {'order': 3, 'example': 'change-me'},
         'password':          {'order': 4, 'example': 'change-me'},
         'authentication':    {'order': 5, 'default': "SQL Server", 'choices': ("SQL Server", "Windows")},
-        'sync_field':        {'order': 6, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'driver':            {'order': 7, 'default': ''},
     }
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.0.0]
+
+### Added 
+
+- support `update_only` and `insert_only` optional settings for all data sources.
+
+### Changed
+
+- `sync_field` is now optional field for all the data sources except `csv_assets`, `csv_users`, `ldap_assets`.
+- if set the `sync_field` could be of multiple fields. To define multiple values split it with commas: `sync_field = USER,EMAIL`
+- using a new Oomnitza API: payload and params have been changed as well.
+
+### Removed
+
+- `normal_position` option is no more the valid setting value for the user-specific connectors. Use the
+regular mapping options with the configurable mapping rules to define the behavior for the `POSITION` user's attribute.
+
 ## [1.9.21]
 
 ### Added

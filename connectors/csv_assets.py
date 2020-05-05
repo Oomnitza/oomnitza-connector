@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 from lib.file_connector import CsvConnectorMixin
 
 
-class Connector(AuditConnector, CsvConnectorMixin):
+class Connector(AssetsConnector, CsvConnectorMixin):
     MappingName = 'CSV_assets'
     Settings = {
         'filename':   {'order': 1, 'example': "/some/path/to/file/assets.csv", 'default': ''},

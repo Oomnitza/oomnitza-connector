@@ -22,7 +22,6 @@ class Connector(UserConnector):
         'default_role':     {'order': 4, 'example': 25, 'type': int},
         'default_position': {'order': 5, 'example': 'Employee'},
         'api_token':        {'order': 6, 'example': "", 'default': ""},
-        'sync_field':       {'order': 7, 'default': 'USER'}
     }
 
     FieldMappings = {

@@ -3,7 +3,9 @@ import errno
 import json
 import logging
 import os
+from uuid import uuid4
 from datetime import datetime, date
+from distutils.util import strtobool
 
 import requests
 from gevent.pool import Pool
@@ -74,9 +76,10 @@ class BaseConnector(object):
         'dont_overwrite': {'order': 7, 'default': ""},
         'insert_only':    {'order': 8, 'default': "False"},
         'update_only':    {'order': 9, 'default': "False"},
-        'vault_keys':     {'order': 10, 'default': ""},
-        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING},
-        'user_pem_file':  {'order': 12, 'default': ''}
+        'sync_field':     {'order': 10},
+        'vault_keys':     {'order': 11, 'default': ""},
+        'vault_backend':  {'order': 12, 'default': StrongboxBackend.KEYRING},
+        'user_pem_file':  {'order': 13, 'default': ''}
     }
 
     def __init__(self, section, settings):
@@ -89,6 +92,7 @@ class BaseConnector(object):
         self.__filter__ = None
         self.send_counter = 0
         self._session = None
+        self.portion = str(uuid4())
 
         for key, value in settings.items():
             if key.startswith('mapping.'):
@@ -118,7 +122,7 @@ class BaseConnector(object):
             if not setting_value:
                 setting_value = setting.get('default', None)
                 if setting_value is None:
-                    raise RuntimeError("Missing setting value for %s." % key)
+                    raise ConfigError("Missing setting value for %s." % key)
             if setting.get('validator', None):
                 setting_value = setting['validator'](setting_value)
             self.settings[key] = setting_value
@@ -321,7 +325,7 @@ class BaseConnector(object):
     def stop_sync(self):
         self.keep_going = False
 
-    def sender(self, oomnitza_connector, options, rec):
+    def sender(self, oomnitza_connector, rec):
         """
         This is data sender that should be executed by greenlet to make network IO operations non-blocking.
 
@@ -340,7 +344,7 @@ class BaseConnector(object):
             LOG.info("Skipping record %r because it has not been converted properly", rec)
             return
 
-        self.send_to_oomnitza(oomnitza_connector, converted_record, options)
+        self.send_to_oomnitza(oomnitza_connector, converted_record)
 
     def is_authorized(self):
         """
@@ -411,7 +415,7 @@ class BaseConnector(object):
                         if not self.keep_going:
                             break
 
-                        connection_pool.spawn(self.sender, *(oomnitza_connector, options, rec))
+                        connection_pool.spawn(self.sender, *(oomnitza_connector, rec))
 
             connection_pool.join(timeout=60)  # set non-empty timeout to guarantee context switching in case of threading
 
@@ -421,7 +425,34 @@ class BaseConnector(object):
         except RequestException as exp:
             raise ConfigError("Error loading records from %s: %s" % (self.MappingName, exp.message))
 
-    def send_to_oomnitza(self, oomnitza_connector, data, options):
+    def _save_data(self, payload):
+        filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
+        LOG.info("Saving processed payload data to %s.", filename)
+        with open(filename, 'w') as save_file:
+            self.send_counter += 1
+            json.dump(payload, save_file, indent=2, default=self.json_serializer)
+
+    def _validate_insert_update_only(self, insert_only, update_only):
+        if insert_only and update_only:
+            raise ValueError('"insert_only" and "update_only" can not be both of True value')
+
+    def _collect_payload(self, records):
+        insert_only = bool(strtobool(self.settings.get('insert_only', '0')))
+        update_only = bool(strtobool(self.settings.get('update_only', '0')))
+        self._validate_insert_update_only(insert_only, update_only)
+        payload = {
+            "connector_name": self.MappingName,
+            "connector_version": VERSION,
+            "sync_field": list(filter(bool, map(str.strip, self.settings.get('sync_field', '').split(',')))),
+            "records": records if isinstance(records, list) else [records],
+            "portion": self.portion,
+            "data_type": self.RecordType,
+            "insert_only": insert_only,
+            "update_only": update_only
+        }
+        return payload
+
+    def send_to_oomnitza(self, oomnitza_connector, data):
         """
         Determine which method on the Oomnitza connector to call based on type of data.
         Can call:
@@ -432,28 +463,20 @@ class BaseConnector(object):
         :param data: the data to send (either single object or list)
         :return: the results of the Oomnitza method call
         """
-        method = getattr(
-            oomnitza_connector,
-            "{1}upload_{0}".format(
-                self.RecordType,
-                self.settings["__testmode__"] and '_test_' or ''
-            )
-        )
-        if self.settings.get("__save_data__", False):
-            try:
+        payload = self._collect_payload(data)
 
-                filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
-                LOG.info("Saving processed payload data to %s.", filename)
-                with open(filename, 'w') as save_file:
-                    self.send_counter += 1
-                    json.dump(data, save_file, indent=2, default=self.json_serializer)
+        if self.settings.get("__save_data__"):
+            try:
+                self._save_data(payload)
             except:
                 LOG.exception("Error saving data.")
 
-        result = method(data, options)
-        if not self.settings["__testmode__"]:
+        if self.settings['__testmode__']:
+            result = oomnitza_connector.test_upload(payload)
+        else:
+            result = oomnitza_connector.upload(payload)
             self.sent_records_counter += 1
-        # LOG.debug("send_to_oomnitza result: %r", result)
+
         return result
 
     def test_connection(self, options):
@@ -600,70 +623,15 @@ class UserConnector(BaseConnector):
     RecordType = 'users'
 
     def __init__(self, section, settings):
-
         super(UserConnector, self).__init__(section, settings)
 
-        if 'USER' in self.field_mappings:
-            self.field_mappings['USER']['required'] = True
-        else:
-            raise ConfigError("Missing mapping USER field is required for records will be sent to Oomnitza.")
-
-        if 'EMAIL' in self.field_mappings:
-            self.field_mappings['EMAIL']['required'] = True
-        else:
-            raise ConfigError("Missing mapping EMAIL field is required for records will be sent to Oomnitza.")
-
-        if self.settings['default_position'].lower() == 'unused':
-            self.normal_position = True
-        else:
-            self.normal_position = False
-
-        if 'POSITION' not in self.field_mappings and not self.normal_position:
+        if 'POSITION' not in self.field_mappings:
             self.field_mappings['POSITION'] = {"setting": 'default_position'}
 
         if 'PERMISSIONS_ID' not in self.field_mappings:
             self.field_mappings['PERMISSIONS_ID'] = {"setting": 'default_role'}
 
-        # this is the compatibility logic. We may not have a sync_field explicitly
-        # added to the config file, so if it is not so, we will add it here
-        # with the backward fallback to the default `USER`
-        self.settings['sync_field'] = self.settings.get('sync_field', 'USER')
-        if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced." %
-                              (self.settings['sync_field'], self.MappingName))
-        self.field_mappings[self.settings['sync_field']]['required'] = True
 
-    def send_to_oomnitza(self, oomnitza_connector, record, options):
-        options['agent_id'] = self.MappingName
-        if self.normal_position:
-            options['normal_position'] = True
-
-        options['sync_field'] = self.settings['sync_field']
-
-        return super(UserConnector, self).send_to_oomnitza(oomnitza_connector, record, options)
-
-
-class AuditConnector(BaseConnector):
-    RecordType = 'audit'
+class AssetsConnector(BaseConnector):
+    RecordType = 'assets'
     OomnitzaBatchSize = 1
-
-    def __init__(self, section, settings):
-        super(AuditConnector, self).__init__(section, settings)
-
-        if self.settings['sync_field'] not in self.field_mappings:
-            raise ConfigError("Sync field %r is not included in the %s mappings. No records can be synced." %
-                              (self.settings['sync_field'], self.MappingName))
-
-        self.field_mappings[self.settings['sync_field']]['required'] = True
-
-    def send_to_oomnitza(self, oomnitza_connector, record, options):
-        payload = {
-            "agent_id": self.MappingName,
-            "sync_field": self.settings['sync_field'],
-            "computers": record,
-            "insert_only": self.settings.get('insert_only', "False"),
-            "update_only": self.settings.get('update_only', "False"),
-            "only_if_filled": self.settings.get('only_if_filled', None),
-            "dont_overwrite": self.settings.get('dont_overwrite', None),
-        }
-        return super(AuditConnector, self).send_to_oomnitza(oomnitza_connector, payload, options)

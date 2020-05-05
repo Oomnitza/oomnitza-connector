@@ -4,7 +4,7 @@ import logging
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 LOG = logging.getLogger("connectors/chromebooks")  # pylint:disable=invalid-name
 
@@ -14,13 +14,12 @@ CHROMEDEVICES_API_SCOPE = (
 )
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'Chromebooks'
 
     Settings = {
         'service_account_impersonate':  {'order': 1, 'example': "username@example.com", 'default': ''},
         'service_account_json_key':     {'order': 2, 'example': '{}', 'default': '{}'},
-        'sync_field':                   {'order': 3, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
     DefaultConverters = {
     }

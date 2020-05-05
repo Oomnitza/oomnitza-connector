@@ -5,7 +5,7 @@ import logging
 
 import ldap
 
-from lib.connector import AuditConnector, AuthenticationError
+from lib.connector import AssetsConnector, AuthenticationError
 from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
 
@@ -19,7 +19,7 @@ def json_validator(value):
         raise ConfigError('setting is incorrect json expected but %r found' % value)
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     MappingName = 'LDAP_assets'
     Settings = {
         'url':                  {'order': 1, 'example': "ldaps://ldap.com:389"},
@@ -29,11 +29,11 @@ class Connector(AuditConnector):
         'group_dn':             {'order': 5, 'default': ""},
         'protocol_version':     {'order': 6, 'default': "3"},
         'filter':               {'order': 7, 'default': "(objectClass=*)"},
-        'sync_field':           {'order': 8, 'example': '24DCF85294E411E38A52066B556BA4EE'},
         'page_criterium':       {'order': 9, 'example': "", 'default': ""},
         'groups_dn':            {'order': 10, 'default': "[]", 'example': '[]', 'validator': json_validator},
         'group_members_attr':   {'order': 11, 'default': 'member'},
         'group_member_filter':  {'order': 12, 'default': ''},
+        'sync_field':           {'order': 13, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {}

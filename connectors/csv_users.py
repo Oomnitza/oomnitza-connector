@@ -11,7 +11,7 @@ class Connector(UserConnector, CsvConnectorMixin):
         'directory':        {'order': 2, 'example': "/some/path/to/files/", 'default': ''},
         'default_role':     {'order': 3, 'example': 25, 'type': int},
         'default_position': {'order': 4, 'example': 'Employee'},
-        'sync_field':       {'order': 5, 'default': 'USER'}
+        'sync_field':       {'order': 5, 'example': 'USER'},
     }
 
     FieldMappings = {

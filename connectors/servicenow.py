@@ -4,12 +4,12 @@ import arrow
 from gevent.pool import Pool
 from requests.auth import _basic_auth_str
 
-from lib.connector import AuditConnector
+from lib.connector import AssetsConnector
 
 LOG = logging.getLogger("connectors/servicenow")
 
 
-class Connector(AuditConnector):
+class Connector(AssetsConnector):
     """
     ServiceNow Assets integration
     """
@@ -18,7 +18,6 @@ class Connector(AuditConnector):
         'url':                  {'order': 1, 'example': 'https://xxx.service-now.com'},
         'username':             {'order': 2, 'example': "***", 'default': ""},
         'password':             {'order': 3, 'example': "***", 'default': "",},
-        'sync_field':           {'order': 4, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
     DefaultConverters = {
 
