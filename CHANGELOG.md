@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.1]
+
+### Removed
+
+- Attribute `missingAppsCount` was removed from the set of attributes requested by Meraki connector.
+
 ## [2.0.0]
 
 ### Added 

@@ -15,7 +15,7 @@ class Connector(AssetsConnector):
         super(Connector, self).__init__(section, settings)
         self.base_api_url = 'https://dashboard.meraki.com/api/v0/{0}'
         self.sm_devices_additional_fields = ','.join((
-            'ip', 'systemType', 'availableDeviceCapacity', 'kioskAppName', 'biosVersion', 'lastConnected', 'missingAppsCount', 'userSuppliedAddress',
+            'ip', 'systemType', 'availableDeviceCapacity', 'kioskAppName', 'biosVersion', 'lastConnected', 'userSuppliedAddress',
             'location', 'lastUser', 'publicIp', 'phoneNumber', 'diskInfoJson', 'deviceCapacity', 'isManaged', 'hadMdm', 'isSupervised', 'meid',
             'imei', 'iccid', 'simCarrierNetwork', 'cellularDataUsed', 'isHotspotEnabled', 'createdAt', 'batteryEstCharge', 'quarantined', 'avName',
             'avRunning', 'asName', 'fwName', 'isRooted', 'loginRequired', 'screenLockEnabled', 'screenLockDelay', 'autoLoginDisabled',
