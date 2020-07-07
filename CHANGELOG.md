@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0]
+
+### Changed
+
+- Starting from version 2.1.0 the connector project is migrated to the python 3.6.x (or above). There is NO
+ fallback support for the python2
+
 ## [2.0.1]
 
 ### Removed

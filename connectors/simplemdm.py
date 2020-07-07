@@ -79,14 +79,14 @@ class Connector(AssetsConnector):
         device_groups = []
         if self.settings['device_groups'].strip():
             try:
-                device_groups = list(map(int, map(str.strip, self.settings['device_groups'].split(','))))
+                device_groups = list(map(int, list(map(str.strip, self.settings['device_groups'].split(',')))))
             except:
                 raise ConfigError("Device groups have to be set as the integer IDs of groups separated with a comma")
         return device_groups
 
     def get_device_types_to_process(self):
         try:
-            _device_types = list(map(str.lower, map(str.strip, self.settings['device_types'].split(','))))
+            _device_types = list(map(str.lower, list(map(str.strip, self.settings['device_types'].split(',')))))
         except:
             raise ConfigError("Invalid string values are used for the device types")
         device_types = [device_type for device_type in _device_types if device_type in (COMPUTERS, MOBILE_DEVICES)]

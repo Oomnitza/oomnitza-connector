@@ -1,6 +1,5 @@
 import logging
 import pprint
-from socket import gaierror
 
 from requests import RequestException
 
@@ -40,9 +39,12 @@ class Connector(BaseConnector):
         return {}
 
     def authenticate(self):
-        if not self.settings['api_token']:
-            if not self.settings['username'] or not self.settings['password']:
-                raise ConfigError("Oomnitza section needs either: api_token or username & password.")
+        if not any((
+            self.settings['api_token'],   # given token
+            self.settings.get('user_pem_file'),   # given .pem certificate
+            self.settings['username'] and self.settings['password']   # given pass + username
+        )):
+            raise ConfigError("Oomnitza section needs either: api_token or username & password or PEM certificate.")
 
         try:
             if self.settings['api_token']:
@@ -58,15 +60,7 @@ class Connector(BaseConnector):
             )
             self.settings['api_token'] = response.json()["token"]
         except RequestException as exp:
-            if isinstance(exp.message, basestring):
-                raise AuthenticationError("{} returned {}.".format(self.settings['url'], exp.message))
-            if len(exp.message.args) > 2 and isinstance(exp.message.args[1], gaierror):
-                msg = "Unable to connect to {} ({}).".format(self.settings['url'], exp.message.args[1].errno)
-                if exp.message.args[1].errno == 8:
-                    msg = "Unable to get address for {}.".format(self.settings['url'])
-                raise AuthenticationError(msg)
             raise AuthenticationError(str(exp))
-        # LOG.debug("authenticate(1): self.settings['api_token'] = %r", self.settings['api_token'])
 
     def upload(self, payload):
         url = "{}/api/v3/bulk".format(self.settings['url'])
@@ -74,8 +68,8 @@ class Connector(BaseConnector):
         return response
 
     @staticmethod
-    def test_upload(records):
-        pprint.pprint(records)
+    def test_upload(users):
+        pprint.pprint(users)
 
     def perform_sync(self, oomnitza_connector, options):
         """
@@ -106,7 +100,7 @@ class Connector(BaseConnector):
             mappings = {loc[label_field]: loc[id_field] for loc in response.json() if loc.get(id_field, None) and loc.get(label_field, None)}
             LOG.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
             for name in sorted(mappings.keys()):
-                LOG.info(u"    %s -> %s" % (name, mappings[name]))
+                LOG.info("    %s -> %s" % (name, mappings[name]))
             return mappings
         except:
             LOG.exception("Failed to load Locations from Oomnitza.")

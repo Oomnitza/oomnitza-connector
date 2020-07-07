@@ -1,19 +1,8 @@
-from __future__ import absolute_import
-
 import os
 import logging
-import ldap
-import ldapurl
 import json
-import errno
-import csv
-import cStringIO
-import codecs
 import glob
-
-from ldap.controls import SimplePagedResultsControl
 from lib.connector import AssetsConnector
-from lib.error import ConfigError
 
 
 LOGGER = logging.getLogger("connectors/json_assets")  # pylint:disable=invalid-name
@@ -23,6 +12,7 @@ class Connector(AssetsConnector):
     MappingName = 'JSON-assets'
     Settings = {
         'directory':   {'order': 1, 'example': "/Users/daniel/Documents/development/Oomnitza/Connector/test_data"},
+        'sync_field':  {'order': 2, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {
@@ -58,5 +48,3 @@ class Connector(AssetsConnector):
                     raise Exception("File %r does not contain a list or object." % filename)
         else:
             LOGGER.info("No data files processed.")
-
-

@@ -32,12 +32,10 @@ class Connector(AssetsConnector):
 
         while True:
             network_sm_devices_url = self.base_api_url.format(
-                'networks/{0}/sm/devices?fields={1}'.format(
-                    network_id, self.sm_devices_additional_fields
-                )
+                f'networks/{network_id}/sm/devices?fields={self.sm_devices_additional_fields}'
             )
             if cursor:
-                network_sm_devices_url += '&batchToken={0}'.format(cursor)
+                network_sm_devices_url += f'&batchToken={cursor}'
 
             network_sm_devices = self.get(network_sm_devices_url).json()
 
@@ -46,11 +44,8 @@ class Connector(AssetsConnector):
 
             cursor = network_sm_devices.get('batchToken')
             if not cursor:
-                raise StopIteration
+                break
 
     def _load_records(self, options):
-
-        for organization_network_device in self.yield_devices_from_network(
-                self.settings['network_id']
-        ):
+        for organization_network_device in self.yield_devices_from_network(self.settings['network_id']):
             yield organization_network_device

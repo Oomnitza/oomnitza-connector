@@ -1,4 +1,3 @@
-
 import os
 import logging
 
@@ -31,7 +30,7 @@ class Connector(AssetsConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except AuthenticationError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
 
     def _load_records(self, options):
         for id_chunk in self.get_modified_terminals():
@@ -69,7 +68,7 @@ class Connector(AssetsConnector):
         storage_path = '../{}'.format(self.settings['storage'])  # FixMe: fix me!
         if os.path.exists(storage_path):
             with open(storage_path, 'r') as f:
-                since = unicode(f.read().strip())
+                since = str(f.read().strip())
         else:
             since = '2015-03-04T00:00:00Z'
 

@@ -1,6 +1,5 @@
-__author__ = 'daniel'
-
 import logging
+
 logging.basicConfig()
 LOG = logging.getLogger("lib/filter")
 
@@ -10,6 +9,7 @@ from utils.data import get_field_value
 
 class DynamicException(Exception):
     pass
+
 
 GLOBALS = {
     'LOG': LOG,
@@ -21,13 +21,13 @@ GLOBALS = {
 
 CONVERTER_WRAPPER = """
 def {name}(field, record, value, params):
-{code}
+    {code}
 result = {name}(field, record, value, params)
 """
 
 FILTER_WRAPPER = """
 def the_filter(record):
-{code}
+    {code}
 result = the_filter(record)
 """
 
@@ -54,11 +54,11 @@ def parse_filter(filter_str):
 
         def run_filter(record):
             locals = {
-                '__name__': u"__main__",
+                '__name__': "__main__",
                 'record': record,
             }
             try:
-                exec code in GLOBALS.copy(), locals
+                exec(code, GLOBALS.copy(), locals)
                 return locals.get('result', None)
             except DynamicException:
                 raise
@@ -85,22 +85,23 @@ def parse_converter(name, filter_str):
 
         def run_converter(field, record, value, params):
             locals = {
-                '__name__': u"__main__",
+                '__name__': "__main__",
                 'field': field,
                 'record': record,
                 'value': value,
                 'params': params,
             }
-            exec code in GLOBALS.copy(), locals
+            exec(code, GLOBALS.copy(), locals)
             return locals.get('result', None)
+
         return run_converter
-    except IndentationError as exp:
+    except IndentationError:
         # LOG.exception("IndentationError calling compile()")
         raise IndentationError("Please ensure the converter %r has at least 2 spaces in front of each line." % name)
-    except SyntaxError as exp:
+    except SyntaxError:
         LOG.exception("SyntaxError calling compile()")
         raise
-    except TypeError as exp:
+    except TypeError:
         LOG.exception("TypeError calling compile()")
         raise
     except:

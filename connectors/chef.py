@@ -1,14 +1,12 @@
-from __future__ import absolute_import
-import os
-import errno
-import logging
 import json
+import logging
 import re
+
 import chef
+
 from lib import TrueValues
 from lib.connector import AssetsConnector
 from utils.data import get_field_value
-
 
 logger = logging.getLogger("connectors/chef")  # pylint:disable=invalid-name
 
@@ -180,7 +178,7 @@ class WindowsAudit(BaseAudit):
     def total_hdd_mb(cls, node):
         drives = get_field_value(node, 'automatic.filesystem')
         if drives and isinstance(drives, dict):
-            root_drive = drives.values()[0]
+            root_drive = list(drives.values())[0]
             drive_kb = root_drive.get('kb_size')
             return AuditUtil.kb_to_mb(drive_kb)
         return None
@@ -205,7 +203,7 @@ class AuditUtil(object):
 
         """
         try:
-            return int(re.match('[0-9]+', unicode(v)).group())
+            return int(re.match('[0-9]+', str(v)).group())
         except:
             return None
 
@@ -279,7 +277,7 @@ class Connector(AssetsConnector):
         except Exception as exp:
             return {
                 'result': False,
-                'error': 'Connection Failed: %s' % (exp.message)
+                'error': 'Connection Failed: %s' % (str(exp))
             }
 
     def authenticate(self):

@@ -1,4 +1,3 @@
-
 import importlib
 import logging
 
@@ -25,10 +24,10 @@ class Converter(object):
     def register_converter(self, name, converter):
         self.__loaded_converters[name] = converter
 
-
     def run_all_cleanups(self):
         for name, fn in self.__converters_cleanup.items():
             fn()
+
 
 Converter = Converter()
 
@@ -70,6 +69,3 @@ def builtin_cea(record, attr, default=None):
             'default': default,
         }
     )
-
-
-

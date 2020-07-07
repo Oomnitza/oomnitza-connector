@@ -167,9 +167,9 @@ class Connector(UserConnector):
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
 
     def get_users_v1_to_v3(self):
         """

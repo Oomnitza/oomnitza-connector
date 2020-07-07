@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import logging
 import os
 import struct
@@ -28,6 +26,29 @@ class LdapBinaryField(object):
     def bin_to_str(cls, bin_value):
         raise NotImplemented
 
+    @classmethod
+    def _byte_to_unsigned_long_long(cls, byte_value, little_endian=True):
+        if not isinstance(byte_value, bytes):
+            raise Exception('Incoming value needs to be a bytes object.')
+
+        byte_order = '<' if little_endian else '>'
+        format_char = 'Q'  # unsigned long long
+        justified_byte = b'\x00'
+        unpack_format = '{byte_order}{format_char}'.format(byte_order=byte_order,
+                                                    format_char=format_char)
+        buffer_bytes = struct.calcsize(unpack_format)
+
+        if len(byte_value) > buffer_bytes:
+            raise Exception('Unpack unsigned long long requires '
+                            'a buffer of {} bytes.'.format(buffer_bytes))
+
+        if little_endian:
+            justified_byte_value = byte_value.ljust(buffer_bytes, justified_byte)
+            return struct.unpack(unpack_format, justified_byte_value)[0]
+        else:
+            justified_byte_value = byte_value.rjust(buffer_bytes, justified_byte)
+            return struct.unpack(unpack_format, justified_byte_value)[0]
+
 
 class ObjectSidField(LdapBinaryField):
 
@@ -36,31 +57,40 @@ class ObjectSidField(LdapBinaryField):
     @classmethod
     def bin_to_str(cls, bin_value):
         # SID Format: S-Revision-Authority-SubAuthority[n]...
-        # SID Example: S-1-5-21-1270288957-3800934213-3019856503-500
-        # SID Binary Example: '\x01\x05\x00\x00\x00\x00\x00\x05\x15\x00
-        #                      \x00\x00k\xd6b\x04\xfdw\xb1V#_ck\xf5]\x00\x00'
+        # SID Example: S-1-5-21-789336058-854245398-1708537768-6412
+        # SID Binary Example: '\x01\x05\x00\x00\x00\x00\x00\x05\x15\x00\x00\x00
+        #                      \xfaO\x0c/\x16\xc0\xea2\xa87\xd6e\x0c\x19\x00\x00'
+        incoming_value = bin_value
+        if isinstance(incoming_value, str):
+            incoming_value = str.encode(bin_value)
 
         # byte(0): The revision level of the SID structure
-        revision = ord(bin_value[0])
+        revision = cls._byte_to_unsigned_long_long(incoming_value[0:1])
 
         # byte(2 - 7): A 48-bit identifier authority value that identifies
         # the authority that issued this SID (in Big-Endian format)
-        identifier_auth_value = struct.unpack('>Q', b'\x00\x00' + bin_value[2:8])[0]
+        identifier_auth_value = cls._byte_to_unsigned_long_long(incoming_value[2:8], False)
 
         # byte(1): Count of sub-authorities
-        count_of_sub_authorities = ord(bin_value[1])
-
-        # byte(8 - last): A variable number of Relative IDentifier (RID) values
-        # that uniquely identify the trustee relative to the authority
-        # that issued this SID
+        count_of_sub_authorities = cls._byte_to_unsigned_long_long(incoming_value[1:2])
         bytes_each_chunk = 4
         start_byte = 8
         end_byte = 12
-        relative_ids = [struct.unpack('<I', bin_value[start_byte + bytes_each_chunk * i:end_byte + bytes_each_chunk * i])[0]
-                        for i in range(count_of_sub_authorities)]
+        relative_ids = []
 
-        return 'S-{0}-{1}-{2}'.format(revision, identifier_auth_value, '-'.join(
-            [str(sub_id) for sub_id in relative_ids]))
+        # byte(8 - last): A variable number of Relative Identifier (RID) values
+        # that uniquely identify the trustee relative to the authority
+        # that issued this SID
+        for i in range(count_of_sub_authorities):
+            start_index = start_byte + bytes_each_chunk * i
+            end_index = end_byte + bytes_each_chunk * i
+            relative_ids.append(cls._byte_to_unsigned_long_long(incoming_value[start_index: end_index]))
+
+        return 'S-{revision}-{identifier_auth_value}-{relative_ids}'.format(
+            revision=revision,
+            identifier_auth_value=identifier_auth_value,
+            relative_ids='-'.join([str(sub_id) for sub_id in relative_ids])
+        )
 
 
 class LdapConnection(object):
@@ -81,17 +111,14 @@ class LdapConnection(object):
                         if value:
                             value = value[0]
                         else:
-                            value = u""
-                    clean_record[key] = value.decode('unicode_escape').encode(
-                        'iso8859-1').decode('utf8')
-            except ValueError as ex:
-                try:
+                            value = ""
                     bin_to_str_handler = cls._select_binary_field_handler(key)
-                    if not bin_to_str_handler:
-                        raise ValueError
-                    clean_record[key] = bin_to_str_handler.bin_to_str(value)
-                except ValueError as ex:
-                    clean_record[key] = "*BINARY*"
+                    if bin_to_str_handler:
+                        clean_record[key] = bin_to_str_handler.bin_to_str(value)
+                    else:
+                        clean_record[key] = value.decode('iso8859-1')
+            except ValueError as ex:
+                clean_record[key] = "*BINARY*"
             except AttributeError:
                 clean_record[key] = repr(value)
         return clean_record
@@ -160,7 +187,7 @@ class LdapConnection(object):
                 password = self.settings['password']
                 if not password:
                     LOG.warning("No password set for LDAP. Connecting without password.")
-                    password = u""
+                    password = ""
 
                 self.ldap_connection.simple_bind_s(self.settings['username'], password)
         except ldap.INVALID_CREDENTIALS:
@@ -198,7 +225,7 @@ class LdapConnection(object):
             for user in users:
                 # Note: Not all user dicts contain all the fields. So, need to loop over
                 #       all the users to make sure we don't miss any fields.
-                keys.update(user.keys())
+                keys.update(list(user.keys()))
                 data.append(user)
 
             users = data

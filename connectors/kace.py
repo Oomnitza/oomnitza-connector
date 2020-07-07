@@ -99,7 +99,7 @@ class Connector(AssetsConnector):
             response = self.get(_url).json()
             records = response.get(keyword, [])
             if not records:
-                raise StopIteration
+                break
 
             for record in records:
                 yield record

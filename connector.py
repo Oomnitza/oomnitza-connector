@@ -39,7 +39,7 @@ def prepare_connector(cmdline_args):
     try:
         connectors = config.parse_config(cmdline_args)
     except config.ConfigError as exp:
-        LOG.error("Error loading config.ini: %s", exp.message)
+        LOG.error("Error loading config.ini: %s", str(exp))
         sys.exit(1)
 
     except:
@@ -50,7 +50,7 @@ def prepare_connector(cmdline_args):
     try:
         oomnitza_connector.authenticate()
     except (connector.AuthenticationError, requests.HTTPError, requests.ConnectionError) as exp:
-        LOG.error("Error connecting to Oomnitza API: %s", exp.message)
+        LOG.error("Error connecting to Oomnitza API: %s", str(exp))
         sys.exit(1)
 
     options = {}

@@ -1,19 +1,9 @@
-from __future__ import absolute_import
-
 import os
 import logging
-import ldap
-import ldapurl
 import json
-import errno
-import csv
-import cStringIO
-import codecs
 import glob
 
-from ldap.controls import SimplePagedResultsControl
-from lib.connector import UserConnector, AuthenticationError
-from lib.error import ConfigError
+from lib.connector import UserConnector
 
 
 LOGGER = logging.getLogger("connectors/json_users")  # pylint:disable=invalid-name
@@ -25,6 +15,7 @@ class Connector(UserConnector):
         'directory':        {'order':  1, 'example': "/Users/daniel/Documents/development/Oomnitza/Connector/test_data"},
         'default_role':     {'order':  8, 'default': 25, 'type': int},
         'default_position': {'order':  9, 'default': 'Employee'},
+        'sync_field':       {'order': 10, 'example': 'USER'},
     }
 
     FieldMappings = {
@@ -58,5 +49,3 @@ class Connector(UserConnector):
                     yield input_data
                 else:
                     raise Exception("File %r does not contain a list or object." % filename)
-
-

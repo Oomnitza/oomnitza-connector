@@ -43,9 +43,9 @@ class Connector(UserConnector):
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def not_deprovisioned_users_generator(self, options):
         """

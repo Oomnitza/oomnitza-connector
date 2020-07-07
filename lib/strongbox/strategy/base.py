@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-
 class BaseStrategy(object):
 
     def __init__(self, default_keyring, service_name):

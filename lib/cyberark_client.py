@@ -39,7 +39,7 @@ class CyberArkClient(object):
         try:
             return self._get(path)
         except Exception as exc:
-            logger.error(exc)
+            logger.error(exc);
             return None
 
     def authenticate(self):
@@ -123,7 +123,7 @@ class CyberArkClient(object):
         :return:
         :rtype: response
         """
-        url = '/'.join(map(lambda x: str(x).strip('/'), (self.server_url, url)))
+        url = '/'.join([str(x).strip('/') for x in (self.server_url, url)])
 
         if not headers:
             headers = {}

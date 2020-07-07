@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json
 import logging
 
@@ -58,11 +56,11 @@ class Connector(UserConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except AuthenticationError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
         except ldap.SERVER_DOWN as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message['desc']}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
         except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def _load_records(self, options):
         for user in self.ldap_connection.load_data(options):

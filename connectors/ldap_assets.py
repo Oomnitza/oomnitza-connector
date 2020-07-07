@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 import json
 import logging
 
@@ -29,11 +27,11 @@ class Connector(AssetsConnector):
         'group_dn':             {'order': 5, 'default': ""},
         'protocol_version':     {'order': 6, 'default': "3"},
         'filter':               {'order': 7, 'default': "(objectClass=*)"},
-        'page_criterium':       {'order': 9, 'example': "", 'default': ""},
-        'groups_dn':            {'order': 10, 'default': "[]", 'example': '[]', 'validator': json_validator},
-        'group_members_attr':   {'order': 11, 'default': 'member'},
-        'group_member_filter':  {'order': 12, 'default': ''},
-        'sync_field':           {'order': 13, 'example': '24DCF85294E411E38A52066B556BA4EE'},
+        'page_criterium':       {'order': 8, 'example': "", 'default': ""},
+        'groups_dn':            {'order': 9, 'default': "[]", 'example': '[]', 'validator': json_validator},
+        'group_members_attr':   {'order': 10, 'default': 'member'},
+        'group_member_filter':  {'order': 11, 'default': ''},
+        'sync_field':           {'order': 12, 'example': '24DCF85294E411E38A52066B556BA4EE'},
     }
 
     FieldMappings = {}
@@ -51,11 +49,11 @@ class Connector(AssetsConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except AuthenticationError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
         except ldap.SERVER_DOWN as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message['desc'])}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
         except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp}
+            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
 
     def _load_records(self, options):
         for asset in self.ldap_connection.load_data(options):

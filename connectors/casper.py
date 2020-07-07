@@ -1,6 +1,8 @@
 import json
 import logging
-import urllib
+import urllib.error
+import urllib.parse
+import urllib.request
 
 import gevent
 from gevent.pool import Pool
@@ -58,7 +60,7 @@ class Connector(AssetsConnector):
         # try to extract data subsets to make request more efficient and quick
         subsets = None
         try:
-            subsets = set(map(str.capitalize, filter(bool, [str(_.get('source', '').split('.')[0]) for _ in self.field_mappings.values()])))
+            subsets = set(map(str.capitalize, list(filter(bool, [str(_.get('source', '').split('.')[0]) for _ in self.field_mappings.values()]))))
         except:
             pass
 
@@ -129,7 +131,7 @@ class Connector(AssetsConnector):
             LOG.info("Loading assets from group: %r", self.group_name)
             self.ids_url = self.url_template.format(
                 self.sync_config['group_ids_path'].format(
-                    name=urllib.quote(self.group_name)
+                    name=urllib.parse.quote(self.group_name)
                 )
             )
             self.ids_converter = lambda data: data['{}_group'.format(self.sync_config['data'])][self.sync_config['array']]
@@ -154,10 +156,10 @@ class Connector(AssetsConnector):
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
             LOG.exception("Error testing connection.")
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
         except HTTPError as exp:
             LOG.exception("Error testing connection!")
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def _load_records(self, options):
 
@@ -169,7 +171,7 @@ class Connector(AssetsConnector):
             if device_info:
                 yield device_info
             else:
-                raise StopIteration
+                break
 
     def fetch_asset_ids(self):
         """

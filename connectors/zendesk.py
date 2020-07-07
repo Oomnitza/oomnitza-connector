@@ -45,7 +45,7 @@ class Connector(UserConnector):
             self.get(url)
             return {'result': True, 'error': ''}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def _load_records(self, options):
         organization_map = self._load_organizations_if_needed()

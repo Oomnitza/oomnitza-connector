@@ -38,7 +38,7 @@ def run_connector(oomnitza_connector, connector, options):
         try:
             conn.authenticate()
         except AuthenticationError as exp:
-            LOG.error("Authentication failure: %s", exp.message)
+            LOG.error("Authentication failure: %s", str(exp))
             return
         except requests.HTTPError:
             LOG.exception("Error connecting to %s service.", connector['__name__'])
@@ -47,11 +47,11 @@ def run_connector(oomnitza_connector, connector, options):
         try:
             conn.perform_sync(oomnitza_connector, options)
         except ConfigError as exp:
-            LOG.error(exp.message)
+            LOG.error(exp)
         except requests.HTTPError:
             LOG.exception("Error syncing data for %s service.", connector['__name__'])
     except DynamicException as exp:
-        LOG.error("Error running filter for %s: %s", connector['__name__'], exp)
+        LOG.error("Error running filter for %s: %s", connector['__name__'], str(exp))
     except:  # pylint:disable=broad-except
         LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
 
@@ -94,7 +94,7 @@ class BaseConnector(object):
         self._session = None
         self.portion = str(uuid4())
 
-        for key, value in settings.items():
+        for key, value in list(settings.items()):
             if key.startswith('mapping.'):
                 # it is a field mapping from the ini
                 field_name = key.split('.')[1].upper()
@@ -117,7 +117,7 @@ class BaseConnector(object):
                 self.settings[key] = value
 
         # loop over settings definitions, setting default values
-        for key, setting in self.Settings.items():
+        for key, setting in list(self.Settings.items()):
             setting_value = self.settings.get(key, None)
             if not setting_value:
                 setting_value = setting.get('default', None)
@@ -129,7 +129,7 @@ class BaseConnector(object):
 
         self.field_mappings = self.get_field_mappings(ini_field_mappings)
         if hasattr(self, "DefaultConverters"):
-            for field, mapping in self.field_mappings.items():
+            for field, mapping in list(self.field_mappings.items()):
                 source = mapping.get('source', None)
                 if source in self.DefaultConverters and 'converter' not in mapping:
                     mapping['converter'] = self.DefaultConverters[source]
@@ -184,11 +184,11 @@ class BaseConnector(object):
     def get_field_mappings(self, extra_mappings):
         mappings = self.get_default_mappings()  # loads from Connector object or Oomnitza mapping api
 
-        for field, mapping in extra_mappings.items():
+        for field, mapping in list(extra_mappings.items()):
             if field not in mappings:
                 mappings[field] = mapping
             else:
-                for key, value in mapping.items():
+                for key, value in list(mapping.items()):
                     mappings[field][key] = value
 
         return mappings
@@ -212,8 +212,8 @@ class BaseConnector(object):
         if self.settings.get('use_server_map', True) in TrueValues:
             server_mappings = self.get_mapping_from_oomnitza()
 
-            for source, fields in server_mappings.items():
-                if isinstance(fields, basestring):
+            for source, fields in list(server_mappings.items()):
+                if isinstance(fields, str):
                     fields = [fields]
                 for f in fields:
                     if f not in default_mappings:
@@ -230,7 +230,7 @@ class BaseConnector(object):
         :return:
         """
         settings = [('enable', 'False')]
-        for key, value in sorted(cls.Settings.items(), key=lambda t: t[1]['order']):
+        for key, value in sorted(list(cls.Settings.items()), key=lambda t: t[1]['order']):
             if 'example' in value:
                 # settings.append((key, "[{0}]".format(value['example'])))
                 settings.append((key, value['example']))
@@ -354,10 +354,10 @@ class BaseConnector(object):
         try:
             self.authenticate()
         except AuthenticationError as exp:
-            LOG.error("Authentication failed: %r.", exp.message)
+            LOG.error("Authentication failed: %r.", str(exp))
             return False
         except requests.exceptions.ConnectionError as exp:
-            LOG.exception("Authentication Failed: %r.", exp.message)
+            LOG.exception("Authentication Failed: %r.", str(exp))
             return False
 
         return True
@@ -423,7 +423,7 @@ class BaseConnector(object):
 
             return True
         except RequestException as exp:
-            raise ConfigError("Error loading records from %s: %s" % (self.MappingName, exp.message))
+            raise ConfigError("Error loading records from %s: %s" % (self.MappingName, str(exp)))
 
     def _save_data(self, payload):
         filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
@@ -490,7 +490,7 @@ class BaseConnector(object):
             return self.do_test_connection(options)
         except Exception as exp:
             LOG.exception("Exception running %s.test_connection()." % self.MappingName)
-            return {'result': False, 'error': 'Test Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': 'Test Connection Failed: %s' % str(exp)}
 
     def do_test_connection(self, options):
         raise NotImplementedError
@@ -534,7 +534,7 @@ class BaseConnector(object):
         missing_fields = set()
         # subrecords = {}
 
-        for field, specs in field_mappings.items():
+        for field, specs in list(field_mappings.items()):
             # First, check if this is a subrecord. If so, re-enter _convert_record
             # LOG.debug("%%%% %r: %r", field, specs)
             # if field.startswith('subrecord.'):

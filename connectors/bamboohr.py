@@ -46,9 +46,9 @@ class Connector(UserConnector):
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % (str(exp))}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (exp.message)}
+            return {'result': False, 'error': 'Connection Failed: %s' % (str(exp))}
 
     def _load_records(self, options):
         url = self.url_temlate.format("v1/employees/directory")

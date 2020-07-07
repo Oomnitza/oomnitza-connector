@@ -58,7 +58,7 @@ SELECT DisplayName0 AS 'name',
        Publisher0 AS 'publisher'
   FROM dbo.v_GS_ADD_REMOVE_PROGRAMS_64
  WHERE ResourceID = ?
- """
+"""
 
 
 class Connector(AssetsConnector):
@@ -89,7 +89,7 @@ class Connector(AssetsConnector):
             self.authenticate()
             return {'result': True, 'error': ''}
         except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     @staticmethod
     def pick_odbc_driver(driver_candidate):
@@ -103,7 +103,7 @@ class Connector(AssetsConnector):
 
             # if driver is empty, choose the best one from allowed
             new_drivers_regexp = r'^ODBC Driver .* for SQL Server$'
-            supported_new_drivers = sorted(filter(lambda _: re.match(new_drivers_regexp, _), drivers))
+            supported_new_drivers = sorted([_ for _ in drivers if re.match(new_drivers_regexp, _)])
             if supported_new_drivers:
                 driver_candidate = supported_new_drivers[-1]  # choose the last one
 
@@ -115,7 +115,7 @@ class Connector(AssetsConnector):
             # given `driver` string is not empty, validate it against allowed drivers
             if driver_candidate not in drivers:
                 raise ConfigError('Given driver "%s" is not supported. The available drivers are: %s' %
-                                  (driver_candidate, ', '.join(map(lambda _: '"%s"' % _, drivers))))
+                                  (driver_candidate, ', '.join(['"%s"' % _ for _ in drivers])))
 
         # final check to be sure driver not empty
         if not driver_candidate:
@@ -156,7 +156,7 @@ class Connector(AssetsConnector):
             cursor = self.db.cursor()
             results = cursor.execute(sql, args)
             columns = [column[0] for column in cursor.description]
-            return [dict(zip(columns, row)) for row in results.fetchall()]
+            return [dict(list(zip(columns, row))) for row in results.fetchall()]
         except Exception as exception:
             logger.error("Unable to perform query: %s" % (exception))
             return []

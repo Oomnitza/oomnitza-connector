@@ -1,3 +1,11 @@
+#### * Python2 Deprecation Notice:
+Since version **2.1.0** the connector is migrated to the python3.6.x (or above) codebase. 
+
+The further maintenance, support and development of the python2 based version is NOT planned.
+
+Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
+
+
 # The Oomnitza Connector
 Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that
  can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can
@@ -54,7 +62,7 @@ Depending on the number of integrations and volume of data,
 the Connector can be configured to use additional workers.
 
 ## Runtime Environment Setup
-You will need to install Python 2.7.X as well as the packages which the connector
+You will need to install Python 3.6.X (or above) as well as the packages which the connector
  relies upon. Some of the python packages may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
@@ -614,12 +622,6 @@ An example generated `config.ini` follows.
     enable = False
     url = https://NETBOX
     auth_token = *******
-    sync_field = 24DCF85294E411E38A52066B556BA4EE
-
-    [netbox]
-    enable = False
-    url = https://NETBOX
-    auth_token = *******
 
     [okta]
     enable = False
@@ -726,7 +728,7 @@ set the mapping in Oomnitza for these data sources at the current moment.
 
 `insert_only` and `update_only` can not be both of true value.
 
-`verify_ssl`: set to false if the Casper server is running with a self signed SSL certificate.
+`verify_ssl`: set to false if the target data source instance is running with a self signed or invalid SSL certificate.
 
 ### Oomnitza Configuration
 `url`: the url of the Oomnitza application. For example: `https://example.oomnitza.com`
@@ -1012,7 +1014,6 @@ The identifier section of the `config.ini` file should contain a mapping to a un
 
 `key_file`: the Chef RSA private key for authentication
 
-
 `attribute_extension`: [optional] dictionary of additional node attributes to extract
 
 #### List of currently supported Chef attributes
@@ -1063,7 +1064,6 @@ The `[chromebooks]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-
 #### **Default Field Mappings**
 
     No default mappings. All mappings need to be defined in the config file.
@@ -1084,7 +1084,6 @@ The `[google_mobile_devices]` section contains the following attributes:
 `service_account_impersonate`: the email of the real G Suite administrator to be impersonated by the service account.
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
-
 
 #### **Default Field Mappings**
 
@@ -1154,7 +1153,6 @@ Default is "member" but can vary in different LDAP systems.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-
 #### Default Field Mappings
     mapping.USER =           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
     mapping.FIRST_NAME =     {'source': "givenName"},
@@ -1175,7 +1173,6 @@ Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-direc
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
-
 
 #### Default Field Mappings
     No default mappings
@@ -1210,7 +1207,6 @@ Default is "member" but can vary in different LDAP systems.
 
 `filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
 
-
 #### Default Field Mappings
     No default mappings
 
@@ -1219,7 +1215,6 @@ Default is "member" but can vary in different LDAP systems.
 `meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
  
 `network_id` = Meraki network identifier.
- 
 
 #### Default Field Mappings
     No default mappings
@@ -1234,20 +1229,8 @@ Default is "member" but can vary in different LDAP systems.
 
 `partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`. Used for API v1 and ignored for API v2.
 
-
 `api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
-
-#### Default Field Mappings
-    No default mappings
-
-
-### Netbox Configuration
-`url`: The full URI for the Netbox server.
-
-`auth_token`: the authorization token to use.
-
-`sync_field`: The Oomnitza field which contains the asset's unique identifier.
 
 #### Default Field Mappings
     No default mappings
@@ -1273,7 +1256,6 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
 
 `deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
 
-
 #### Default Field Mappings
     mapping.USER =           {'source': "profile.login"},
     mapping.FIRST_NAME =     {'source': "profile.firstName"},
@@ -1298,7 +1280,6 @@ If you have an issues during the connection to the OneLogin, please switch to th
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
-
 
 #### Default Field Mappings
     mapping.USER =           {'source': "username"}
@@ -1483,7 +1464,7 @@ and copy the JSON link generated for this report.
 ### Logging
 The Oomnitza Connector uses the standard python `logging` module. This modules is configured via the `logging.json` file.
  This file can be edited, or copied to a new file, to change the logging behavior of the connector. Please see the
- [python docs](https://docs.python.org/2/library/logging.html) for information of configuring python logging.
+ [python docs](https://docs.python.org/3/library/logging.html) for information of configuring python logging.
 
 ### SSL Protocol Version
 If the service to be connected to requires a particular SSL protocol version to properly connect, the connection's
@@ -1496,7 +1477,7 @@ It is possible to create a completely custom complex converter that will be used
     
     mapping.MY_AWESOME_FIELD =  {"source": "name", "converter": "my_custom_converter"}
  
- next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 2.X function,
+ next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 3.6.X (or above) function,
  that has to return some value - this value is a result of the converter. In the converter function a "record" object is available, it is the whole record extracted from external system as Python [dict](https://docs.python.org/2/library/stdtypes.html#dict) object.
  Example:
 

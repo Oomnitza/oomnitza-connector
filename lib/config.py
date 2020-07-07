@@ -6,7 +6,8 @@ import os
 import pprint
 import shutil
 import sys
-from ConfigParser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
+from configparser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
+from logging.handlers import RotatingFileHandler
 
 from lib.error import AuthenticationError
 from utils.relative_path import relative_app_path
@@ -46,6 +47,7 @@ class SpecialConfigParser(SafeConfigParser):
         e = None                              # None, or an exception
         while True:
             line = fp.readline()
+            line = line.replace('%', '%%')  # python 3 uses % as system symbol, if it is double percent "%%" it automatically replaces to "%"
             if not line:
                 break
             lineno = lineno + 1
@@ -116,7 +118,7 @@ class SpecialConfigParser(SafeConfigParser):
 
         # join the multi-line values collected while reading
         all_sections = [self._defaults]
-        all_sections.extend(self._sections.values())
+        all_sections.extend(list(self._sections.values()))
         for options in all_sections:
             for name, val in options.items():
                 if isinstance(val, list):
@@ -160,12 +162,12 @@ def parse_config(args):
                     raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
 
                 if '.' in section:
-                    module = section.split('.')[0]
+                    module_ = section.split('.')[0]
                 else:
-                    module = section
+                    module_ = section
 
                 try:
-                    mod = importlib.import_module("connectors.{0}".format(module))
+                    mod = importlib.import_module("connectors.{0}".format(module_))
                     connector = mod.Connector
                 except ImportError:
                     LOG.exception("Could not import connector for '%s'.", section)
@@ -174,6 +176,8 @@ def parse_config(args):
                     LOG.debug("parse_config section: %s", section)
                     try:
                         for key, value in config.items(section):
+                            if key == '__name__':
+                                continue
                             if key == 'enable':
                                 continue  # No processing of enable flag.
                             elif key == 'recordfilter':
@@ -185,18 +189,13 @@ def parse_config(args):
                                     cfg[key] = json.loads(value)
                                 except ValueError:
                                     # if the value is just a string, it is the name of the source field, convert to dict
-                                    if isinstance(value, basestring):
+                                    if isinstance(value, str):
                                         cfg[key] = {'source': value}
                                     else:
                                         raise ConfigError(
                                             "Failed to parse json field mapping %s:%s = %r" % (section, key, value)
                                         )
 
-                            # elif key.startswith('subrecord.') or connector.Settings[key].get('is_json', False):
-                            #     try:
-                            #         cfg[key] = json.loads(value)
-                            #     except ValueError:
-                            #         raise ConfigError("Failed to parse json value %s:%s = %r" % (section, key, value))
                             else:
                                 if key in connector.Settings:
                                     setting = connector.Settings[key]
@@ -237,16 +236,16 @@ def parse_config(args):
                         except:
                             cfg["__workers__"] = 2
                         # cfg["__load_data__"] = args.load_data
-                        cfg["__name__"] = module
+                        cfg["__name__"] = module_
                         cfg["__connector__"] = connector(section, cfg)
 
                         connectors[section] = cfg
                     except ConfigError:
                         raise
                     except AuthenticationError as exp:
-                        raise ConfigError("Authentication failure: %s" % exp.message)
+                        raise ConfigError("Authentication failure: %s" % str(exp))
                     except KeyError as exp:
-                        raise ConfigError("Unknown ini setting: %r" % exp.message)
+                        raise ConfigError("Unknown ini setting: %r" % str(exp))
                     except:
                         LOG.exception("Error initializing connector: %r" % section)
                         raise ConfigError("Error initializing connector: %r" % section)
@@ -265,7 +264,7 @@ def parse_config(args):
         for name, connector in connectors.items():
             if name == 'oomnitza':
                 continue
-            print connector["__connector__"].section, "Mappings"
+            print(connector["__connector__"].section, "Mappings")
             pprint.pprint(connector["__connector__"].field_mappings)
         exit(0)
 
@@ -291,17 +290,16 @@ def get_default_ini():
         LOG.debug("Found connector module {0}".format(name))
 
         try:
-            module = __import__(modname, fromlist="dummy")
-            sections[name] = module.Connector.example_ini_settings()
+            module_ = importlib.import_module(modname)
+            sections[name] = module_.Connector.example_ini_settings()
         except ImportError as exp:
             if name == 'sccm':
                 continue
-            sections[name] = [('enable', 'False'), ("# Missing Required Package: {0}".format(exp.message), None)]
+            sections[name] = [('enable', 'False'), ("# Missing Required Package: {0}".format(str(exp)), None)]
         except AttributeError as exp:
-            sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(exp.message), None)]
+            sections[name] = [('enable', 'False'), ("# AttributeError: {0}".format(str(exp)), None)]
         except Exception as exp:
-            sections[name] = [('enable', 'False'), ("# Exception: {0}".format(exp.message), None)]
-
+            sections[name] = [('enable', 'False'), ("# Exception: {0}".format(str(exp)), None)]
 
     return format_sections_for_ini(sections)
 
@@ -311,7 +309,7 @@ def format_sections_for_ini(sections):
     for section in ['oomnitza'] + sorted([section for section in sections.keys() if section != 'oomnitza']):
         parts.append('[{0}]'.format(section))
         for key, value in sections[section]:
-            if not isinstance(value, basestring):
+            if not isinstance(value, str):
                 value = json.dumps(value)
 
             tpl = "{0} = {1}"
@@ -323,7 +321,7 @@ def format_sections_for_ini(sections):
     return '\n'.join(parts)
 
 
-class RotateHandler(logging.handlers.RotatingFileHandler):
+class RotateHandler(RotatingFileHandler):
     def __init__(self, maxBytes, backupCount, filename, encoding):
         filename = relative_app_path(filename)
 
@@ -349,6 +347,3 @@ def setup_logging(args):
     except IOError:
         sys.stderr.write("Error opening logging config file: {0}!\n".format(config_file))
         sys.exit(1)
-
-
-

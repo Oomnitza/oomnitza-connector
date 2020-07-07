@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-
 from lib.connector import AssetsConnector
 from lib.file_connector import CsvConnectorMixin
 

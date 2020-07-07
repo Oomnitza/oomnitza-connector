@@ -36,7 +36,7 @@ class Connector(AssetsConnector):
     def get_headers(self):
         auth_string = self.settings['username'] + ":" + self.settings['password']
         return {
-            'Authorization': b"Basic " + base64.b64encode(auth_string),
+            'Authorization': "Basic " + base64.b64encode(auth_string.encode('utf-8')).decode('utf-8'),
             'Accept': 'application/json',
             'aw-tenant-code': self.settings['api_token']
         }
@@ -50,9 +50,9 @@ class Connector(AssetsConnector):
             response.raise_for_status()
             return {'result': True, 'error': ''}
         except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
         except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % exp.message}
+            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def device_page_url_generator(self, options):
         """
@@ -94,7 +94,7 @@ class Connector(AssetsConnector):
 
         for page in connection_pool.imap(self.get_device_page_info, self.device_page_url_generator(options), maxsize=pool_size):
             if not page:
-                raise StopIteration
+                break
             yield page
 
     def retrieve_device_info(self, devices):
@@ -118,7 +118,7 @@ class Connector(AssetsConnector):
 
         # extend the info about devices using info from the separate API
         if self.dep_devices:
-            devices = map(set_dep_info, devices)
+            devices = list(map(set_dep_info, devices))
 
         if self.__load_network_data:
             pool_size = self.settings['__workers__']
@@ -144,7 +144,7 @@ class Connector(AssetsConnector):
 
         for device_info in connection_pool.imap(self.retrieve_device_info, self.device_page_generator(options), maxsize=pool_size):
             if not device_info:
-                raise StopIteration
+                break
             yield device_info
 
     def _load_network_information(self, device_id):
