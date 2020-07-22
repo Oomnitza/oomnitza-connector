@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1]
+
+### Changed
+
+- Updated the README for the Chromebook connector
+- Updated the requirements.txt
+
 ## [2.1.0]
 
 ### Changed

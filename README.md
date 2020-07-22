@@ -1049,8 +1049,6 @@ The above example will introduce a new mappable attribute "hardware.machine_name
 
 ### Google Chrome Devices
 
-NOTE: The Google chrome connector does not have a UI and must be configured using the config file.  The Google Chrome device API reference with attributes description can be found [here](https://developers.google.com/admin-sdk/directory/v1/reference/chromeosdevices).
-
 The following steps need to be taken to allow automated retrieval from Google Admin API:
 
  1) [Enable API access for your G Suite domain](https://support.google.com/a/answer/60757)
