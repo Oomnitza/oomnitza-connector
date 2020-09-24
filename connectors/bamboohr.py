@@ -1,7 +1,7 @@
-import base64
 import logging
 
 from requests import ConnectionError, HTTPError
+from requests.auth import _basic_auth_str
 
 from lib.connector import UserConnector
 
@@ -30,18 +30,17 @@ class Connector(UserConnector):
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        self.url_temlate = "%s/%s/{0}" % (self.settings['url'], self.settings['system_name'])
+        self.url_template = "%s/%s/{0}" % (self.settings['url'], self.settings['system_name'])
 
     def get_headers(self):
-        auth_string = "Basic %s" % base64.standard_b64encode(self.settings['api_token'] + ":x")
         return {
-            'Authorization': auth_string,
+            'Authorization': _basic_auth_str(self.settings['api_token'], 'x'),
             'Accept': 'application/json'
         }
 
     def do_test_connection(self, options):
         try:
-            url = self.url_temlate.format("v1/employees/0")
+            url = self.url_template.format("v1/employees/0")
             response = self.get(url)
             response.raise_for_status()
             return {'result': True, 'error': ''}
@@ -51,7 +50,7 @@ class Connector(UserConnector):
             return {'result': False, 'error': 'Connection Failed: %s' % (str(exp))}
 
     def _load_records(self, options):
-        url = self.url_temlate.format("v1/employees/directory")
+        url = self.url_template.format("v1/employees/directory")
         response = self.get(url)
         employees = response.json()['employees']
 

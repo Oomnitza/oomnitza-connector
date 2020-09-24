@@ -79,7 +79,8 @@ class BaseConnector(object):
         'sync_field':     {'order': 10},
         'vault_keys':     {'order': 11, 'default': ""},
         'vault_backend':  {'order': 12, 'default': StrongboxBackend.KEYRING},
-        'user_pem_file':  {'order': 13, 'default': ''}
+        'vault_alias':    {'order': 13, 'default': ""},
+        'user_pem_file':  {'order': 14, 'default': ""}
     }
 
     def __init__(self, section, settings):
@@ -138,7 +139,8 @@ class BaseConnector(object):
             BaseConnector.OomnitzaConnector = self
 
         backend_name = settings.get('vault_backend', StrongboxBackend.KEYRING)
-        self._strongbox = Strongbox(section, backend_name)
+        secret_alias = settings.get("vault_alias") or section
+        self._strongbox = Strongbox(secret_alias, backend_name)
         self._preload_secrets()
 
     @staticmethod

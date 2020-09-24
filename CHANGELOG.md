@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.1.3]
+
+### Added 
+
+- support `vault_alias` for the custom secret's alias
+
+## [2.1.2]
+
+### Fixed
+
+- BambooHR authentication issue 
+
 ## [2.1.1]
 
 ### Changed

@@ -41,12 +41,9 @@ def parse_command_line_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--version', action='store_true', help="Show the vault version.")
-    parser.add_argument('--connector', type=str, required=True,
-        help="Connector name under which secret is saved in vault.")
-    parser.add_argument('--key', type=str, default="api_token", required=True,
-        help="Secret key name.")
-    parser.add_argument('--value', type=str,
-        action=SecretPromptAction, required=True, help="Secret value.")
+    parser.add_argument('--connector', type=str, required=True, help="Connector name or vault alias under which secret is saved in vault.")
+    parser.add_argument('--key', type=str, default="api_token", required=True, help="Secret key name.")
+    parser.add_argument('--value', type=str, action=SecretPromptAction, required=True, help="Secret value.")
 
     return parser.parse_args()
 

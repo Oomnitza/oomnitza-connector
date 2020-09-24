@@ -97,34 +97,65 @@ For OS X environment you have to install the build tools using the following com
 
 To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
 
-There are two options:
+There are three options:
 
 - local KeyRing;
-- external the Vault Key Management System by Hashicorp (the Vault KMS).
+- external Vault Key Management System by Hashicorp (the Vault KMS);
+- external CyberArk Secrets Management
 
 KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
 
-The [Vault KMS](https://www.vaultproject.io/intro/index.html) provides an additional layer of security. In this case, all secrets will be stored in the external encrypted backend:
+The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
+ additional layer of security. In this case, all secrets will be stored in the external encrypted system
 
 ### Common recommendations:
 
 Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
 Use a technical role with restricted permissions to run the Connector.
-It is recommended to use web server for the Vault KMS.
-To avoid the Vault KMS API call unauthorized using restrict IPs (see section
-Network Security) for the Vault KMS API call and connected system. For
-example, in Nginx configuration for the Vault KMS:
-
-```nginx
-location / {
-  # allow connector workstation IP
-  allow    192.168.1.4;
-  # drop rest of the world
-  deny    all;
-}
-```
 
 ### Deployment and receiving secrets
+
+To add secrets use the command line utility which enables an easy way to
+   place secrets to the system keyring service.
+
+```sh
+$ python strongbox.py --help
+usage: strongbox.py [-h] [--version] --connector=CONNECTOR --key=KEY --value
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             Show the vault version.
+  --connector CONNECTOR Connector name or vault alias under which secret is saved in vault.
+  --key KEY             Secret key name.
+  --value VALUE         Secret value. Will be requested.
+```
+
+To prevent password disclosure you will be asked to provide your secret value
+in the console.
+
+You can add a few secrets to one type of Connector using the different `"key"`
+
+Note the `CONNECTOR` name used in the argument `--connector` must be the same as the name of the section
+used to describe the connector, or the same as the `vault_alias` set in the section within configuration file. For example, for the command
+
+    python strongbox.py --connector=zendesk.abc --key=api_token --value=
+    
+we expect the section `[zendesk.abc]` exists in the configuration
+
+    [zendesk.abc]
+    enable = True
+    ...
+    
+or the `vault_alias` was set within the section
+
+    [zendesk]
+    vault_alias = zendesk.abc
+    enable = True
+    ...
+
+There is no validation set for the alias and the section name clash. If both found the alias has the priority.
+Another thing to be mentioned is that the `vault_alias` can be any string value and not be relevant to the name of the service it relates to.  
+It is OK to set the `vault_alias = I_love_cats` or any other value you want.
 
 #### Local KeyRing description
 
@@ -149,31 +180,12 @@ vault_keys = api_token
 
 For Linux, you may have to install **dbus-python** package and configure KeyRing Daemon.
 
-2. To add secrets use the command line utility which enables an easy way to
-   place secrets to the system keyring service.
-
-
-```sh
-$ python strongbox.py --help
-usage: strongbox.py [-h] [--version] --connector=CONNECTOR --key=KEY --value=VALUE
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --version             Show the vault version.
-  --connector CONNECTOR Connector name under which secret is saved in a vault.
-  --key KEY             Secret key name.
-  --value VALUE         Secret value. Will be requested.
-```
-
-To prevent password disclosure you will be asked to provide your secret value
-in the console.
+2. Add the secrets:
 
 ```sh
 python strongbox.py --connector=oomnitza --key=api_token --value=
 Your secret: your-secret
 ```
-
-You can add a few secrets to one type of Connector.
 
 #### The Vault KMS run-up
 
