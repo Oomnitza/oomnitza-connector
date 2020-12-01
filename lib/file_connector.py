@@ -132,15 +132,6 @@ class FileConnectorMixin(BaseConnector):
             if not os.path.isdir(self.source):
                 raise self.FileTestException('%r is not a directory.' % self.source)
 
-    def do_test_connection(self, options):
-
-        try:
-            self.test_income_data()
-        except self.FileTestException as err:
-            return {'result': False, 'error': str(err)}
-
-        return {'result': True, 'error': ''}
-
     def _load_records(self, options):
 
         self.test_income_data()

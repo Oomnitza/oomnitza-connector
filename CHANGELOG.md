@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.0]
+
+### Added
+
+- support for the new `managed` mode and new generic `managed` connector module.
+- `managed` mode is now the default mode for the connector
+
+### Removed
+
+- support for the `env_password` removed from the codebase; the local credentials have to be stored within the .ini file or within the secret storage 
+
 ## [2.1.3]
 
 ### Added 

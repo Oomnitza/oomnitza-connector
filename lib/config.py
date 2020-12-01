@@ -6,7 +6,7 @@ import os
 import pprint
 import shutil
 import sys
-from configparser import SafeConfigParser, ParsingError, MissingSectionHeaderError, DEFAULTSECT
+from configparser import ParsingError, MissingSectionHeaderError, DEFAULTSECT, NoSectionError, ConfigParser
 from logging.handlers import RotatingFileHandler
 
 from lib.error import AuthenticationError
@@ -19,7 +19,7 @@ from .filter import DynamicConverter, parse_filter
 from .error import ConfigError
 
 
-class SpecialConfigParser(SafeConfigParser):
+class SpecialConfigParser(ConfigParser):
     def _interpolate(self, section, option, rawval, vars):
         """
         Disabled ConfigParser Interpolation of values.
@@ -137,7 +137,90 @@ def generate_ini_file(args):
     LOG.info("{0} has been generated.".format(args.ini))
 
 
-def parse_config(args):
+def init_connector_from_configuration(connector_name, configuration, cmdline_args, extra_cfg=None):
+    """
+    Initialize the connector with some extra information using the given configuration
+    """
+
+    cfg = {}
+    cfg.update(**(extra_cfg or {}))
+
+    if '.' in connector_name:
+        module_ = connector_name.split('.')[0]
+    else:
+        module_ = connector_name
+
+    try:
+        mod = importlib.import_module("connectors.{0}".format(module_))
+        connector = mod.Connector
+    except ImportError:
+        LOG.exception("Could not import connector for '%s'.", connector_name)
+        raise ConfigError("Could not import connector for '%s'." % connector_name)
+    else:
+        try:
+            for key, value in configuration:
+                if key == '__name__':
+                    continue
+                if key == 'enable':
+                    continue  # No processing of enable flag.
+                elif key == 'recordfilter':
+                    if '__filter__' in cfg:
+                        Exception("'filter' is defined more than once in section: %s" % connector_name)
+                    cfg['__filter__'] = parse_filter(value)
+                elif key.startswith('mapping.'):
+                    try:
+                        cfg[key] = json.loads(value)
+                    except ValueError:
+                        # if the value is just a string, it is the name of the source field, convert to dict
+                        if isinstance(value, str):
+                            cfg[key] = {'source': value}
+                        else:
+                            raise ConfigError(
+                                "Failed to parse json field mapping %s:%s = %r" % (connector_name, key, value)
+                            )
+
+                else:
+                    if key in connector.Settings:
+                        setting = connector.Settings[key]
+                    elif key in connector.CommonSettings:
+                        setting = connector.CommonSettings[key]
+                    else:
+                        LOG.warning("Invalid setting in %r section: %r.", connector_name, key)
+                        continue
+
+                    cfg[key] = value
+
+                    choices = setting.get('choices', [])
+                    if choices and cfg[key] not in choices:
+                        raise ConfigError(
+                            "Invalid value for %s: %r. Value must be one of %r" % (key, value, choices)
+                        )
+
+            cfg["__testmode__"] = cmdline_args.testmode
+            cfg["__save_data__"] = cmdline_args.save_data
+            try:
+                cfg["__workers__"] = cmdline_args.workers
+            except:
+                cfg["__workers__"] = 2
+
+            cfg["__name__"] = cfg.get('name') or module_
+            cfg["__connector__"] = connector(connector_name, cfg)
+
+            return cfg
+        except ConfigError:
+            raise
+        except AuthenticationError as exp:
+            raise ConfigError("Authentication failure: %s" % str(exp))
+        except KeyError as exp:
+            raise ConfigError("Unknown ini setting: %r" % str(exp))
+        except KeyboardInterrupt:
+            raise
+        except:
+            LOG.exception("Error initializing connector: %r" % connector_name)
+            raise ConfigError("Error initializing connector: %r" % connector_name)
+
+
+def parse_config_for_client_initiated(args):
     """
     Parse connector configuration and generate a result in dictionary
     format which includes integration names and the required info for
@@ -153,7 +236,6 @@ def parse_config(args):
 
         config.read(args.ini)
         for section in config.sections():
-            cfg = {}
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
@@ -161,100 +243,12 @@ def parse_config(args):
                 if not connectors and section != 'oomnitza':
                     raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
 
-                if '.' in section:
-                    module_ = section.split('.')[0]
-                else:
-                    module_ = section
-
-                try:
-                    mod = importlib.import_module("connectors.{0}".format(module_))
-                    connector = mod.Connector
-                except ImportError:
-                    LOG.exception("Could not import connector for '%s'.", section)
-                    raise ConfigError("Could not import connector for '%s'." % section)
-                else:
-                    LOG.debug("parse_config section: %s", section)
-                    try:
-                        for key, value in config.items(section):
-                            if key == '__name__':
-                                continue
-                            if key == 'enable':
-                                continue  # No processing of enable flag.
-                            elif key == 'recordfilter':
-                                if '__filter__' in cfg:
-                                    Exception("'filter' is defined more than once in section: %s" % section)
-                                cfg['__filter__'] = parse_filter(value)
-                            elif key.startswith('mapping.'):
-                                try:
-                                    cfg[key] = json.loads(value)
-                                except ValueError:
-                                    # if the value is just a string, it is the name of the source field, convert to dict
-                                    if isinstance(value, str):
-                                        cfg[key] = {'source': value}
-                                    else:
-                                        raise ConfigError(
-                                            "Failed to parse json field mapping %s:%s = %r" % (section, key, value)
-                                        )
-
-                            else:
-                                if key in connector.Settings:
-                                    setting = connector.Settings[key]
-                                elif key in connector.CommonSettings:
-                                    setting = connector.CommonSettings[key]
-                                else:
-                                    #raise ConfigError("Invalid setting in %r section: %r." % (section, key))
-                                    LOG.warning("Invalid setting in %r section: %r.", section, key)
-                                    continue
-
-                                cfg[key] = value
-
-                                choices = setting.get('choices', [])
-                                if choices and cfg[key] not in choices:
-                                    raise ConfigError(
-                                        "Invalid value for %s: %r. Value must be one of %r" % (key, value, choices)
-                                    )
-
-                        #ToDo: look into making this generic: env_FIELD so any setting can be an environment variable.
-                        if 'env_password' in cfg and cfg['env_password']:
-                            LOG.info(
-                                "Loading password for %s from environment variable %r.", section, cfg['env_password']
-                            )
-                            try:
-                                cfg['password'] = os.environ[cfg['env_password']]
-                            except KeyError:
-                                raise ConfigError(
-                                    "Unable to load password for %s from environment "
-                                    "variable %r." % (section, cfg['env_password'])
-                                )
-
-                        if 'oomnitza' in connectors:
-                            cfg["__oomnitza_connector__"] = connectors['oomnitza']["__connector__"]
-                        cfg["__testmode__"] = args.testmode
-                        cfg["__save_data__"] = args.save_data
-                        try:
-                            cfg["__workers__"] = args.workers
-                        except:
-                            cfg["__workers__"] = 2
-                        # cfg["__load_data__"] = args.load_data
-                        cfg["__name__"] = module_
-                        cfg["__connector__"] = connector(section, cfg)
-
-                        connectors[section] = cfg
-                    except ConfigError:
-                        raise
-                    except AuthenticationError as exp:
-                        raise ConfigError("Authentication failure: %s" % str(exp))
-                    except KeyError as exp:
-                        raise ConfigError("Unknown ini setting: %r" % str(exp))
-                    except:
-                        LOG.exception("Error initializing connector: %r" % section)
-                        raise ConfigError("Error initializing connector: %r" % section)
-
+                cfg = init_connector_from_configuration(section, config.items(section), args)
+                connectors[section] = cfg
             else:
                 LOG.debug("Skipping connector '%s' as it is not enabled.", section)
                 pass
     except IOError:
-        LOG.exception("Could not open config file.")
         raise ConfigError("Could not open config file.")
 
     if len(connectors) <= 1:
@@ -269,6 +263,53 @@ def parse_config(args):
         exit(0)
 
     return connectors
+
+
+def parse_base_config_for_cloud_initiated(args):
+    """
+    Read only common info from the ini file for now - the `oomnitza` and `converters` sections
+    """
+    try:
+        config = SpecialConfigParser()
+        if not os.path.isfile(args.ini):
+            # The config file does not yet exist, so generate it.
+            # generate_ini_file(args)
+            raise ConfigError("Error: unable to open ini file: %r" % args.ini)
+
+        config.read(args.ini)
+        for section in config.sections():
+            if section == 'converters':
+                for name, filter_str in config.items('converters'):
+                    DynamicConverter(name, filter_str)
+            elif section == 'oomnitza':
+                return init_connector_from_configuration(section, config.items(section), args)
+
+    except IOError:
+        raise ConfigError("Could not open config file.")
+
+
+def parse_connector_config_for_cloud_initiated(connector_name, extra_cfg, args):
+    """
+    Read and init the specific connector by its given `section` identifier
+    """
+    try:
+        config = ConfigParser()
+        if not os.path.isfile(args.ini):
+            # The config file does not yet exist, so generate it.
+            # generate_ini_file(args)
+            raise ConfigError("Error: unable to open ini file: %r" % args.ini)
+
+        config.read(args.ini)
+        # That is possible that there will be no content within the .ini file - especially for the cloud installation.
+        # So, init the connector config without the data from ini file
+        try:
+            configuration = config.items(connector_name)
+        except NoSectionError:
+            configuration = []
+        return init_connector_from_configuration(connector_name, configuration, args, extra_cfg=extra_cfg)
+
+    except IOError:
+        raise ConfigError("Could not open config file.")
 
 
 def get_default_ini():
@@ -330,7 +371,7 @@ class RotateHandler(RotatingFileHandler):
 
         super(RotateHandler, self).__init__(filename=filename, mode='a',
                                             maxBytes=maxBytes, backupCount=backupCount,
-                                            encoding=encoding, delay=0)
+                                            encoding=encoding, delay=False)
 
 
 def setup_logging(args):

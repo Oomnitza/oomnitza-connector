@@ -42,7 +42,7 @@ class Strongbox(object):
                 "'vault' and 'cyberark' values are allowed".format(backend_name)
             )
 
-        LOG.info(
+        LOG.debug(
             "The {backend_name} backend is used as the secret storage "
             "for {service_name}".format(
                 backend_name=backend_name, service_name=service_name

@@ -44,17 +44,6 @@ class Connector(AssetsConnector):
     def authenticate(self):
         self.ldap_connection.authenticate()
 
-    def do_test_connection(self, options):
-        try:
-            self.authenticate()
-            return {'result': True, 'error': ''}
-        except AuthenticationError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-        except ldap.SERVER_DOWN as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-        except Exception as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-
     def _load_records(self, options):
         for asset in self.ldap_connection.load_data(options):
             yield asset

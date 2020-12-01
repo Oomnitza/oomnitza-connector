@@ -1,9 +1,7 @@
 import json
 import logging
 
-import ldap
-
-from lib.connector import UserConnector, AuthenticationError
+from lib.connector import UserConnector
 from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
 
@@ -50,17 +48,6 @@ class Connector(UserConnector):
 
     def authenticate(self):
         self.ldap_connection.authenticate()
-
-    def do_test_connection(self, options):
-        try:
-            self.authenticate()
-            return {'result': True, 'error': ''}
-        except AuthenticationError as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-        except ldap.SERVER_DOWN as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-        except Exception as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def _load_records(self, options):
         for user in self.ldap_connection.load_data(options):

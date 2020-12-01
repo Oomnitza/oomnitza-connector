@@ -41,19 +41,6 @@ class Connector(AssetsConnector):
             'aw-tenant-code': self.settings['api_token']
         }
 
-    def do_test_connection(self, options):
-        try:
-            page = options.get('start_page', 0)
-            rows = options.get('rows_per_page', 1)
-            url = self.url_template.format(rows, page)
-            response = self.get(url)
-            response.raise_for_status()
-            return {'result': True, 'error': ''}
-        except ConnectionError as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-        except HTTPError as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-
     def device_page_url_generator(self, options):
         """
         This is generator of urls for device pages

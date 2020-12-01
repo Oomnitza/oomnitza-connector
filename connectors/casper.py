@@ -83,7 +83,7 @@ class Connector(AssetsConnector):
 
     def get_mapping_from_oomnitza(self):
         name = self.get_name_for_mapping_and_connection()
-        return self.settings['__oomnitza_connector__'].get_mappings(name)
+        return self.OomnitzaConnector.get_mappings(name)
 
     def get_sync_type_from_settings(self):
         sync_type = self.settings.get('sync_type', None)
@@ -148,18 +148,6 @@ class Connector(AssetsConnector):
 
     def get_auth(self):
         return self.settings['username'], self.settings['password']
-
-    def do_test_connection(self, options):
-        try:
-            response = self.get(self.ids_url)
-            response.raise_for_status()
-            return {'result': True, 'error': ''}
-        except ConnectionError as exp:
-            LOG.exception("Error testing connection.")
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-        except HTTPError as exp:
-            LOG.exception("Error testing connection!")
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
 
     def _load_records(self, options):
 

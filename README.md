@@ -5,16 +5,15 @@ The further maintenance, support and development of the python2 based version is
 
 Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
 
-
 # The Oomnitza Connector
 Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that
  can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can
- presently pull data from the following sources, with more planned in the future.
+ presently pull data from the following sources:
 
 * Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
 * Azure Users [https://azure.microsoft.com](https://azure.microsoft.com)
 * BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
-* Casper (Jamf Pro) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
+* Jamf Pro (former Casper) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Google mobile devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
@@ -35,12 +34,74 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
 
+There is also the support for the arbitrary set of the many others SaaS with the configuration fully managed within the Oomnitza Cloud
+___
+
+  - [Getting Started](#getting-started)
+  - [System Requirements](#system-requirements)
+  - [Runtime Environment Setup](#runtime-environment-setup)
+    - [Linux Environment](#linux-environment)
+    - [Windows Environment](#windows-environment)
+    - [OS X Environment](#os-x-environment)
+  - [Connector Configs](#connector-configs)
+    - [Common optional settings](#common-optional-settings)
+    - [Oomnitza Configuration](#oomnitza-configuration)
+  - [Storage for Connector secrets](#storage-for-connector-secrets)
+    - [Common recommendations](#common-recommendations)
+    - [Deployment and receiving secrets](#deployment-and-receiving-secrets)
+      - [Local KeyRing](#local-keyring)
+      - [HashiCorp Vault](#hashicorp-vault)
+      - [CyberArk secret storage](#cyberark-secret-storage)
+        - [Self-hosted CyberArk installation](#self-hosted-cyberark-installation)
+        - [Managing secrets via CyberArk](#managing-secrets-via-cyberark)
+        - [Connector configuration](#connector-configuration)
+  - [Running the connector server](#running-the-connector-server)
+  - [Running the connector client](#running-the-connector-client)
+    - [Setting the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode)
+      - [Setting the export file connector](#setting-the-export-file-connector)
+    - [Setting the connector to run in upload mode](#setting-the-connector-to-run-in-upload-mode)
+      - [Setting the connector to run as an automated task for upload mode](#setting-the-connector-to-run-as-an-automated-task-for-upload-mode)
+      - [Airwatch Configuration](#airwatch-configuration)
+      - [CSV Assets Configuration](#csv-assets-configuration)
+      - [CSV Users Configuration](#csv-users-configuration)
+      - [BambooHR Configuration](#bamboohr-configuration)
+      - [Jamf Configuration](#jamf-configuration)
+      - [Chef Configuration](#chef-configuration)
+      - [Google Chrome Devices](#google-chrome-devices)
+      - [Google Mobile Devices](#google-mobile-devices)
+      - [Jasper Configuration](#jasper-configuration)
+      - [KACE SMA Configuration](#kace-sma-configuration)
+      - [LDAP Users Configuration](#ldap-users-configuration)
+      - [LDAP Assets Configuration](#ldap-assets-configuration)
+      - [Azure Active Directory Users Configuration](#azure-active-directory-users-configuration)
+      - [Meraki Systems Manager Configuration](#meraki-systems-manager-configuration)
+      - [MobileIron Configuration](#mobileiron-configuration)
+      - [Netbox Configuration](#netbox-configuration)
+      - [Okta Configuration](#okta-configuration)
+      - [OneLogin Configuration](#onelogin-configuration)
+      - [Open-AudIT Configuration](#open-audit-configuration)
+      - [SCCM Configuration](#sccm-configuration)
+      - [ServiceNow Configuration](#servicenow-configuration)
+      - [SimpleMDM Configuration](#simplemdm-configuration)
+      - [Tanium Configuration](#tanium-configuration)
+      - [Workday Configuration](#workday-configuration)
+      - [Zendesk Configuration](#zendesk-configuration)
+  - [Advanced usage](#advanced-usage)
+    - [Logging](#logging)
+    - [Custom Converters](#custom-converters)
+    - [Record Filtering](#record-filtering)
+  - [Current limitations](#current-limitations)
+    - [Software mapping](#software-mapping)
+    - [MS Windows environment](#ms-windows-environment)
+
+
+## Getting Started
 The Oomnitza Connector can be hosted on Oomnitza's
  server cloud, free of charge, if the third party server is
  or can be made accessible from the Oomnitza Cloud. Contact us for more details!
  Organizations with dedicated internal services may prefer to run this connector
  in-house, behind the same firewall that prevents outside access.
-## Getting Started
+
 The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
 
@@ -92,401 +153,6 @@ For MS Windows you have to install Windows C++ compilers as build tools. Please 
 For OS X environment you have to install the build tools using the following command:
 
     xcode-select --install
-    
-## Storage for Connector secrets
-
-To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
-
-There are three options:
-
-- local KeyRing;
-- external Vault Key Management System by Hashicorp (the Vault KMS);
-- external CyberArk Secrets Management
-
-KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
-
-The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
- additional layer of security. In this case, all secrets will be stored in the external encrypted system
-
-### Common recommendations:
-
-Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
-Use a technical role with restricted permissions to run the Connector.
-
-### Deployment and receiving secrets
-
-To add secrets use the command line utility which enables an easy way to
-   place secrets to the system keyring service.
-
-```sh
-$ python strongbox.py --help
-usage: strongbox.py [-h] [--version] --connector=CONNECTOR --key=KEY --value
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --version             Show the vault version.
-  --connector CONNECTOR Connector name or vault alias under which secret is saved in vault.
-  --key KEY             Secret key name.
-  --value VALUE         Secret value. Will be requested.
-```
-
-To prevent password disclosure you will be asked to provide your secret value
-in the console.
-
-You can add a few secrets to one type of Connector using the different `"key"`
-
-Note the `CONNECTOR` name used in the argument `--connector` must be the same as the name of the section
-used to describe the connector, or the same as the `vault_alias` set in the section within configuration file. For example, for the command
-
-    python strongbox.py --connector=zendesk.abc --key=api_token --value=
-    
-we expect the section `[zendesk.abc]` exists in the configuration
-
-    [zendesk.abc]
-    enable = True
-    ...
-    
-or the `vault_alias` was set within the section
-
-    [zendesk]
-    vault_alias = zendesk.abc
-    enable = True
-    ...
-
-There is no validation set for the alias and the section name clash. If both found the alias has the priority.
-Another thing to be mentioned is that the `vault_alias` can be any string value and not be relevant to the name of the service it relates to.  
-It is OK to set the `vault_alias = I_love_cats` or any other value you want.
-
-#### Local KeyRing description
-
-OS Supported:
-
-Ubuntu Linux: [SecretStorage](https://github.com/mitya57/secretstorage) (requires installation of additional packages).
-
-Windows: Windows Credential Manager (by default).
-
-OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
-
-_OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
-
-1. To use local KeyRing specify `keyring` as the `vault_backend` in config
-
-```ini
-[oomnitza]
-url = https://example.com
-vault_backend = keyring
-vault_keys = api_token
-```
-
-For Linux, you may have to install **dbus-python** package and configure KeyRing Daemon.
-
-2. Add the secrets:
-
-```sh
-python strongbox.py --connector=oomnitza --key=api_token --value=
-Your secret: your-secret
-```
-
-#### The Vault KMS run-up
-
-To use the Vault KMS:
-
-1. Install, initialize and unseal the Vault KMS (use documentation).
-
-2. Mount Key/Value Secret Backend.
-
-3. Write secrets to Key/Value Secret Backend. For example:
-
-```sh
-$ vault write secret/zendesk \
-    system_name=oomnitza_user \
-    api_token=123456789ABCD$$$
-Success! Data written to: secret/zendesk
-```
-4. Create a json/hcl file with policy:
-
-This section grants all access on __"*secret/zendesk**"__. 
-Further restrictions can be applied to this broad policy.
-
-```hcl
-path "secret/zendesk/*" {
-  capabilities = ["read", "list"]
-}
-```
-
-5. To add this policy to the Vault KMS system policies list use the following
-   command or API:
-
-```sh
-vault write sys/policy/zendesk-read policy=@/root/vault/zendesk-read.hcl
-```
-
-6. To create a token with assigned policy:
-
-```sh
-vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
-Token: 6c1247-413f-4816-5f=a72-2ertc1d2165e
-```
-
-7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
-
-```ini
-[zendesk]
-enable = true
-url = https://example.com
-vault_backend = vault
-vault_keys = api_token username password
-```
-
-8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
-   be added to system keyring via vault cli.
-
-Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
-
-```sh
-python strongbox.py --connector=zendesk --key=vault_url --value=
-Your secret: https://vault.adress.com/v1/secret/zendesk
-
-python strongbox.py --connector=zendesk --key=vault_token --value=
-Your secret: 6c1247-413f-4816-5f=a72-2ertc1d2165e
-```
-
-__It is recomended to use read-only token.__
-
-### The CyberArk secret storage
-
-In order to use CyberArk as secret storage:
-
-1. Install and configure CyberArk storage (use self-hosted storage or use
-   dedicated storage provided by [CyberArk](https://www.cyberark.com/))
-
-2. Write secrets to CyberArk storage
-
-3. Configure connector to use CyberArk secret backend
-
-#### Self-hosted CyberArk installation
-
-- Use [official documentation](https://docs.conjur.org/Latest/en/Content/Get%20Started/install-open-source.htm) to install and configure CyberArk Conjur service
-
-    ```
-    # In your terminal, download the Conjur Open Source quick-start configuration
-    curl -o docker-compose.yml https://www.conjur.org/get-started/docker-compose.quickstart.yml
-
-    # Pull all of the required Docker images from DockerHub.
-    docker-compose pull
-
-    # Generate a master data key:
-    docker-compose run --no-deps --rm conjur data-key generate > data_key
-
-    # Load the data key into the environment:
-    export CONJUR_DATA_KEY="$(< data_key)"
-
-    # Run the Conjur server, database, and client:
-    docker-compose up -d
-    ```
-
-    If you want to confirm that CyberArk was installed properly, you can open a
-    browser and go to localhost:8080 and view the included status UI page.
-
-- Create new account (name should be equal to your connector configration
-    section)
-
-    ```
-    docker-compose exec conjur conjurctl account create zendesk
-    # API key for admin: <cyberark_api_key>
-    ```
-
-- Start a bash shell for the Conjur client CLI
-
-    ```
-    docker-compose exec client bash
-    ```
-
-- Login into your account
-
-    ```
-    conjur init -u conjur -a zendesk
-    conjur authn login -u admin
-    ```
-
-- Create root policy, e.g. [use more complex / nested configuration for
-  granular permissions](https://docs.conjur.org/Latest/en/Content/Operations/Policy/PolicyGuideConcepts%20and%20Best%20Practices%20_%20Conjur%20Developer%20Docs.html)
-
-    ```
-    $ cat /root/policy/zendesk-policy.yml
-
-    ---
-    - !variable api_token
-    - !variable some_secret_key
-    ```
-
-- Apply policy to your account (this allow you manage the specified secrets
-    via command line or api)
-
-    ```
-    conjur policy load root /root/policy/zendesk-policy.yml
-    ```
-
-#### Managing secrets via CyberArk
-
-- Push all required secrets into storage
-
-    ```
-    conjur variable values add api_token secret-api-token
-    conjur variable values add some_secret_key some-secret-value
-    ```
-
-#### Connector configuration
-
-- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
-  be added to system keyring via cli.
-
-Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
-
-```sh
-python strongbox.py --connector=zendesk --key=vault_url --value=
-Your secret: https://cyberark-secret-storage-sever.example.com
-
-python strongbox.py --connector=zendesk --key=vault_token --value=
-Your secret: <cyberark_api_key>
-```
-
-- Update connector configuration to use CyberArk secret storage
-
-```ini
-[zendesk]
-enable = true
-url = https://example.com
-vault_backend = cyberark
-vault_keys = api_token some_secret_key
-```
-
-
-## Running the connector client
-The connector is meant to be run from the command line and as such as multiple command line options:
-
-    $ python connector.py -h
-    usage: connector.py [-h] [--record-count RECORD_COUNT]
-                        [--version] [--workers WORKERS] [--show-mappings]
-                        [--testmode] [--save-data] [--ini INI]
-                        [--logging-config LOGGING_CONFIG]
-                        {upload,generate-ini} [connectors [connectors ...]]
-    
-    positional arguments:
-      {upload,generate-ini}
-                            Action to perform.
-      connectors            Connectors to run.
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      --record-count RECORD_COUNT
-                            Number of records to pull and process from connection.
-      --version             Show the connector version.
-      --workers WORKERS     Number of async IO workers used to pull & push
-                            records.
-      --show-mappings       Show the mappings which would be used by the
-                            connector.
-      --testmode            Run connectors in test mode.
-      --save-data           Saves the data loaded from other system.
-      --ini INI             Config file to use.
-      --logging-config LOGGING_CONFIG
-                            Use to override logging config file to use.
-
-The available actions are:
-
-* `generate-ini`: generate an example `config.ini` file.
-* `upload`: uploads the data from the indicated connectors to Oomnitza. The connector values are taken
-   from the section names in the ini file.
-
-`--ini` is used to specify which config file to load, if not provided, `config.ini` from the root directory will be used.
-   This option can be used with the `generate-ini` action to specify the file to generate.
-
-`--logging-config` is used to specify an alternate logging config file.
-
-`--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
-   `config.ini` mappings, and mappings setup via the website.
-
-`--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
-   can be used to see what, exactly, is getting sent to the server.
-
-`--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
-   will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
-
-`--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
-   the data is being loaded and mapped as expected.
-
-`--workers` is used to setup the number of workers used to push the extracted data to Oomnitza instance. Default is 2. 
-   If you will increase this value it will increase the load generated by connector and decrease the time required to finish the full sync.
-
-
-## Setting the connector to run as an automated task
-There are many ways to automate the sync, here are a few:
-
-* OS X: http://www.maclife.com/article/columns/terminal_101_creating_cron_jobs
-* OS X: http://superuser.com/questions/126907/how-can-i-get-a-script-to-run-every-day-on-mac-os-x
-* OS X: http://launched.zerowidth.com/
-* Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
-* Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
-
-
-## Running the connector server
-It is possible to setup the connector server that will handle webhooks and other requests from external sources and react to them. 
-The connector server is WSGI compliant server (https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface).
-The connector server is meant to be run from the command line with following command line arguments:
-
-    $ python server.py -h
-    usage: server.py [-h] [--host HOST] [--port PORT] [--version]
-                     [--show-mappings] [--testmode] [--save-data] [--ini INI]
-                     [--logging-config LOGGING_CONFIG]
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      --host HOST
-      --port PORT
-      --version             Show the connector version.
-      --show-mappings       Show the mappings which would be used by the
-                            connector.
-      --testmode            Run connectors in test mode.
-      --save-data           Saves the data loaded from other system.
-      --ini INI             Config file to use.
-      --logging-config LOGGING_CONFIG
-                            Use to override logging config file to use.
-
-The available arguments for the connector server are serving for the same purposes as for the connector client, except 2 new server-specific arguments:
-
-`--host` is used to specify the server's host. Default is 127.0.0.1
-
-`--port` is used to specify the server's port. Default is 8000
-
-The url pointing to the connector server instance should ends with the name of the connector:
-
-Examples:
-
-    https://my-connector-server.com/it/does/not/matter/casper
-    https://my-connector-server.com/it/does/not/matter/casper.MDM
-    https://my-connector-server.com/it/does/not/matter/casper.1
-
-**Note:** Now only the Casper (JAMF Pro) Webhooks are supported out of the box by the connector server.
-First you have to enable webhooks with JSON payloads (http://docs.jamf.com/9.96/casper-suite/administrator-guide/Webhooks.html)
-Out of the box the following webhooks are supported:
- 
-* ComputerAdded
-* ComputerCheckIn
-* ComputerInventoryCompleted
-* ComputerPolicyFinished
-* ComputerPushCapabilityChanged
-* MobileDeviceCheckIn
-* MobileDeviceCommandCompleted
-* MobileDeviceEnrolled
-* MobileDevicePushSent
-* MobileDeviceUnEnrolled
-
-As soon as the connector server is receiving the message from the Casper (JAMF Pro) it is initiating the request to fetch the details of the asset triggered that webhook request and sync it with Oomnitza. 
-This allows efficiently and fast keep the Oomnitza in the up-to-date state.
-
-Also please keep in mind that the webhooks from the Casper (JAMF Pro) **do not add any authorization information** in the requests to the connector server. 
-Because of that server cannot verify incoming requests in any way, so if you want somehow forbid access to the connector's server interface configured to listen to Casper (JAMF Pro) webhooks, 
-you have to use something else, like firewalls with configured allowed IPs, etc.
 
 ## Connector Configs
 
@@ -742,6 +408,10 @@ set the mapping in Oomnitza for these data sources at the current moment.
 
 `verify_ssl`: set to false if the target data source instance is running with a self signed or invalid SSL certificate.
 
+`ssl_protocol` : if the service to be connected to requires a particular SSL protocol version to properly connect, the connection's
+ section in the ini file can include a `ssl_protocol` option. The value can be one of:
+ `ssl`, `sslv23`, `sslv3`, `tls`, `tls1`.
+
 ### Oomnitza Configuration
 `url`: the url of the Oomnitza application. For example: `https://example.oomnitza.com`
 
@@ -754,7 +424,481 @@ set the mapping in Oomnitza for these data sources at the current moment.
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
 Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Settings / Certificates" page.
 
-### Airwatch Configuration
+## Storage for Connector secrets
+
+To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
+
+There are three options:
+
+- local KeyRing;
+- external Vault Key Management System by Hashicorp (the Vault KMS);
+- external CyberArk Secrets Management
+
+KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
+
+The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
+ additional layer of security. In this case, all secrets will be stored in the external encrypted system
+
+### Common recommendations
+
+Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
+Use a technical role with restricted permissions to run the Connector.
+
+### Deployment and receiving secrets
+
+To add secrets use the command line utility which enables an easy way to
+   place secrets to the system keyring service.
+
+```sh
+$ python strongbox.py --help
+usage: strongbox.py [-h] [--version] --connector=CONNECTOR --key=KEY --value
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             Show the vault version.
+  --connector CONNECTOR Connector name or vault alias under which secret is saved in vault.
+  --key KEY             Secret key name.
+  --value VALUE         Secret value. Will be requested.
+```
+
+To prevent password disclosure you will be asked to provide your secret value
+in the console.
+
+You can add a few secrets to one type of Connector using the different `"key"`
+
+Note the `CONNECTOR` name used in the argument `--connector` must be the same as the name of the section
+used to describe the connector, or the same as the `vault_alias` set in the section within configuration file. For example, for the command
+
+    python strongbox.py --connector=zendesk.abc --key=api_token --value=
+    
+we expect the section `[zendesk.abc]` exists in the configuration
+
+    [zendesk.abc]
+    enable = True
+    ...
+    
+or the `vault_alias` was set within the section
+
+    [zendesk]
+    vault_alias = zendesk.abc
+    enable = True
+    ...
+
+There is no validation set for the alias and the section name clash. If both found the alias has the priority.
+Another thing to be mentioned is that the `vault_alias` can be any string value and not be relevant to the name of the service it relates to.  
+It is OK to set the `vault_alias = I_love_cats` or any other value you want.
+
+#### Local KeyRing
+
+OS Supported:
+
+Ubuntu Linux: [SecretStorage](https://github.com/mitya57/secretstorage) (requires installation of additional packages).
+
+Windows: Windows Credential Manager (by default).
+
+OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
+
+_OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
+
+1. To use local KeyRing specify `keyring` as the `vault_backend` in config
+
+```ini
+[oomnitza]
+url = https://example.com
+vault_backend = keyring
+vault_keys = api_token
+```
+
+For Linux, you may have to install **dbus-python** package and configure KeyRing Daemon.
+
+2. Add the secrets:
+
+```sh
+python strongbox.py --connector=oomnitza --key=api_token --value=
+Your secret: your-secret
+```
+
+#### HashiCorp Vault
+
+To use the Vault KMS:
+
+1. Install, initialize and unseal the Vault KMS (use documentation).
+
+2. Mount Key/Value Secret Backend.
+
+3. Write secrets to Key/Value Secret Backend. For example:
+
+```sh
+$ vault write secret/zendesk \
+    system_name=oomnitza_user \
+    api_token=123456789ABCD$$$
+Success! Data written to: secret/zendesk
+```
+4. Create a json/hcl file with policy:
+
+This section grants all access on __"*secret/zendesk**"__. 
+Further restrictions can be applied to this broad policy.
+
+```hcl
+path "secret/zendesk/*" {
+  capabilities = ["read", "list"]
+}
+```
+
+5. To add this policy to the Vault KMS system policies list use the following
+   command or API:
+
+```sh
+vault write sys/policy/zendesk-read policy=@/root/vault/zendesk-read.hcl
+```
+
+6. To create a token with assigned policy:
+
+```sh
+vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
+Token: 6c1247-413f-4816-5f=a72-2ertc1d2165e
+```
+
+7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
+
+```ini
+[zendesk]
+enable = true
+url = https://example.com
+vault_backend = vault
+vault_keys = api_token username password
+```
+
+8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
+   be added to system keyring via vault cli.
+
+Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
+
+```sh
+python strongbox.py --connector=zendesk --key=vault_url --value=
+Your secret: https://vault.adress.com/v1/secret/zendesk
+
+python strongbox.py --connector=zendesk --key=vault_token --value=
+Your secret: 6c1247-413f-4816-5f=a72-2ertc1d2165e
+```
+
+__It is recomended to use read-only token.__
+
+#### CyberArk secret storage
+
+In order to use CyberArk as secret storage:
+
+1. Install and configure CyberArk storage (use self-hosted storage or use
+   dedicated storage provided by [CyberArk](https://www.cyberark.com/))
+
+2. Write secrets to CyberArk storage
+
+3. Configure connector to use CyberArk secret backend
+
+##### Self-hosted CyberArk installation
+
+- Use [official documentation](https://docs.conjur.org/Latest/en/Content/Get%20Started/install-open-source.htm) to install and configure CyberArk Conjur service
+
+    ```
+    # In your terminal, download the Conjur Open Source quick-start configuration
+    curl -o docker-compose.yml https://www.conjur.org/get-started/docker-compose.quickstart.yml
+
+    # Pull all of the required Docker images from DockerHub.
+    docker-compose pull
+
+    # Generate a master data key:
+    docker-compose run --no-deps --rm conjur data-key generate > data_key
+
+    # Load the data key into the environment:
+    export CONJUR_DATA_KEY="$(< data_key)"
+
+    # Run the Conjur server, database, and client:
+    docker-compose up -d
+    ```
+
+    If you want to confirm that CyberArk was installed properly, you can open a
+    browser and go to localhost:8080 and view the included status UI page.
+
+- Create new account (name should be equal to your connector configration
+    section)
+
+    ```
+    docker-compose exec conjur conjurctl account create zendesk
+    # API key for admin: <cyberark_api_key>
+    ```
+
+- Start a bash shell for the Conjur client CLI
+
+    ```
+    docker-compose exec client bash
+    ```
+
+- Login into your account
+
+    ```
+    conjur init -u conjur -a zendesk
+    conjur authn login -u admin
+    ```
+
+- Create root policy, e.g. [use more complex / nested configuration for
+  granular permissions](https://docs.conjur.org/Latest/en/Content/Operations/Policy/PolicyGuideConcepts%20and%20Best%20Practices%20_%20Conjur%20Developer%20Docs.html)
+
+    ```
+    $ cat /root/policy/zendesk-policy.yml
+
+    ---
+    - !variable api_token
+    - !variable some_secret_key
+    ```
+
+- Apply policy to your account (this allow you manage the specified secrets
+    via command line or api)
+
+    ```
+    conjur policy load root /root/policy/zendesk-policy.yml
+    ```
+
+##### Managing secrets via CyberArk
+
+- Push all required secrets into storage
+
+    ```
+    conjur variable values add api_token secret-api-token
+    conjur variable values add some_secret_key some-secret-value
+    ```
+
+##### Connector configuration
+
+- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
+  be added to system keyring via cli.
+
+Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
+
+```sh
+python strongbox.py --connector=zendesk --key=vault_url --value=
+Your secret: https://cyberark-secret-storage-sever.example.com
+
+python strongbox.py --connector=zendesk --key=vault_token --value=
+Your secret: <cyberark_api_key>
+```
+
+- Update connector configuration to use CyberArk secret storage
+
+```ini
+[zendesk]
+enable = true
+url = https://example.com
+vault_backend = cyberark
+vault_keys = api_token some_secret_key
+```
+
+## Running the connector server
+It is possible to setup the connector server that will handle webhooks and other requests from external sources and react to them. 
+The connector server is [WSGI compliant server](https://en.wikipedia.org/wiki/Web_Server_Gateway_Interface).
+The connector server is meant to be run from the command line with following command line arguments:
+
+    $ python server.py -h
+    usage: server.py [-h] [--host HOST] [--port PORT]
+                     [--show-mappings] [--testmode] [--save-data] [--ini INI]
+                     [--logging-config LOGGING_CONFIG]
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      --host HOST
+      --port PORT
+      --show-mappings       Show the mappings which would be used by the
+                            connector.
+      --testmode            Run connectors in test mode.
+      --save-data           Saves the data loaded from other system.
+      --ini INI             Config file to use.
+      --logging-config LOGGING_CONFIG
+                            Use to override logging config file to use.
+
+The available arguments for the connector server are serving for the same purposes as for the connector client, except 2 new server-specific arguments:
+
+`--host` is used to specify the server's host. Default is 127.0.0.1
+
+`--port` is used to specify the server's port. Default is 8000
+
+The url pointing to the connector server instance should ends with the name of the connector:
+
+Examples:
+
+    https://my-connector-server.com/it/does/not/matter/casper
+    https://my-connector-server.com/it/does/not/matter/casper.MDM
+    https://my-connector-server.com/it/does/not/matter/casper.1
+
+**Note:** Now only the Casper (JAMF Pro) Webhooks are supported out of the box by the connector server.
+First you have to enable webhooks with JSON payloads (http://docs.jamf.com/9.96/casper-suite/administrator-guide/Webhooks.html)
+Out of the box the following webhooks are supported:
+ 
+* ComputerAdded
+* ComputerCheckIn
+* ComputerInventoryCompleted
+* ComputerPolicyFinished
+* ComputerPushCapabilityChanged
+* MobileDeviceCheckIn
+* MobileDeviceCommandCompleted
+* MobileDeviceEnrolled
+* MobileDevicePushSent
+* MobileDeviceUnEnrolled
+
+As soon as the connector server is receiving the message from the Casper (JAMF Pro) it is initiating the request to fetch the details of the asset triggered that webhook request and sync it with Oomnitza. 
+This allows efficiently and fast keep the Oomnitza in the up-to-date state.
+
+Also please keep in mind that the webhooks from the Casper (JAMF Pro) **do not add any authorization information** in the requests to the connector server. 
+Because of that server cannot verify incoming requests in any way, so if you want somehow forbid access to the connector's server interface configured to listen to Casper (JAMF Pro) webhooks, 
+you have to use something else, like firewalls with configured allowed IPs, etc.
+
+## Running the connector client
+The connector is meant to be run from the command line and as such as multiple command line options:
+
+    $ python connector.py -h
+    usage: connector.py [-h] [--record-count RECORD_COUNT] [--workers WORKERS]
+                        [--show-mappings] [--testmode] [--save-data] [--ini INI]
+                        [--logging-config LOGGING_CONFIG]
+                        {version,generate-ini,upload,managed}
+                        [connectors [connectors ...]]
+    
+    positional arguments:
+      {version,generate-ini,upload,managed}
+                            Action to perform.
+      connectors            Connectors to run. Relevant only for the `upload` mode
+    
+    optional arguments:
+      -h, --help            show this help message and exit
+      --record-count RECORD_COUNT
+                            Number of records to pull and process from connection.
+                            Relevant only for the `upload` mode
+      --workers WORKERS     Number of async IO workers used to pull & push
+                            records.
+      --show-mappings       Show the mappings which would be used by the
+                            connector. Relevant only for the `upload` mode
+      --testmode            Run connectors in test mode.
+      --save-data           Saves the data loaded from other system.
+      --ini INI             Config file to use.
+      --logging-config LOGGING_CONFIG
+                            Use to override logging config file to use.
+
+The available actions are:
+
+* `version`: shows the version of the connector and exit
+* `managed`: the default mode for the connector, starts the connector in the "managed-from-cloud" mode, when the configuration, mapping, etc are retrieved from the Oomnitza cloud. Requires to have
+only the `[oomnitza]` section to be configured within the .ini file to operate
+* `generate-ini`: generate an example `config.ini` file.
+* `upload`: uploads the data from the indicated connectors to Oomnitza. The connector values are taken
+   from the section names in the ini file.
+
+`--ini` is used to specify which config file to load, if not provided, `config.ini` from the root directory will be used.
+   This option can be used with the `generate-ini` action to specify the file to generate.
+
+`--logging-config` is used to specify an alternate logging config file.
+
+`--show-mappings` is used to print out the loaded mappings. These mappings can be a combination of the built-in mappings,
+   `config.ini` mappings, and mappings setup via the website.
+
+`--testmode` will print out the records which would have been sent rather than pushing the data to the server. This
+   can be used to see what, exactly, is getting sent to the server.
+
+`--record-count` is used to limit the number of records to process. Once this number have been processed, the connector
+   will exit. This can be used with `--testmode` to print out a limited number of records then exit cleanly.
+
+`--save-data` is used to save the data loaded from the remote system to disk. These files can then be used to confirm
+   the data is being loaded and mapped as expected.
+
+`--workers` is used to setup the number of workers used to push the extracted data to Oomnitza instance. Default is 2. 
+   If you will increase this value it will increase the load generated by connector and decrease the time required to finish the full sync.
+
+### Setting the connector to run in managed mode
+
+This is the main mode for the connector starting from the version 2.2.0
+
+To run the connector in the `managed` mode you have to start it using any of these two commands
+
+    python connector.py managed
+    python connector.py
+
+The `managed` mode is used to run the connector configuration stored in the Oomnitza cloud. In the `managed` mode the schedule/mapping and other parameters are 
+configured within the Oomnitza cloud and normally the only reason to use the `managed` connector for the on-premise installation is the willing of own local secret storage usage.
+
+In order to configure the managed connector you have to create a new section in the configuration .ini file. The name of the seiction is the concatenation of two strings:
+- `managed`
+- the ID of the integration in Oomnitza cloud (visible in the Web UI on the integration configuration details page)
+
+For example, for the configuration with ID = 67, the section must be named as `managed.67`
+
+This section must contain two items:
+`saas_authorization`: the JSON specified dictionary with the ready-to-use HTTP headers and/or query params used for the authorization in the external data source API.
+The structure of the JSON is the following:
+    
+    {"headers": <dictionary with the key-value specification of headers>, "params": <dictionary with the key-value specification of headers>}
+    
+The `headers` or `params` or both must be set. Examples:
+
+Image the system, where the special authorization token `XYZ` must be passed as the header named `authorization` or as the query parameter with the same name
+
+    {"headers": {"authorization": "XYZ"}}                   # OK
+    {"headers": {"authorization": "XYZ"}, "params": {}}     # OK
+    {"params": {"authorization": "XYZ"}}                    # OK
+    {"params": {"authorization": "XYZ"}, "headers": {}}     # OK
+    
+    {"params": {}, "headers": {}}      # NOT OK - headers and params not set
+
+`oomnitza_authorization`: Optional. The Oomnitza API token of user on behalf of who the connector sync will be triggered and all the changes wil lbe brought. Can be just not set. If not set the same
+ user as defined in the `[oomnitza]` section will be used
+ 
+ The full example of the config.ini file for the stored integration with ID = 67 and auth header `Authorization: Bearer ABC`:
+ 
+    [oomnitza]
+    url = https://example.oomnitza.com
+    api_token = i_am_oomnitza_api_token_1
+
+    [managed.67]
+    oomnitza_authorization = i_am_oomnitza_api_token_2
+    saas_authorization = {"headers": {"Authorizaton": "Bearer ABC"}}
+
+#### Setting the export file connector
+
+"Export file" connector is the subset of the managed connectors. The main difference between the "export file" connector and all the other connectors is that 
+it works in an reverse mode - it fetches the data from Oomnitza, not brings data to it. The result of sync of the "export file" connector is the .CSV file with the
+data from Oomnitza (assets or users).
+
+The configuration for the managed connector is the same as as for the regular managed connectors except for 2 differences
+
+1) The section name of the "export file" connector is named with the `managed_reports`, not `managed`
+2) The section `managed_reports` does not need the `saas_authorization` to be set because there is no SaaS to deal with, we deal only with Oomnitza
+
+The full example of the config.ini file for the stored "export file" integration with ID = 68 :
+
+    [oomnitza]
+    url = https://example.oomnitza.com
+    api_token = i_am_oomnitza_api_token_1
+
+    [managed_reports.68]
+    oomnitza_authorization = i_am_oomnitza_api_token_2
+
+
+### Setting the connector to run in upload mode
+
+The mode `upload` is the main mode for the connector before version 2.2.0. In this mode the connector sync initiated from the client's side.
+
+To run the connector in the `upload` mode you have to start it like this:
+
+    python connector.py upload <data_source_1> <data_source_2> ...
+
+The specified name of the data source (`<data_source_1>`, ...) must match the name of the section within configuration .ini file
+Within this section there must be `enable = True` set explicitly
+
+#### Setting the connector to run as an automated task for upload mode
+There are many ways to automate the sync, here are a few:
+
+* OS X: http://www.maclife.com/article/columns/terminal_101_creating_cron_jobs
+* OS X: http://superuser.com/questions/126907/how-can-i-get-a-script-to-run-every-day-on-mac-os-x
+* OS X: http://launched.zerowidth.com/
+* Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
+* Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
+
+#### Airwatch Configuration
 `url`: the url of the Airwatch server
 
 `username`: the Airwatch username to use
@@ -765,20 +909,20 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 `dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### CSV Assets Configuration
+#### CSV Assets Configuration
 `filename`: CSV file with assets inside
 
 `directory`: directory with CSV files with assets inside. Note: `filename` and `directory` are mutually exclusive
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings. Everything should be defined in the config
 
 
-### CSV Users Configuration
+#### CSV Users Configuration
 `filename`: CSV file with assets inside
 
 `directory`: directory with CSV files with assets inside. Note: `filename` and `directory` are mutually exclusive
@@ -788,11 +932,11 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mapping. Everything should be defined in the config
 
 
-### BambooHR Configuration
+#### BambooHR Configuration
 `url`: the url of the BambooHR server
 
 `system_name`: Identifier of your system in the Bamboo HR environment
@@ -804,7 +948,7 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.USER =           {'source': "workEmail"}
     mapping.FIRST_NAME =     {'source': "firstName"}
     mapping.LAST_NAME =      {'source': "lastName"}
@@ -814,30 +958,25 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
-### Casper Configuration
+#### Jamf Configuration
 The `[casper]` section contains a similar set of preferences; your JSS URL, and the login credentials for an auditor
-account in Casper (See the [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585), pg. 42).
+account in Jamf (See the [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585), pg. 42).
 
-The identifier section of the `config.ini` file should contain a mapping to a unique field in Oomnitza, which you want to
-use as the identifier for an asset. Serial Number is the most commonly used identifier since no two assets should share
-one. This will determine if the script creates a new record for a given serial number on its next sync, or if it updates
-an existing record that has new information.
+`url`: the url of the Jamf server
 
-`url`: the url of the Casper server
+`username`: the Jamf username to use
 
-`username`: the Casper username to use
+`password`: the Jamf password to use. Note: the Jamf API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
 
-`password`: the Casper password to use. Note: the Casper API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
-
-
-`sync_type`: Sets the type of data to pull from Casper. Options are `computers` or `mobiledevices`. 
-**Note**: If you need to pull computers AND mobile devices info from Casper, copy Casper configuration section to the same `config.ini` and name it as 'casper.MDM'. 
-Set the field mapping related to computers in the 'casper' section and set **sync_type = computers**. Set the field mapping related to mobile devices in the 'casper.MDM' section and set **sync_type = mobiledevices**
+`sync_type`: Sets the type of data to pull from Jamf. Options are `computers` or `mobiledevices`. 
+**Note**: If you need to pull computers AND mobile devices info from Jamf, copy Jamf configuration section to the same `config.ini` and name it as `[casper.MDM]`. 
+Set the field mapping related to computers in the `[casper]` section and set **sync_type = computers**. Set the field mapping related to mobile devices in the `[casper.MDM]` section and set
+ **sync_type = mobiledevices**
 
 `group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
   If present, only assets from this Group will be processed.
 
-#### List of currently supported Casper external fields (computers)
+##### List of currently supported Jamf external fields (computers)
     'general.alt_mac_address'
     'general.asset_tag'
     'general.barcode_1'
@@ -919,7 +1058,7 @@ Set the field mapping related to computers in the 'casper' section and set **syn
     'purchasing.warranty_expires_epoch'
     'purchasing.warranty_expires_utc'
 
-#### List of currently supported Casper external fields (mobile devices)
+##### List of currently supported Jamf external fields (mobile devices)
     'general.airplay_password'
     'general.asset_tag'
     'general.available'
@@ -1011,11 +1150,11 @@ Set the field mapping related to computers in the 'casper' section and set **syn
     'security.passcode_compliant_with_profile'
     'security.passcode_present'
     
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### Chef Configuration
+#### Chef Configuration
 The `[chef]` section contains a similar set of preferences.
 
 The identifier section of the `config.ini` file should contain a mapping to a unique field in Oomnitza, which you want to use as the identifier for an asset.
@@ -1028,7 +1167,7 @@ The identifier section of the `config.ini` file should contain a mapping to a un
 
 `attribute_extension`: [optional] dictionary of additional node attributes to extract
 
-#### List of currently supported Chef attributes
+##### List of currently supported Chef attributes
     'hardware.name'
     'hardware.ip_address'
     'hardware.mac_address'
@@ -1045,7 +1184,7 @@ The identifier section of the `config.ini` file should contain a mapping to a un
     'hardware'cpu_count'
     'hardware.uptime_seconds'
 
-#### Attribute Extension
+##### Attribute Extension
 The connector `config.ini` allows for additional node attributes to be extracted.
 
 Example: `attribute_extension = {"__default__": {"kernel_name": "automatic.kernel.name"}}`
@@ -1059,7 +1198,7 @@ The above example will introduce a new mappable attribute "hardware.kernel_name"
 
 The above example will introduce a new mappable attribute "hardware.machine_name" for mac_os_x and windows nodes only.
 
-### Google Chrome Devices
+#### Google Chrome Devices
 
 The following steps need to be taken to allow automated retrieval from Google Admin API:
 
@@ -1074,11 +1213,11 @@ The `[chromebooks]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-#### **Default Field Mappings**
+##### Default Field Mappings
 
     No default mappings. All mappings need to be defined in the config file.
 
-### Google Mobile Devices
+#### Google Mobile Devices
 
 NOTE: The Google mobile devices connector does not have a UI and must be configured using the config file.  The Google mobile devices management API reference with attributes description can be found [here](https://developers.google.com/admin-sdk/directory/v1/reference/mobiledevices).
 
@@ -1095,12 +1234,12 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
 
-#### **Default Field Mappings**
+##### Default Field Mappings
 
     No default mappings. All mappings need to be defined in the config file.
 
 
-### Jasper Configuration
+#### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.
 
 `username`: the Jasper username to use
@@ -1111,11 +1250,11 @@ The `[google_mobile_devices]` section contains the following attributes:
 
 `api_token`: The Jasper API Token.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### KACE SMA Configuration
+#### KACE SMA Configuration
 
 `url`: The URL for the KACE SMA system.
 
@@ -1128,11 +1267,13 @@ The `[google_mobile_devices]` section contains the following attributes:
 `api_version`: KACE SMA API version numeric identifier. Default is "8"
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### LDAP Configuration
+#### LDAP Users Configuration
+
+This is for `[ldap]` section:
 
 `url`: The full URI for the LDAP server.
 
@@ -1163,7 +1304,7 @@ Default is "member" but can vary in different LDAP systems.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.USER =           {'source': "uid", 'required': True, 'converter': 'ldap_user_field'},
     mapping.FIRST_NAME =     {'source': "givenName"},
     mapping.LAST_NAME =      {'source': "sn"},
@@ -1171,24 +1312,7 @@ Default is "member" but can vary in different LDAP systems.
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
 
 
-### Azure Active Directory Users Configuration
-
-`tenant_id`: The ID of your tenant.
-
-`client_id`: The ID of the Service Principal used to access the user's data. 
-Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
-
-`secret`: The Service Principal secret/key value
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-#### Default Field Mappings
-    No default mappings
-
-
-### LDAP Assets Configuration
+#### LDAP Assets Configuration
 
 This is for `[ldap_assets]` section and actually contains the same set of configuration as for `[ldap]` used to fetch the user records.
 
@@ -1217,20 +1341,39 @@ Default is "member" but can vary in different LDAP systems.
 
 `filter`: The LDAP filter to use when querying for people. For example: `(objectClass=*)` will load all objects. This is a very reasonable default.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### Meraki Systems Manager Configuration
+#### Azure Active Directory Users Configuration
+
+This relates to the `[azureusers]`:
+
+`tenant_id`: The ID of your tenant.
+
+`client_id`: The ID of the Service Principal used to access the user's data. 
+Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
+
+`secret`: The Service Principal secret/key value
+
+`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
+
+`default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+##### Default Field Mappings
+    No default mappings
+
+
+#### Meraki Systems Manager Configuration
 `meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
  
 `network_id` = Meraki network identifier.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### MobileIron Configuration
+#### MobileIron Configuration
 `url`: The full URI for the MobileIron server. For example: `https://na1.mobileiron.com`
 
 `username`: the MobileIron username to use.
@@ -1242,20 +1385,20 @@ Default is "member" but can vary in different LDAP systems.
 `api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### Netbox Configuration
+#### Netbox Configuration
 `url`: The full URI for the Netbox server.
 
 `auth_token`: the authorization token to use.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### Okta Configuration
+#### Okta Configuration
 `url`: The full URI for the Okta server. For example: `https://oomnitza-admin.okta.com`
 
 `api_token`: The Okta API Token.
@@ -1266,7 +1409,7 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
 
 `deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.USER =           {'source': "profile.login"},
     mapping.FIRST_NAME =     {'source': "profile.firstName"},
     mapping.LAST_NAME =      {'source': "profile.lastName"},
@@ -1275,7 +1418,7 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
     mapping.PERMISSIONS_ID = {'setting': "default_role"},
 
 
-### OneLogin Configuration
+#### OneLogin Configuration
 `url`: The full URI for the OneLogin server. For example: `https://api.us.onelogin.com/api/1/users`
 
 `client_id`: The Client ID used to connect to the API.
@@ -1291,7 +1434,7 @@ If you have an issues during the connection to the OneLogin, please switch to th
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.USER =           {'source': "username"}
     mapping.FIRST_NAME =     {'source': "firstname"}
     mapping.LAST_NAME =      {'source': "lastname"}
@@ -1300,17 +1443,17 @@ If you have an issues during the connection to the OneLogin, please switch to th
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
-### Open-AudIT Configuration
+#### Open-AudIT Configuration
 `url`: The full URI for the Open-AudIT server. For example: `http://192.168.111.145`
 
 `username`: The Open-AudIT username used to connect to the API.
 
 `password`: The Open-AudIT password used to connect to the API.
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
-#### List of currently supported Open-AudIT attributes
+##### List of currently supported Open-AudIT attributes
     'hardware.name'
     'hardware.ip'
     'hardware.dbus_identifier'
@@ -1350,7 +1493,7 @@ If you have an issues during the connection to the OneLogin, please switch to th
     'hardware.warranty_expires'
 
 
-### SCCM Configuration
+#### SCCM Configuration
 The account used to connect to the SCCM database requires at least read-only access.
 
 `server`: The server hosting the SCCM database.
@@ -1375,10 +1518,10 @@ When using `Windows` authentication, the `username` and `password` fields are ig
 for the currently logged in user will be used when making the connection to the SCCM database.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
-### ServiceNow Configuration
+#### ServiceNow Configuration
 Note: the connector has been designed to work with the `New York` version of the ServiceNow API. 
 
 `url`: The ServiceNow instance url.
@@ -1388,11 +1531,11 @@ Note: the connector has been designed to work with the `New York` version of the
 `password`: The password used to authorize.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
-### SimpleMDM Configuration
+#### SimpleMDM Configuration
 `secret_access_key`: The API keys used to authenticate. You can retrieve your API key by signing into your SimpleMDM account, visiting “Settings” and then selecting the “API” tab.
 
 `device_groups`: IDs of device groups to process as the set of integer values separated with comma. Example: `1,2,3`. 
@@ -1407,7 +1550,7 @@ Example, for the custom attribute named "TEST ATTRIBUTE" the mapping will be
 The default value for this flag is "0" - to not fetch the custom attributes
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
@@ -1425,7 +1568,7 @@ The default value for this flag is "0" - to not fetch the custom attributes
 If these not available attributes will be mapped on UI, null values will be pushed to Oomnitza.
   
 
-#### Default Field Mappings
+##### Default Field Mappings
     No default mappings
 
 
@@ -1444,11 +1587,11 @@ and copy the JSON link generated for this report.
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
-### Zendesk Configuration
+#### Zendesk Configuration
 `system_name`: The Zendesk system name to use. For example: `oomnitza`
 
 `api_token`: The Zendesk API Token.
@@ -1460,7 +1603,7 @@ and copy the JSON link generated for this report.
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
 
 
-#### Default Field Mappings
+##### Default Field Mappings
     mapping.USER =           {'source': "email"}
     mapping.FIRST_NAME =     {'source': "name", 'converter': "first_from_full"}
     mapping.LAST_NAME =      {'source': "name", 'converter': "last_from_full"}
@@ -1475,11 +1618,6 @@ and copy the JSON link generated for this report.
 The Oomnitza Connector uses the standard python `logging` module. This modules is configured via the `logging.json` file.
  This file can be edited, or copied to a new file, to change the logging behavior of the connector. Please see the
  [python docs](https://docs.python.org/3/library/logging.html) for information of configuring python logging.
-
-### SSL Protocol Version
-If the service to be connected to requires a particular SSL protocol version to properly connect, the connection's
- section in the ini file can include a `ssl_protocol` option. The value can be one of:
- `ssl`, `sslv23`, `sslv3`, `tls`, `tls1`.
 
 ### Custom Converters
 It is possible to create a completely custom complex converter that will be used to convert values extracted from external system to before pushing them to the Oomnitza.
@@ -1517,15 +1655,14 @@ This is a very new feature, with many options, and we are still working on the d
  using this feature, please contact [support@oomnitza.com](mailto://support@oomnitza.com) for assistance.
 
 
-# Current limitations
+## Current limitations
 
-###### Software mapping
+### Software mapping
 There is no possibility to set the mapping for the software info associated with IT assets (SCCM, JAMF). The only thing can be done is to disable the mapping at all. 
 To do this set the following custom mapping in your `config.ini` file:
 
     mapping.APPLICATIONS = {"hardcoded": []}
 
-###### MS Windows environment
-In MS Windows environment the "Task Scheduler" is the natural tool to schedule the connector execution. Please note that when the task is scheduled via "Task Scheduler" the "working directory" is not 
-the directory of connector executable, but other one. So if you are using this tool to schedule the connector job, please also set the path to the configuration files via the command line arguments. 
-Or schedule not the connector itself, but the __*.bat*__ file which is triggering the connector. 
+### MS Windows environment
+In MS Windows environment the "Task Scheduler" is the natural tool to schedule the connector execution. Please note that in different version of Windows there can be different ways to specify the
+ "working directory" of connector executable. One of the reliable way to solve this is to also set the path to the configuration files via the command line arguments.

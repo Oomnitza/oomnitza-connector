@@ -24,44 +24,42 @@ from .version import VERSION
 LOG = logging.getLogger("lib/connector")
 
 
-LastInstalledHandler = None
-
-
-def run_connector(oomnitza_connector, connector, options):
+def run_connector(connector_cfg, options):
     global LOG
 
     try:
-        LOG = logging.getLogger(connector['__name__'])
+        LOG = logging.getLogger(connector_cfg['__name__'])
 
-        conn = connector["__connector__"]
+        connector_instance = connector_cfg["__connector__"]
 
         try:
-            conn.authenticate()
+            connector_instance.authenticate()
         except AuthenticationError as exp:
             LOG.error("Authentication failure: %s", str(exp))
             return
         except requests.HTTPError:
-            LOG.exception("Error connecting to %s service.", connector['__name__'])
+            LOG.exception("Error connecting to %s service.", connector_cfg['__name__'])
             return
 
         try:
-            conn.perform_sync(oomnitza_connector, options)
+            connector_instance.perform_sync(options)
         except ConfigError as exp:
             LOG.error(exp)
         except requests.HTTPError:
-            LOG.exception("Error syncing data for %s service.", connector['__name__'])
+            LOG.exception("Error syncing data for %s service.", connector_cfg['__name__'])
     except DynamicException as exp:
-        LOG.error("Error running filter for %s: %s", connector['__name__'], str(exp))
+        LOG.error("Error running filter for %s: %s", connector_cfg['__name__'], str(exp))
     except:  # pylint:disable=broad-except
-        LOG.exception("Unhandled error in run_connector for %s", connector['__name__'])
+        LOG.exception("Unhandled error in run_connector for %s", connector_cfg['__name__'])
 
 
 class BaseConnector(object):
+    ConnectorID = None
+    Settings = {}
+    RecordType = None
     Converters = {}
     FieldMappings = {}
     MappingName = "unnamed"
-    OomnitzaBatchSize = 100
-    BuiltinSettings = ('ssl_protocol',)
 
     OomnitzaConnector = None
 
@@ -69,19 +67,22 @@ class BaseConnector(object):
         'verify_ssl':     {'order': 0, 'default': "True"},
         'cacert_file':    {'order': 1, 'default': ""},
         'cacert_dir':     {'order': 2, 'default': ""},
-        'env_password':   {'order': 3, 'default': ""},
-        'ssl_protocol':   {'order': 4, 'default': ""},
-        'use_server_map': {'order': 5, 'default': "True"},
-        'only_if_filled': {'order': 6, 'default': ""},
-        'dont_overwrite': {'order': 7, 'default': ""},
-        'insert_only':    {'order': 8, 'default': "False"},
-        'update_only':    {'order': 9, 'default': "False"},
-        'sync_field':     {'order': 10},
-        'vault_keys':     {'order': 11, 'default': ""},
-        'vault_backend':  {'order': 12, 'default': StrongboxBackend.KEYRING},
-        'vault_alias':    {'order': 13, 'default': ""},
-        'user_pem_file':  {'order': 14, 'default': ""}
+        'ssl_protocol':   {'order': 3, 'default': ""},
+        'use_server_map': {'order': 4, 'default': "True"},
+        'only_if_filled': {'order': 5, 'default': ""},
+        'dont_overwrite': {'order': 6, 'default': ""},
+        'insert_only':    {'order': 7, 'default': "False"},
+        'update_only':    {'order': 8, 'default': "False"},
+        'sync_field':     {'order': 9},
+        'vault_keys':     {'order': 10, 'default': ""},
+        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING},
+        'vault_alias':    {'order': 12, 'default': ""},
+        'user_pem_file':  {'order': 13, 'default': ""}
     }
+
+    @staticmethod
+    def gen_portion_id():
+        return str(uuid4())
 
     def __init__(self, section, settings):
         self.processed_records_counter = 0.
@@ -89,30 +90,30 @@ class BaseConnector(object):
         self.section = section
         self.settings = {'VERSION': VERSION}
         self.keep_going = True
-        ini_field_mappings = {}
+        self.ini_field_mappings = {}
         self.__filter__ = None
         self.send_counter = 0
         self._session = None
-        self.portion = str(uuid4())
+        self.portion = self.gen_portion_id()
 
         for key, value in list(settings.items()):
             if key.startswith('mapping.'):
                 # it is a field mapping from the ini
                 field_name = key.split('.')[1].upper()
                 # ToDo: validate mapping
-                ini_field_mappings[field_name] = value
+                self.ini_field_mappings[field_name] = value
             # elif key.startswith('subrecord.'):
             #     ini_field_mappings[key] = value
             elif key == '__filter__':
                 self.__filter__ = value
             else:
                 # first, simple copy for internal __key__ values
-                if (key.startswith('__') and key.endswith('__')) or key in self.BuiltinSettings:
+                if key.startswith('__') and key.endswith('__'):
                     self.settings[key] = value
                     continue
 
                 if key not in self.Settings and key not in self.CommonSettings:
-                    LOG.warning("Invalid setting in %r section: %r." % (section, key))
+                    LOG.debug("Extra line in %r section: %r." % (section, key))
                     continue
 
                 self.settings[key] = value
@@ -128,7 +129,7 @@ class BaseConnector(object):
                 setting_value = setting['validator'](setting_value)
             self.settings[key] = setting_value
 
-        self.field_mappings = self.get_field_mappings(ini_field_mappings)
+        self.field_mappings = self.get_field_mappings(self.ini_field_mappings)
         if hasattr(self, "DefaultConverters"):
             for field, mapping in list(self.field_mappings.items()):
                 source = mapping.get('source', None)
@@ -195,12 +196,17 @@ class BaseConnector(object):
 
         return mappings
 
+    def get_managed_mapping_from_oomnitza(self):
+        """
+        Connect to the cloud for the mapping (new, managed connectors)
+        """
+        return self.OomnitzaConnector.get_mappings_for_managed(self.ConnectorID)
+
     def get_mapping_from_oomnitza(self):
         """
-        Connect to the DSS service for the mapping
-        :return: 
+        Connect to the cloud for the mapping (old, non-managed connectors)
         """
-        return self.settings['__oomnitza_connector__'].get_mappings(self.MappingName)
+        return self.OomnitzaConnector.get_mappings(self.MappingName)
 
     def get_default_mappings(self):
         """
@@ -211,16 +217,27 @@ class BaseConnector(object):
         # Connector mappings are stored in Oomnitza, so get them.
         default_mappings = copy.deepcopy(self.FieldMappings)
 
-        if self.settings.get('use_server_map', True) in TrueValues:
-            server_mappings = self.get_mapping_from_oomnitza()
+        if self.is_managed:
+            server_mappings = self.get_managed_mapping_from_oomnitza()
+            for field, specification in server_mappings.items():
+                default_mappings[field] = {}
+                if specification['type'] == 'attribute':
+                    # fetch the value for the attribute from the data source
+                    default_mappings[field]['source'] = specification['value']
+                elif specification['type'] == 'value':
+                    # the value for the attribute is hardcoded and does not relate to the data source
+                    default_mappings[field]['hardcoded'] = specification['value']
+        else:
+            if self.settings.get('use_server_map', True) in TrueValues:
+                server_mappings = self.get_mapping_from_oomnitza()
 
-            for source, fields in list(server_mappings.items()):
-                if isinstance(fields, str):
-                    fields = [fields]
-                for f in fields:
-                    if f not in default_mappings:
-                        default_mappings[f] = {}
-                    default_mappings[f]['source'] = source
+                for source, fields in list(server_mappings.items()):
+                    if isinstance(fields, str):
+                        fields = [fields]
+                    for f in fields:
+                        if f not in default_mappings:
+                            default_mappings[f] = {}
+                        default_mappings[f]['source'] = source
 
         return default_mappings
 
@@ -327,14 +344,9 @@ class BaseConnector(object):
     def stop_sync(self):
         self.keep_going = False
 
-    def sender(self, oomnitza_connector, rec):
+    def sender(self, rec):
         """
         This is data sender that should be executed by greenlet to make network IO operations non-blocking.
-
-        :param oomnitza_connector:
-        :param options:
-        :param rec:
-        :return:
         """
 
         if not (self.__filter__ is None or self.__filter__(rec)):
@@ -346,7 +358,7 @@ class BaseConnector(object):
             LOG.info("Skipping record %r because it has not been converted properly", rec)
             return
 
-        self.send_to_oomnitza(oomnitza_connector, converted_record)
+        self.send_to_oomnitza(converted_record)
 
     def is_authorized(self):
         """
@@ -364,10 +376,21 @@ class BaseConnector(object):
 
         return True
 
-    def perform_sync(self, oomnitza_connector, options):
+    @property
+    def is_managed(self):
+        # used to represent the current connector is "managed"
+        return self.ConnectorID and hasattr(self, 'jinja_string_env')
+
+    @property
+    def is_media_export(self):
+        return self.is_managed and hasattr(self, 'folder_path')
+
+    def finalize_processed_portion(self):
+        self.OomnitzaConnector.finalize_portion(self.portion)
+
+    def perform_sync(self, options):
         """
         This method controls the sync process. Called from the command line script to do the work.
-        :param oomnitza_connector: the Oomnitza API Connector
         :param options: right now, always {}
         :return: boolean success
         """
@@ -389,8 +412,11 @@ class BaseConnector(object):
 
         try:
             pool_size = self.settings['__workers__']
-
-            connection_pool = Pool(size=pool_size)
+            if pool_size == 0:
+                # do not use gevent at all, for example for the testing
+                connection_pool = None
+            else:
+                connection_pool = Pool(size=pool_size)
             for index, record in enumerate(self._load_records(options)):
 
                 if not self.keep_going:
@@ -412,16 +438,27 @@ class BaseConnector(object):
                         # increase records counter
                         self.processed_records_counter += 1
                         if not self.processed_records_counter % 10:
-                            LOG.info("Processed %d records. Sent %d records to Oomnitza." % (self.processed_records_counter, self.sent_records_counter))
+                            LOG.info("Processed %d records from the source. Sent %d records to the destination." % (self.processed_records_counter, self.sent_records_counter))
 
                         if not self.keep_going:
                             break
 
-                        connection_pool.spawn(self.sender, *(oomnitza_connector, rec))
+                        if connection_pool:
+                            connection_pool.spawn(self.sender, *(rec,))
 
-            connection_pool.join(timeout=60)  # set non-empty timeout to guarantee context switching in case of threading
+                        else:
+                            self.sender(rec)
 
-            LOG.info("Finished! Processed %d records. %d records have been sent to Oomnitza" % (self.processed_records_counter, self.sent_records_counter))
+            if connection_pool:
+                connection_pool.join(timeout=30)  # set non-empty timeout to guarantee context switching in case of threading
+
+            # at the end explicitly finalize the portion
+            self.finalize_processed_portion()
+
+            if not (self.is_media_export and not self.processed_records_counter):
+                # it is known that the media_export connectors might have no items to process most of the time, so
+                # lets not spam the messages to the stdout and log only when we have at least one file processed
+                LOG.info("Finished! Processed %d records. %d records have been sent to the destination" % (self.processed_records_counter, self.sent_records_counter))
 
             return True
         except RequestException as exp:
@@ -443,7 +480,6 @@ class BaseConnector(object):
         update_only = bool(strtobool(self.settings.get('update_only', '0')))
         self._validate_insert_update_only(insert_only, update_only)
         payload = {
-            "connector_name": self.MappingName,
             "connector_version": VERSION,
             "sync_field": list(filter(bool, map(str.strip, self.settings.get('sync_field', '').split(',')))),
             "records": records if isinstance(records, list) else [records],
@@ -452,16 +488,19 @@ class BaseConnector(object):
             "insert_only": insert_only,
             "update_only": update_only
         }
+        # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
+        # otherwise use the name set as the `MappingName`; back compatibility with the `upload` mode for the non-managed connectors
+        if self.is_managed:
+            payload['connector_id'] = self.ConnectorID
+        else:
+            payload['connector_name'] = self.MappingName
+
         return payload
 
-    def send_to_oomnitza(self, oomnitza_connector, data):
+    def send_to_oomnitza(self, data):
         """
         Determine which method on the Oomnitza connector to call based on type of data.
-        Can call:
-            oomnitza_connector.(_test_)upload_assets
-            oomnitza_connector.(_test_)upload_users
-            oomnitza_connector.(_test_)upload_audit
-        :param oomnitza_connector: the Oomnitza connector
+
         :param data: the data to send (either single object or list)
         :return: the results of the Oomnitza method call
         """
@@ -474,28 +513,12 @@ class BaseConnector(object):
                 LOG.exception("Error saving data.")
 
         if self.settings['__testmode__']:
-            result = oomnitza_connector.test_upload(payload)
+            result = self.OomnitzaConnector.test_upload(payload)
         else:
-            result = oomnitza_connector.upload(payload)
+            result = self.OomnitzaConnector.upload(payload)
             self.sent_records_counter += 1
 
         return result
-
-    def test_connection(self, options):
-        """
-        Here to support GUI Test Connection button.
-        :param options: currently always {}
-        :return: Nothing
-        """
-        # NOTE: not used for now, because we have deprecated GUI
-        try:
-            return self.do_test_connection(options)
-        except Exception as exp:
-            LOG.exception("Exception running %s.test_connection()." % self.MappingName)
-            return {'result': False, 'error': 'Test Connection Failed: %s' % str(exp)}
-
-    def do_test_connection(self, options):
-        raise NotImplementedError
 
     def _load_records(self, options):
         """
@@ -522,7 +545,6 @@ class BaseConnector(object):
         :param incoming_record: the incoming record
         :return: the outgoing record
         """
-        # LOG.debug("incoming_record = %r", incoming_record)
         return self._convert_record(incoming_record, self.field_mappings)
 
     def _convert_record(self, incoming_record, field_mappings):
@@ -534,21 +556,14 @@ class BaseConnector(object):
         """
         outgoing_record = {}
         missing_fields = set()
-        # subrecords = {}
 
         for field, specs in list(field_mappings.items()):
-            # First, check if this is a subrecord. If so, re-enter _convert_record
-            # LOG.debug("%%%% %r: %r", field, specs)
-            # if field.startswith('subrecord.'):
-            #     LOG.debug("**** processing subrecord %s: %r", field, specs)
-            #     name = field.split('.', 1)[-1]
-            #     if specs['source'] in incoming_record:
-            #         subrecords[name] = self._convert_record(incoming_record[specs['source']], specs['mappings'])
-            #     continue
-
             source = specs.get('source', None)
             if source:
-                incoming_value = self.get_field_value(source, incoming_record)
+                if self.is_managed:
+                    incoming_value = self.get_field_value_managed(source, incoming_record)
+                else:
+                    incoming_value = self.get_field_value(source, incoming_record)
             else:
                 setting = specs.get('setting')
                 if setting:
@@ -597,6 +612,27 @@ class BaseConnector(object):
         """
         return get_field_value(data, field, default)
 
+    # noinspection PyUnresolvedReferences
+    def get_field_value_managed(self, field: str, data: dict):
+        """
+        Implement the value retrieval support for the managed connectors using the Jinja2 templating engine
+        """
+        if any(
+            (
+                self.jinja_string_env.block_start_string in field,
+                self.jinja_string_env.block_end_string in field,
+                self.jinja_string_env.variable_start_string in field,
+                self.jinja_string_env.variable_end_string in field
+            )
+        ):
+            # if the field definition contains the Jinja env control symbols - then do nothing
+            field_template = field
+        else:
+            # fallback / simplification compatibility, treat the incoming value as the jinja2 variable
+            field_template = self.jinja_string_env.variable_start_string + field + self.jinja_string_env.variable_end_string
+
+        return self.jinja_string_env.from_string(field_template).render(**data)
+
     def get_setting_value(self, setting, default=None):
         """
         Nice helper to get settings.
@@ -636,4 +672,3 @@ class UserConnector(BaseConnector):
 
 class AssetsConnector(BaseConnector):
     RecordType = 'assets'
-    OomnitzaBatchSize = 1

@@ -270,16 +270,6 @@ class Connector(AssetsConnector):
         # enable attribute extensions
         BaseAudit.set_extensions(self.settings['attribute_extension'])
 
-    def do_test_connection(self, options):
-        try:
-            self.authenticate()
-            return {'result': True, 'error': ''}
-        except Exception as exp:
-            return {
-                'result': False,
-                'error': 'Connection Failed: %s' % (str(exp))
-            }
-
     def authenticate(self):
         """
         Connect to the chef server and verify communication.

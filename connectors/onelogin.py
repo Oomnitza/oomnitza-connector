@@ -161,16 +161,6 @@ class Connector(UserConnector):
         else:
             raise RuntimeError('OneLogin connector headers cannot be fetched with invalid version')
 
-    def do_test_connection(self, options):
-        try:
-            response = self.get(self.test_conn_url)
-            response.raise_for_status()
-            return {'result': True, 'error': ''}
-        except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-        except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-
     def get_users_v1_to_v3(self):
         """
         DEPRECATED

@@ -5,6 +5,7 @@ from requests import RequestException
 
 from lib.connector import BaseConnector, AuthenticationError
 from lib.error import ConfigError
+from lib.version import VERSION
 
 LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 
@@ -22,7 +23,6 @@ class Connector(BaseConnector):
 
     def __init__(self, section, settings):
         super(Connector, self).__init__(section, settings)
-        self._test_headers = []
         self.authenticate()
 
     def get_field_mappings(self, extra_mappings):
@@ -63,15 +63,28 @@ class Connector(BaseConnector):
             raise AuthenticationError(str(exp))
 
     def upload(self, payload):
-        url = "{}/api/v3/bulk".format(self.settings['url'])
+        url = f"{self.settings['url']}/api/v3/bulk"
         response = self.post(url, payload)
         return response
+
+    def finalize_portion(self, portion_id):
+        url = f"{self.settings['url']}/api/v3/bulk/{portion_id}/finalize"
+        response = self.post(url, {})
+        return response
+
+    def create_synthetic_finalized_successful_portion(self, service_id, correlation_id):
+        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+        self.post(url, {'correlation_id': str(correlation_id), 'added': 1})
+
+    def create_synthetic_finalized_failed_portion(self, service_id, correlation_id, error_message):
+        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+        self.post(url, {'correlation_id': str(correlation_id), 'failed': 1, 'error_message': error_message})
 
     @staticmethod
     def test_upload(users):
         pprint.pprint(users)
 
-    def perform_sync(self, oomnitza_connector, options):
+    def perform_sync(self, options):
         """
         Can't call perform_sync on Oomnitza connector because perform_sync in the
         other connectors is what is called to sync to oomnitza. Calling this would
@@ -79,17 +92,31 @@ class Connector(BaseConnector):
         """
         raise RuntimeError("Can't call perform_sync on Oomnitza connector.")
 
-    def do_test_connection(self, options):
-        self.authenticate()
-        assert self.settings['api_token'], "Failed to get api_token."
-
     @classmethod
     def example_ini_settings(cls):
         settings = super(Connector, cls).example_ini_settings()
         return settings[1:]
 
     def get_mappings(self, name):
-        url = "{0}/api/v2/mappings?name={1}".format(self.settings['url'], name)
+        url = f"{self.settings['url']}/api/v2/mappings?name={name}"
+        response = self.get(url)
+        return response.json()
+
+    def get_mappings_for_managed(self, connector_id):
+        url = f"{self.settings['url']}/api/v2/mappings?connector_id={connector_id}"
+        response = self.get(url)
+        return response.json()
+
+    def get_media_storage_files(self, creation_date, source_type, source_id):
+        """
+        The API endpoint that returns the list of report files is de-facto paginated but because the connector is running every twenty seconds it is OK
+        to just fetch the current page and process only it, so the next connector run will process the next page and so on
+        """
+        url = f"{self.settings['url']}/api/v3/media_storage?filter=" \
+              f"(creation_date gt {creation_date}) and " \
+              f"(created_by_type eq '{source_type}') and " \
+              f"(created_by_id eq '{source_id}')" \
+              f"&sortby=creation_date asc"
         response = self.get(url)
         return response.json()
 
@@ -130,3 +157,47 @@ class Connector(BaseConnector):
         except:
             LOG.exception("Failed to load setting from Oomnitza.")
             raise
+
+    def check_managed_cloud_configs(self) -> list:
+        """
+        Check if there is any cloud-managed config in place to be processed within the connector now
+        Process
+        """
+        return self.post(
+            f'{self.settings["url"]}/api/v3/bulk/check_managed',
+            data={'version': VERSION}
+        ).json()
+
+    def get_secret_by_credential_id(
+            self,
+            credential_id,
+            url,
+            http_method,
+            params,
+            headers,
+            body,
+            **kwargs
+    ):
+        response = self.post(
+            f'{self.settings["url"]}/api/v3/auth/{credential_id}/secret',
+            data=dict(
+                url=url,
+                http_method=http_method,
+                params=params,
+                headers=headers,
+                body=body or '',
+            ))
+        response_json = response.json()
+        return {
+            'headers': response_json.get('headers', {}),
+            'params': response_json.get('params', {})
+        }
+
+    def get_token_by_token_id(
+            self,
+            token_id,
+    ):
+        response = self.get(
+            f'{self.settings["url"]}/api/v3/auth/oomnitza_tokens/{token_id}'
+        )
+        return response.json()['token']

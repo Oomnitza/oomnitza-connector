@@ -19,6 +19,7 @@ EnabledConnectors = (
     'netbox',
     'okta',
     'onelogin',
+    'open_audit',
     'sccm',
     'servicenow',
     'simplemdm',

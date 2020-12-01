@@ -18,7 +18,9 @@ httplib2==0.18.0
 hvac==0.3.0
 idna==2.8
 isodate==0.6.0
+jinja2==2.11.2
 keyring==8.7
+MarkupSafe==1.1.1
 msrest==0.6.4
 msrestazure==0.6.0
 oauth2client==4.1.3

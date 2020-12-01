@@ -38,17 +38,6 @@ class Connector(UserConnector):
             'Accept': 'application/json'
         }
 
-    def do_test_connection(self, options):
-        try:
-            url = self.url_template.format("v1/employees/0")
-            response = self.get(url)
-            response.raise_for_status()
-            return {'result': True, 'error': ''}
-        except ConnectionError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (str(exp))}
-        except HTTPError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % (str(exp))}
-
     def _load_records(self, options):
         url = self.url_template.format("v1/employees/directory")
         response = self.get(url)

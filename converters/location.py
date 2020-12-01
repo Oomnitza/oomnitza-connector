@@ -1,4 +1,3 @@
-
 import logging
 
 from lib.connector import BaseConnector
@@ -51,7 +50,7 @@ def converter(field, record, value, params):
         return MAP[value]
 
     # check if we were given a value somewhat close to the location_id value and return it.
-    if value.lower() in MAP.values():
+    if value.lower() in list(MAP.values()):
         return value.lower()
 
     # LOGGER.error("Failed to find location %r in Location field %r.", value, internal_field)

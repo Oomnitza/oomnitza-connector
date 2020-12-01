@@ -39,14 +39,6 @@ class Connector(UserConnector):
             'Authorization': "Basic {0}".format(base64.b64encode(auth_string)),
         }
 
-    def do_test_connection(self, options):
-        try:
-            url = self.url_template.format("v2/users.json") + "?per_page=1&page=1"
-            self.get(url)
-            return {'result': True, 'error': ''}
-        except HTTPError as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-
     def _load_records(self, options):
         organization_map = self._load_organizations_if_needed()
         url = self.url_template.format("v2/users.json")

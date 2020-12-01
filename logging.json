@@ -6,7 +6,7 @@
       "format": "%(name)s: %(asctime)s - %(levelname)s - %(message)s"
     },
     "console": {
-      "format": "%(levelname)s - %(message)s"
+      "format": "%(name)s: %(asctime)s - %(levelname)s - %(message)s"
     }
   },
   "handlers": {
@@ -19,7 +19,7 @@
     "info_file_handler": {
       "class": "lib.config.RotateHandler",
       "formatter": "file",
-      "level": "DEBUG",
+      "level": "INFO",
       "filename": "info.log",
       "maxBytes": 10485760,
       "backupCount": 20,
@@ -36,7 +36,7 @@
     }
   },
   "root": {
-    "level": "DEBUG",
+    "level": "INFO",
     "handlers": [
       "console",
       "info_file_handler",

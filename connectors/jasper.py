@@ -25,13 +25,6 @@ class Connector(AssetsConnector):
         self.url_temlate = "%s/api/v1/mdm/devices/search?pagesize={0}&page={1}" % self.settings['wsdl_path']
         self.jasper_client = None
 
-    def do_test_connection(self, options):
-        try:
-            self.authenticate()
-            return {'result': True, 'error': ''}
-        except AuthenticationError as exp:
-            return {'result': False, 'error': 'Connection Failed: %s' % str(exp)}
-
     def _load_records(self, options):
         for id_chunk in self.get_modified_terminals():
             details = self.get_terminal_details(id_chunk)

@@ -84,13 +84,6 @@ class Connector(AssetsConnector):
         super(Connector, self).__init__(section, settings)
         self.db = None
 
-    def do_test_connection(self, options):
-        try:
-            self.authenticate()
-            return {'result': True, 'error': ''}
-        except Exception as exp:
-            return {'result': False, 'error': f'Connection Failed: {str(exp)}'}
-
     @staticmethod
     def pick_odbc_driver(driver_candidate):
         """
