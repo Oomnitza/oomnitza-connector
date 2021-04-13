@@ -1,10 +1,9 @@
-import base64
 import json
 import logging
+from enum import Enum
 
 import xmltodict
-from enum import Enum
-from requests import ConnectionError, HTTPError
+from requests.auth import _basic_auth_str
 
 from lib.connector import UserConnector
 from lib.error import ConfigError, AuthenticationError
@@ -127,7 +126,7 @@ class Connector(UserConnector):
         DEPRECATED
         """
         return {
-            'Authorization': "Basic %s" % base64.standard_b64encode(self.settings['api_token'] + ":x")
+            'Authorization': _basic_auth_str(self.settings['api_token'], 'x')
         }
 
     def get_headers_slash_one(self):

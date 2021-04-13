@@ -118,6 +118,11 @@ class BaseConnector(object):
 
                 self.settings[key] = value
 
+        backend_name = settings.get('vault_backend', StrongboxBackend.KEYRING)
+        secret_alias = settings.get("vault_alias") or section
+        self._strongbox = Strongbox(secret_alias, backend_name)
+        self._preload_secrets()
+
         # loop over settings definitions, setting default values
         for key, setting in list(self.Settings.items()):
             setting_value = self.settings.get(key, None)
@@ -139,16 +144,11 @@ class BaseConnector(object):
         if section == 'oomnitza' and not BaseConnector.OomnitzaConnector:
             BaseConnector.OomnitzaConnector = self
 
-        backend_name = settings.get('vault_backend', StrongboxBackend.KEYRING)
-        secret_alias = settings.get("vault_alias") or section
-        self._strongbox = Strongbox(secret_alias, backend_name)
-        self._preload_secrets()
-
     @staticmethod
     def json_serializer(value):
         """
         In the `--save-data` mode we are dumping the data to the JSON notation.
-        So the we should pre-process the values to be sure these can be represented as the 
+        So the we should pre-process the values to be sure these can be represented as the
         JSON (https://docs.python.org/2/library/json.html#py-to-json-table)
         """
         if isinstance(value, (date, datetime)):

@@ -835,7 +835,7 @@ The structure of the JSON is the following:
     
 The `headers` or `params` or both must be set. Examples:
 
-Image the system, where the special authorization token `XYZ` must be passed as the header named `authorization` or as the query parameter with the same name
+Imagine the system, where the special authorization token `XYZ` must be passed as the header named `authorization` or as the query parameter with the same name
 
     {"headers": {"authorization": "XYZ"}}                   # OK
     {"headers": {"authorization": "XYZ"}, "params": {}}     # OK
@@ -844,10 +844,15 @@ Image the system, where the special authorization token `XYZ` must be passed as 
     
     {"params": {}, "headers": {}}      # NOT OK - headers and params not set
 
+The exception from this rule is the session-based auth scenarios where the headers and params cannot be defined initially and will be generated dynamically
+
 `oomnitza_authorization`: Optional. The Oomnitza API token of user on behalf of who the connector sync will be triggered and all the changes wil lbe brought. Can be just not set. If not set the same
  user as defined in the `[oomnitza]` section will be used
- 
- The full example of the config.ini file for the stored integration with ID = 67 and auth header `Authorization: Bearer ABC`:
+
+`local_inputs`: Optional. The alternate additional storage for the inputs to be used instead of ones coming from the cloud. Must be used only if the integration
+requires some extra secrets filled in in Oomnitza WebUI but you want to keep these secrets locally.
+
+Example #1: the config.ini file for the stored integration with ID = 67 and auth header `Authorization: Bearer ABC`:
  
     [oomnitza]
     url = https://example.oomnitza.com
@@ -856,6 +861,26 @@ Image the system, where the special authorization token `XYZ` must be passed as 
     [managed.67]
     oomnitza_authorization = i_am_oomnitza_api_token_2
     saas_authorization = {"headers": {"Authorizaton": "Bearer ABC"}}
+
+Example #2: the config.ini file for the stored integration with ID = 15 and session-based auth flow where all the required inputs are stored in the Oomnitza cloud:
+
+    [oomnitza]
+    url = https://example.oomnitza.com
+    api_token = i_am_oomnitza_api_token_1
+
+    [managed.15]
+    oomnitza_authorization = i_am_oomnitza_api_token_2
+
+Example #2: the config.ini file for the stored integration with ID = 34 and session-based auth flow where all the required inputs are stored locally:
+
+    [oomnitza]
+    url = https://example.oomnitza.com
+    api_token = i_am_oomnitza_api_token_1
+
+    [managed.34]
+    oomnitza_authorization = i_am_oomnitza_api_token_2
+    local_inputs = {"username": "john.smith", "password": "supErs3cr3T"}
+
 
 #### Setting the export file connector
 

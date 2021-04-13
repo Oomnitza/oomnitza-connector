@@ -1,8 +1,8 @@
-import base64
 import logging
 
 from gevent.pool import Pool
-from requests import ConnectionError, HTTPError
+from requests import HTTPError
+from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
 
 from lib.connector import AssetsConnector
@@ -34,9 +34,8 @@ class Connector(AssetsConnector):
                 break
 
     def get_headers(self):
-        auth_string = self.settings['username'] + ":" + self.settings['password']
         return {
-            'Authorization': "Basic " + base64.b64encode(auth_string.encode('utf-8')).decode('utf-8'),
+            'Authorization': _basic_auth_str(self.settings['username'], self.settings['password']),
             'Accept': 'application/json',
             'aw-tenant-code': self.settings['api_token']
         }

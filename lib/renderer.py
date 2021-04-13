@@ -34,6 +34,10 @@ class Renderer:
     def update_rendering_context(self, **kwargs):
         self.rendering_context.update(**kwargs)
 
+    def clear_rendering_context(self, *args):
+        for arg in args:
+            self.rendering_context.pop(arg, None)
+
     def render_to_string(self, template: Any) -> str:
         """
         Render the value to the string

@@ -1,8 +1,7 @@
-
-import base64
 import logging
 
-from requests import HTTPError
+from requests.auth import _basic_auth_str
+
 from lib.connector import UserConnector
 
 logger = logging.getLogger("connectors/zendesk")  # pylint:disable=invalid-name
@@ -33,10 +32,9 @@ class Connector(UserConnector):
         self.url_template = "https://%s.zendesk.com/api/{0}" % self.settings['system_name']
 
     def get_headers(self):
-        auth_string = "{0}/token:{1}".format(self.settings['username'], self.settings['api_token'])
         return {
             'Accept': 'application/json',
-            'Authorization': "Basic {0}".format(base64.b64encode(auth_string)),
+            'Authorization':  _basic_auth_str(f"{self.settings['username']}/token", self.settings['api_token'])
         }
 
     def _load_records(self, options):

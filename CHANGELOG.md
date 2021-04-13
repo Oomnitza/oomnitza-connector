@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.3.0]
+
+### Added
+
+- support for the new session-based auth flow (the systems like VCenter, KACE, SolarWinds supports this flow) for the managed connectors
+in case of on-premise deployments. 
+- support the extra local inputs `local_inputs` for the managed connectors in case these inputs have to be filled with some secrets and these
+secrets have to be stored using some local secret storage
+- the failed request attempt to the external service will be logged in the cloud as the separate sync session with the failed state
+
+## [2.2.1]
+
+### Fixed
+
+- Zendesk authentication issue 
+
 ## [2.2.0]
 
 ### Added
