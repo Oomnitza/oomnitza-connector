@@ -121,7 +121,7 @@ class Connector(ManagedConnector):
         else:
             self.OomnitzaConnector.create_synthetic_finalized_failed_portion(self.ConnectorID, uid, error_message)
 
-    def send_to_oomnitza(self, data):
+    def send_to_oomnitza(self, data, *args, **kwargs):
         """
         Override this method to just store the file locally in the specified folder instead of preparing the payload and sending it over the network to somewhere
         """

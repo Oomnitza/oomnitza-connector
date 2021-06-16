@@ -7,6 +7,7 @@ import pprint
 import shutil
 import sys
 from configparser import ParsingError, MissingSectionHeaderError, DEFAULTSECT, NoSectionError, ConfigParser
+from copy import deepcopy
 from logging.handlers import RotatingFileHandler
 
 from lib.error import AuthenticationError
@@ -198,6 +199,7 @@ def init_connector_from_configuration(connector_name, configuration, cmdline_arg
 
             cfg["__testmode__"] = cmdline_args.testmode
             cfg["__save_data__"] = cmdline_args.save_data
+            cfg["__ignore_cloud_maintenance__"] = cmdline_args.ignore_cloud_maintenance
             try:
                 cfg["__workers__"] = cmdline_args.workers
             except:
@@ -306,8 +308,11 @@ def parse_connector_config_for_cloud_initiated(connector_name, extra_cfg, args):
             configuration = config.items(connector_name)
         except NoSectionError:
             configuration = []
-        return init_connector_from_configuration(connector_name, configuration, args, extra_cfg=extra_cfg)
-
+        initialized_connector_configuration = init_connector_from_configuration(connector_name, configuration, args, extra_cfg=extra_cfg)
+        # ensure the instance of the connector class initiated for the cloud based connector has its own copy of OomnitzaConnector and not sharing it
+        # among other threads
+        initialized_connector_configuration['__connector__'].OomnitzaConnector = deepcopy(initialized_connector_configuration['__connector__'].OomnitzaConnector)
+        return initialized_connector_configuration
     except IOError:
         raise ConfigError("Could not open config file.")
 

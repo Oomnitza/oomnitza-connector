@@ -1,5 +1,27 @@
 # Changelog
 
+
+## [2.3.2]
+
+### Added
+
+- the support for the arbitrary importable modules in the connector mapping for the `managed` connectors
+- the better fatal errors representation with the traceback logged within sync sessions for the `managed` connectors
+- the basic SaaS <> User integration support for the `managed` users connectors
+
+## [2.3.1]
+
+### Added
+
+- the `managed` connectors support the software processing for the asset-based connectors now.
+- support for `--ignore-cloud-maintenance` command line argument to ignore the cloud maintenance in the main loop
+
+### Fixed
+
+- the `managed` connectors now guess the type of the values to send to Oomnitza instead of mindlessly pushing them as strings. 
+- errors during the configuration processing for the `managed` connector will be logged in the cloud as the regular errors in the appropriate sync session and will not break the connector execution
+ if this is suitable
+
 ## [2.3.0]
 
 ### Added

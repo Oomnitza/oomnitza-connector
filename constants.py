@@ -9,3 +9,5 @@ MODE_CLIENT_INITIATED_UPLOAD = 'upload'
 
 # mode which set the connector in the "managed" mode where the connector is managed by the cloud. The default mode starting from 2.2.0
 MODE_CLOUD_INITIATED_UPLOAD = 'managed'
+
+FATAL_ERROR_FLAG = 'Fatal Error'

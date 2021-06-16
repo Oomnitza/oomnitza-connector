@@ -6,6 +6,7 @@ from requests import RequestException
 from lib.connector import BaseConnector, AuthenticationError
 from lib.error import ConfigError
 from lib.version import VERSION
+from constants import FATAL_ERROR_FLAG
 
 LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 
@@ -76,9 +77,21 @@ class Connector(BaseConnector):
         url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
         self.post(url, {'correlation_id': str(correlation_id), 'added': 1})
 
-    def create_synthetic_finalized_failed_portion(self, service_id, correlation_id, error_message):
+    def create_synthetic_finalized_failed_portion(
+            self, service_id, correlation_id, error, is_fatal=False
+    ):
         url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
-        self.post(url, {'correlation_id': str(correlation_id), 'failed': 1, 'error_message': error_message})
+
+        payload = {
+            'correlation_id': str(correlation_id),
+            'failed': 1,
+            'error_message': error,
+        }
+
+        if is_fatal:
+            payload['error_type'] = FATAL_ERROR_FLAG
+
+        self.post(url, payload)
 
     @staticmethod
     def test_upload(users):

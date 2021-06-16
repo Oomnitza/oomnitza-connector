@@ -3,15 +3,16 @@ import errno
 import json
 import logging
 import os
-from uuid import uuid4
 from datetime import datetime, date
 from distutils.util import strtobool
+from uuid import uuid4
 
 import requests
 from gevent.pool import Pool
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
 
+from constants import FATAL_ERROR_FLAG
 from lib import TrueValues
 from utils.data import get_field_value
 from .converters import Converter
@@ -54,6 +55,61 @@ def run_connector(connector_cfg, options):
 
 
 class BaseConnector(object):
+
+    class ManagedConnectorProcessingException(Exception):
+        """
+        Special exception used to be raised in certain cases hen in the middle of the portion processing
+        for the managed connector. In general when e are facing this issue we have to push an error to the cloud
+        instead of the ready to process data
+        """
+        message_template = ''
+
+        def __init__(self, **kwargs):
+            message = self.message_template.format(**kwargs)
+            super().__init__(message)
+
+    class ManagedConnectorRecordConversionException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when the given value
+        cannot be presented according to the given managed connector mapping template
+        """
+        message_template = 'Failed to process the mapping value: {source}. The error is: {error}'
+
+    class ManagedConnectorListGetInBeginningException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the very beginning of processing
+        the managed connector has failed to fetch the first page of data
+        """
+        message_template = 'Failed to fetch the first block of data. The error is: {error}. The further processing is impossible'
+
+    class ManagedConnectorListGetInMiddleException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the middle of processing
+        the managed connector has failed to fetch the new page of data
+        """
+        message_template = 'Failed to fetch the another block of data. The error is: {error}. The further processing is impossible'
+
+    class ManagedConnectorDetailsGetException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the middle of processing
+        the managed connector has failed to fetch the details of the entity
+        """
+        message_template = 'Failed to fetch the details of a single item from the block. The error is: {error}'
+
+    class ManagedConnectorSoftwareGetException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the middle of processing
+        the managed connector has failed to fetch the software info for the entity
+        """
+        message_template = 'Failed to fetch the software information. The error is: {error}'
+
+    class ManagedConnectorSaaSGetException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the middle of processing
+        the managed connector has failed to fetch the software info for the entity
+        """
+        message_template = 'Failed to fetch the saas information. The error is: {error}'
+
     ConnectorID = None
     Settings = {}
     RecordType = None
@@ -344,21 +400,28 @@ class BaseConnector(object):
     def stop_sync(self):
         self.keep_going = False
 
-    def sender(self, rec):
+    def sender(self, rec, explicit_error):
         """
         This is data sender that should be executed by greenlet to make network IO operations non-blocking.
         """
+        if explicit_error:
+            self.send_to_oomnitza(rec, error=explicit_error)
+            return
 
         if not (self.__filter__ is None or self.__filter__(rec)):
             LOG.info("Skipping record %r because it did not pass the filter.", rec)
             return
 
-        converted_record = self.convert_record(rec)
-        if not converted_record:
-            LOG.info("Skipping record %r because it has not been converted properly", rec)
-            return
-
-        self.send_to_oomnitza(converted_record)
+        try:
+            converted_record = self.convert_record(rec)
+        except self.ManagedConnectorRecordConversionException as e:
+            # we have failed to convert the record - issue with the mapping?
+            self.send_to_oomnitza(rec, error=str(e))
+        else:
+            if not converted_record:
+                LOG.info("Skipping record %r because it has not been converted properly", rec)
+                return
+            self.send_to_oomnitza(converted_record)
 
     def is_authorized(self):
         """
@@ -419,6 +482,12 @@ class BaseConnector(object):
                 connection_pool = Pool(size=pool_size)
             for index, record in enumerate(self._load_records(options)):
 
+                explicit_error = None
+                if isinstance(record, tuple) and len(record) == 2:
+                    # the first item here is the actual record and the second one is the explicit error
+                    # we want to push to the cloud
+                    record, explicit_error = record
+
                 if not self.keep_going:
                     break
 
@@ -444,10 +513,10 @@ class BaseConnector(object):
                             break
 
                         if connection_pool:
-                            connection_pool.spawn(self.sender, *(rec,))
+                            connection_pool.spawn(self.sender, *(rec, explicit_error))
 
                         else:
-                            self.sender(rec)
+                            self.sender(rec, explicit_error)
 
             if connection_pool:
                 connection_pool.join(timeout=30)  # set non-empty timeout to guarantee context switching in case of threading
@@ -475,7 +544,7 @@ class BaseConnector(object):
         if insert_only and update_only:
             raise ValueError('"insert_only" and "update_only" can not be both of True value')
 
-    def _collect_payload(self, records):
+    def _collect_payload(self, records, error, is_fatal=False):
         insert_only = bool(strtobool(self.settings.get('insert_only', '0')))
         update_only = bool(strtobool(self.settings.get('update_only', '0')))
         self._validate_insert_update_only(insert_only, update_only)
@@ -486,7 +555,8 @@ class BaseConnector(object):
             "portion": self.portion,
             "data_type": self.RecordType,
             "insert_only": insert_only,
-            "update_only": update_only
+            "update_only": update_only,
+            "error": error
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
         # otherwise use the name set as the `MappingName`; back compatibility with the `upload` mode for the non-managed connectors
@@ -495,16 +565,21 @@ class BaseConnector(object):
         else:
             payload['connector_name'] = self.MappingName
 
+        if is_fatal:
+            payload['error_type'] = FATAL_ERROR_FLAG
+
         return payload
 
-    def send_to_oomnitza(self, data):
+    def send_to_oomnitza(self, data, error=None, is_fatal=False):
         """
         Determine which method on the Oomnitza connector to call based on type of data.
 
         :param data: the data to send (either single object or list)
+        :param error: optional error message as the clear mark we must not process this item, but immediately accept this and store as the error
+        :param is_fatal: a flag indicating the type of error and that the connector has stopped
         :return: the results of the Oomnitza method call
         """
-        payload = self._collect_payload(data)
+        payload = self._collect_payload(data, error, is_fatal)
 
         if self.settings.get("__save_data__"):
             try:
@@ -561,7 +636,11 @@ class BaseConnector(object):
             source = specs.get('source', None)
             if source:
                 if self.is_managed:
-                    incoming_value = self.get_field_value_managed(source, incoming_record)
+                    try:
+                        incoming_value = self.get_field_value_managed(source, incoming_record)
+                    except Exception as e:
+                        LOG.exception('Failed to render the value given in mapping')
+                        raise self.ManagedConnectorRecordConversionException(source=source, error=str(e))
                 else:
                     incoming_value = self.get_field_value(source, incoming_record)
             else:
@@ -619,19 +698,19 @@ class BaseConnector(object):
         """
         if any(
             (
-                self.jinja_string_env.block_start_string in field,
-                self.jinja_string_env.block_end_string in field,
-                self.jinja_string_env.variable_start_string in field,
-                self.jinja_string_env.variable_end_string in field
+                self.jinja_native_env.block_start_string in field,
+                self.jinja_native_env.block_end_string in field,
+                self.jinja_native_env.variable_start_string in field,
+                self.jinja_native_env.variable_end_string in field
             )
         ):
             # if the field definition contains the Jinja env control symbols - then do nothing
             field_template = field
         else:
             # fallback / simplification compatibility, treat the incoming value as the jinja2 variable
-            field_template = self.jinja_string_env.variable_start_string + field + self.jinja_string_env.variable_end_string
+            field_template = self.jinja_native_env.variable_start_string + field + self.jinja_native_env.variable_end_string
 
-        return self.jinja_string_env.from_string(field_template).render(**data)
+        return self.jinja_native_env.from_string(field_template).render(**data)
 
     def get_setting_value(self, setting, default=None):
         """

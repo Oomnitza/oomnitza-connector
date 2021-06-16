@@ -216,6 +216,6 @@ class Connector(AssetsConnector):
                         return
 
                     # sync retrieved device with Oomnitza
-                    gevent.spawn(self.sender, *(self.OomnitzaConnector, device)).start()
+                    gevent.spawn(self.sender, *(self.OomnitzaConnector, device, None)).start()
         except:
             LOG.exception('Casper server handler failed')
