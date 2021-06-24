@@ -2,12 +2,35 @@ import importlib
 from logging import Logger
 from typing import Any, Optional, Dict
 
-from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment
+from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment, environmentfilter
 from jinja2.exceptions import SecurityError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
 
 from lib.error import ConfigError
+
+
+class _RawValue:
+
+    def __init__(self, value):
+        self._value = value
+
+    def render(self):
+        return self._value
+
+
+@environmentfilter
+def as_is(env, value):
+    """
+    Custom filter which allow to bypass execution of passed value in native
+    python code.
+
+    >>> r.render_to_native("{{ '312-800-9919' }}")
+    -10407
+    >>> r.render_to_native("{{ '312-800-9919'|as_is }}")
+    '312-800-9919'
+    """
+    return _RawValue(value)
 
 
 class ImportSupportJinjaEnvMixin:
@@ -98,6 +121,9 @@ class Renderer:
         self.rendering_context = {}
         self.jinja_string_env = StringEnvironmentWithImportSupport()
         self.jinja_native_env = SafeNativeEnvironmentWithImportSupport()
+        self.jinja_native_env.filters.update({
+            "as_is": as_is,
+        })
         super().__init__(*args, **kwargs)
 
     def update_rendering_context(self, **kwargs):
@@ -127,6 +153,10 @@ class Renderer:
             val = self.jinja_native_env.from_string(str(template)).render(**self.rendering_context)
             if val == Undefined():
                 raise UndefinedError
+
+            if isinstance(val, _RawValue):
+                return val.render()
+
             return val
         except UndefinedError:
             logger.debug(f'Failed to render to native. Template: {str(template)}. Context: {self.rendering_context}')

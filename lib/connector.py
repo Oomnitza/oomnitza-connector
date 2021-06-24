@@ -20,6 +20,7 @@ from .error import ConfigError, AuthenticationError
 from .filter import DynamicException
 from .httpadapters import AdapterMap, retries
 from .strongbox import Strongbox, StrongboxBackend
+from .renderer import _RawValue
 from .version import VERSION
 
 LOG = logging.getLogger("lib/connector")
@@ -710,7 +711,12 @@ class BaseConnector(object):
             # fallback / simplification compatibility, treat the incoming value as the jinja2 variable
             field_template = self.jinja_native_env.variable_start_string + field + self.jinja_native_env.variable_end_string
 
-        return self.jinja_native_env.from_string(field_template).render(**data)
+        value = self.jinja_native_env.from_string(field_template).render(**data)
+
+        if isinstance(value, _RawValue):
+            return value.render()
+
+        return value
 
     def get_setting_value(self, setting, default=None):
         """

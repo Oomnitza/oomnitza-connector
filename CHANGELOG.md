@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [2.3.3]
+
+### Added
+
+- `as_is` jinja filter allows to disable input data evaluation to native
+    python types for the `managed` connector.
+
 ## [2.3.2]
 
 ### Added
