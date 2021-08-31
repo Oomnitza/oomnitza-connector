@@ -384,10 +384,15 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
     def _add_saas_information(self, item_details):
         try:
-            if self.saas_behavior is not None and self.saas_behavior.get('enabled') and self.saas_behavior.get('saas_id'):
+            if self.saas_behavior is not None and self.saas_behavior.get('enabled') and self.saas_behavior.get('sync_key'):
                 item_details['saas'] = {
-                    'saas_id': self.saas_behavior.get('saas_id')
+                    'sync_key': self.saas_behavior['sync_key']
                 }
+
+                saas_name = self.saas_behavior.get('name')
+                if saas_name:
+                    item_details['saas']['name'] = saas_name
+
         except Exception as exc:
             logger.exception('Failed to fetch the saas info')
             raise self.ManagedConnectorSaaSGetException(error=str(exc))

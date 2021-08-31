@@ -1401,14 +1401,18 @@ Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-direc
 #### MobileIron Configuration
 `url`: The full URI for the MobileIron server. For example: `https://na1.mobileiron.com`
 
-`username`: the MobileIron username to use.
+`username`: The MobileIron username to use.
 
-`password`: the MobileIron password to use.
+`password`: The MobileIron password to use.
 
 `partitions`: The MobileIron partitions to load. For example: `["Drivers"]` or `["PartOne", "PartTwo"]`. Used for API v1 and ignored for API v2.
 
 `api_version`: The version of MobileIron API used to fetch the records. Available options are `1` and `2`.
 The cloud instances are using v1 by default. For the CORE instances (on-premise installations) you have to use v2.
+
+`include_checkin_devices_only`: If this is True, the MobileIron connector only processes the devices that have been checked in.
+
+`last_checkin_date_threshold`: If the setting `include_checkin_devices_only` is True, the MobileIron connector only sends the devices that last check-in date is within the past X days. The threshold needs to be in seconds e.g. 604800 is 7 days in seconds.
 
 ##### Default Field Mappings
     No default mappings

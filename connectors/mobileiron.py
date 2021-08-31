@@ -1,6 +1,7 @@
 import logging
 import math
 import time
+from distutils.util import strtobool
 from enum import Enum
 
 from requests.auth import _basic_auth_str
@@ -21,7 +22,9 @@ class Connector(AssetsConnector):
         'username':   {'order': 2, 'example': "username@example.com"},
         'password':   {'order': 3, 'example': "change-me"},
         'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True},
-        'api_version': {'order': 6, 'example': '1', 'default': '1'}
+        'api_version': {'order': 6, 'example': '1', 'default': '1'},
+        'include_checkin_devices_only': {'order': 7, 'example': 'True', 'default': 'True'},
+        'last_checkin_date_threshold': {'order': 8, 'example': '129600', 'default': '129600'},
     }
 
     api_version = None
@@ -114,6 +117,15 @@ class Connector(AssetsConnector):
         # logger.debug("partitions = %r", partitions)
         return partitions
 
+    def keep_device_in_results(self, now, last_checkin_date):
+        include_checkin_devices_only = bool(strtobool(self.settings.get('include_checkin_devices_only', '1')))
+        if include_checkin_devices_only:
+            one_point_five_days_in_sec = 60 * 60 * 24 * 1.5
+            last_checkin_date_threshold = int(self.settings.get('last_checkin_date_threshold', one_point_five_days_in_sec))
+            cutoff = int((now - last_checkin_date_threshold) * 1000)
+            return isinstance(last_checkin_date, int) and last_checkin_date >= cutoff
+        return True
+
     def fetch_all_devices_for_partition(self, partition_id, rows=500):
         """
         Fetches all available device for a provided partition using the MobileIron REST API.
@@ -127,9 +139,8 @@ class Connector(AssetsConnector):
         url = "{0}/api/v1/device?dmPartitionId={1}&rows={2}&start={3}&sortFields[0].name=lastCheckin&sortFields[0].order=DESC"
         start = -1
         total_count = 0
-        cutoff = int((time.time()-(60*60*24*1.5))*1000)  # 60*60*24*3 is 1.5 days in seconds.
+        now = time.time()
 
-        LOG.info("cutoff has been set to: %s", cutoff)
         while start < total_count:
             if self._retry_counter > Connector.RetryCount:
                 LOG.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
@@ -144,7 +155,7 @@ class Connector(AssetsConnector):
 
                 LOG.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
                 # yield result['searchResults']
-                results = [r for r in result['searchResults'] if r['lastCheckin'] >= cutoff]
+                results = [r for r in result['searchResults'] if self.keep_device_in_results(now, r.get('lastCheckin'))]
                 if results:
                     yield results
                 else:
