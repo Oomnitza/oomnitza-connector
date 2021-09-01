@@ -5,12 +5,9 @@
 
 ### Added
 
-- `as_is` jinja filter allows to disable input data evaluation to native python types for the `managed` connector.
-- Two settings `include_checkin_devices_only` and `last_checkin_date_threshold` for the MobileIron connector
-
-### Fixed
-
-- Send `sync_key` instead of `saas_id` in the payload for the `managed` connectors.
+- `as_is` jinja filter allows to disable input data evaluation to native
+    python types for the `managed` connector.
+- Added two settings `include_checkin_devices_only` and `last_checkin_date_threshold` for the MobileIron connector
 
 ## [2.3.2]
 

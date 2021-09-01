@@ -4,7 +4,10 @@ import time
 from distutils.util import strtobool
 from enum import Enum
 
+from gevent.pool import Pool
+from requests import HTTPError
 from requests.auth import _basic_auth_str
+from requests.exceptions import RetryError
 
 from lib.connector import AssetsConnector
 
@@ -44,10 +47,115 @@ class Connector(AssetsConnector):
         }
         return headers
 
+    @staticmethod
+    def get_primary_cpu_hdd_ram_placeholder():
+        return {
+            'primaryHDDSize': None,
+            'primaryProcessorName': None,
+            'primaryProcessorCores': None,
+            'primaryMemoryCapacity': None
+        }
+
+    @staticmethod
+    def is_windows_device(device):
+        return bool(device.get('windowsDeviceType'))
+
+    def fetch_device_hardware_by_id(self, id):
+        device_hardware = {}
+        try:
+            url = f"{self.settings['url']}/api/v1/device/{id}/hardwareinventory"
+            response = self.get(url).json()
+            device_hardware = response.get('result')
+        except (HTTPError, RetryError) as exc:
+            LOG.exception(f'Unable to fetch hardware data for device: {id}')
+        return device_hardware
+
+    @staticmethod
+    def extract_primary_processor(device_hardware):
+        primary_processor_name = None
+        primary_processor_cores = None
+        if isinstance(device_hardware, dict):
+            processors = device_hardware.get('processor')
+            if processors and isinstance(processors, list):
+                primary_processor = processors[0]
+                primary_processor_name = primary_processor.get('name') if isinstance(primary_processor, dict) else None
+                primary_processor_cores = primary_processor.get('cores') if isinstance(primary_processor, dict) else None
+
+        return {
+            'primaryProcessorName': primary_processor_name,
+            'primaryProcessorCores': primary_processor_cores,
+        }
+
+    @staticmethod
+    def extract_primary_hdd_size(device_hardware):
+        primary_hdd_size = None
+        if isinstance(device_hardware, dict):
+            hard_drives = device_hardware.get('hardDrive')
+            if hard_drives and isinstance(hard_drives, list):
+                primary_hdd = hard_drives[0]
+                primary_hdd_size = primary_hdd.get('size') if isinstance(primary_hdd, dict) else None
+
+        return {
+            'primaryHDDSize': primary_hdd_size
+        }
+
+    @staticmethod
+    def extract_primary_ram_capacity(device_hardware):
+        primary_ram_capacity = None
+        if isinstance(device_hardware, dict):
+            physical_memory = device_hardware.get('physicalMemory')
+            if physical_memory and isinstance(physical_memory, list):
+                primary_ram = physical_memory[0]
+                primary_ram_capacity = primary_ram.get('capacity') if isinstance(primary_ram, dict) else None
+
+        return {
+            'primaryMemoryCapacity': primary_ram_capacity
+        }
+
+    @staticmethod
+    def extract_windows_device_serial_number(device_hardware):
+        serial_number = None
+        if isinstance(device_hardware, dict):
+            computer_system_product = device_hardware.get('computerSystemProduct')
+            if computer_system_product and isinstance(computer_system_product, dict):
+                serial_number = computer_system_product.get('identifyingNumber')
+
+        return {
+            'serialNumber': serial_number
+        }
+
+    def load_primary_cpu_hdd_ram_and_serial_for_windows_device(self, device):
+        if not isinstance(device, dict):
+            raise AssertionError(f'The devices must be in a form of dictionary')
+
+        primary_cpu_hdd_ram_placeholder = self.get_primary_cpu_hdd_ram_placeholder()
+        device.update(primary_cpu_hdd_ram_placeholder)
+
+        if self.is_windows_device(device) and device.get('id'):
+            device_hardware = self.fetch_device_hardware_by_id(device['id'])
+            if device_hardware:
+                device.update(self.extract_primary_processor(device_hardware))
+                device.update(self.extract_primary_hdd_size(device_hardware))
+                device.update(self.extract_primary_ram_capacity(device_hardware))
+                device.update(self.extract_windows_device_serial_number(device_hardware))
+        return device
+
+    def load_hardware_and_serial_for_windows_devices(self, devices):
+        if not isinstance(devices, list):
+            raise AssertionError(f'The devices must be in a form of list')
+
+        pool_size = self.settings.get('__workers__', 2)
+        connection_pool = Pool(size=pool_size)
+        return connection_pool.map(self.load_primary_cpu_hdd_ram_and_serial_for_windows_device, devices)
+
     def load_devices_api_v1(self, *a, **kw):
         for partition in self.fetch_all_partitions():
             if self.settings['partitions'] == "All" or partition['name'] in self.settings['partitions']:
-                for device in self.fetch_all_devices_for_partition(partition['id']):
+                pool_size = self.settings.get('__workers__', 2)
+                connection_pool = Pool(size=pool_size)
+                for device in connection_pool.imap(self.load_hardware_and_serial_for_windows_devices,
+                                                   self.fetch_all_devices_for_partition(partition['id']),
+                                                   maxsize=pool_size):
                     yield device
             else:
                 LOG.debug("Skipping partition %r", partition)

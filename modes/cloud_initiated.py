@@ -3,6 +3,8 @@ import sys
 from time import sleep
 from threading import Thread
 
+from requests.exceptions import RetryError
+
 from lib import config
 from lib.connector import run_connector
 
@@ -44,7 +46,16 @@ def cloud_initiated_upload(cmdline_args):
         sys.exit(1)
 
     while True:
-        cloud_configs = oomnitza_config['__connector__'].check_managed_cloud_configs()
+        try:
+            cloud_configs = oomnitza_config['__connector__'].check_managed_cloud_configs()
+        except RetryError:
+            if oomnitza_config['__ignore_cloud_maintenance__']:
+                # if we are ignoring the cloud maintenance we have be very tolerant to retry errors
+                LOG.warning('Oomnitza maintenance detected... will retry later')
+                sleep(2)
+                continue
+            raise
+
         for cloud_config in cloud_configs:
             Thread(target=run_the_managed_sync, args=(cloud_config, cmdline_args)).start()
 
