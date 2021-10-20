@@ -1,6 +1,13 @@
 # Changelog
 
 
+## [2.3.4]
+
+### Fixed
+
+- LDAP utf-8 encoding/decoding issues
+- Prevent names collision in mapping during connector execution
+
 ## [2.3.3]
 
 ### Added

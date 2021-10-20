@@ -105,7 +105,11 @@ class LdapConnection(object):
         for key, value in record.items():
             try:
                 if key == 'memberOf':
-                    clean_record[key] = value
+                    if not isinstance(value, list):
+                        value = [value]
+
+                    clean_value = [item.decode('UTF-8') for item in value]
+                    clean_record[key] = clean_value
                 else:
                     if isinstance(value, list):
                         if value:
@@ -116,7 +120,7 @@ class LdapConnection(object):
                     if bin_to_str_handler:
                         clean_record[key] = bin_to_str_handler.bin_to_str(value)
                     else:
-                        clean_record[key] = value.decode('iso8859-1')
+                        clean_record[key] = value.decode('UTF-8')
             except ValueError as ex:
                 clean_record[key] = "*BINARY*"
             except AttributeError:

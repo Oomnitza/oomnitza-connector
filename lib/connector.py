@@ -5,6 +5,7 @@ import logging
 import os
 from datetime import datetime, date
 from distutils.util import strtobool
+from typing import Dict, Any, List
 from uuid import uuid4
 
 import requests
@@ -53,6 +54,16 @@ def run_connector(connector_cfg, options):
         LOG.error("Error running filter for %s: %s", connector_cfg['__name__'], str(exp))
     except:  # pylint:disable=broad-except
         LOG.exception("Unhandled error in run_connector for %s", connector_cfg['__name__'])
+
+bad_keywords: List[str] = [
+    'not', 'self', 'False', 'None', 'True', 'false', 'true',
+]
+keyword_replace: Dict[str, str] = {kw: f'_{kw.upper()}_' for kw in bad_keywords}
+
+
+def sanitize_jinja_call_args(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Sanitize the data passed to jinja render."""
+    return {keyword_replace.get(k, k): v for k, v in data.items()}
 
 
 class BaseConnector(object):
@@ -711,7 +722,9 @@ class BaseConnector(object):
             # fallback / simplification compatibility, treat the incoming value as the jinja2 variable
             field_template = self.jinja_native_env.variable_start_string + field + self.jinja_native_env.variable_end_string
 
-        value = self.jinja_native_env.from_string(field_template).render(**data)
+        value = self.jinja_native_env.from_string(field_template).render(
+            **sanitize_jinja_call_args(data)
+        )
 
         if isinstance(value, _RawValue):
             return value.render()
