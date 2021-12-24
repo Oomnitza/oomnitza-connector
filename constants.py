@@ -11,3 +11,8 @@ MODE_CLIENT_INITIATED_UPLOAD = 'upload'
 MODE_CLOUD_INITIATED_UPLOAD = 'managed'
 
 FATAL_ERROR_FLAG = 'Fatal Error'
+
+
+class MTLSType:
+    PFX = 'pfx'
+    CERT_KEY = 'cert_key'

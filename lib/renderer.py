@@ -9,6 +9,8 @@ from jinja2.sandbox import SandboxedEnvironment
 
 from lib.error import ConfigError
 
+logger = Logger(__name__)
+
 
 class _RawValue:
 
@@ -105,7 +107,31 @@ class StringEnvironmentWithImportSupport(ImportSupportJinjaEnvMixin, Environment
     pass
 
 
-logger = Logger(__name__)
+class _GlobalVariableContext:
+    """
+    Implementation of the global settings for the Jinja context
+    """
+
+    __internal_dict = None
+    __oomnitza_connector = None
+
+    def __init__(self, oomnitza_connector):
+        self.__oomnitza_connector = oomnitza_connector
+
+    def _call_for_global_settings(self) -> dict:
+        return {
+            _['name']: _['value']
+            for _ in self.__oomnitza_connector.get_global_variables_list()
+        }
+
+    def __getitem__(self, item):
+        if self.__internal_dict is None:
+            self.__internal_dict = self._call_for_global_settings()
+
+        if item in self.__internal_dict:
+            return self.__internal_dict[item]
+
+        raise AttributeError
 
 
 class Renderer:
@@ -118,7 +144,20 @@ class Renderer:
     rendering_context = None
 
     def __init__(self, *args, **kwargs):
-        self.rendering_context = {}
+        # NOTE 1: Init 3d-party context at the class initialization to avoid extra
+        # API calls in case of big amount of variables to render
+
+        # NOTE 2: All classes inherited by Renderer have access to OomnitzaConnector
+        # Renderer -> ConfigurableExternalAPICaller -> ManagedConnector (Connector) -> Connector
+        # So to not create one more standalone inconsistent function we will reuse it
+
+        # NOTE 3: .pop() instead .get() because in case of native usage of Renderer it will call
+        # python native Object __init__(self) that doesnt has *args, **kwarg in the function signature
+        oomnitza_connector = kwargs.pop('oomnitza_connector', None) or self.OomnitzaConnector
+        self.rendering_context = {
+            'GlobalSetting': _GlobalVariableContext(oomnitza_connector=oomnitza_connector)
+        }
+
         self.jinja_string_env = StringEnvironmentWithImportSupport()
         self.jinja_native_env = SafeNativeEnvironmentWithImportSupport()
         self.jinja_native_env.filters.update({

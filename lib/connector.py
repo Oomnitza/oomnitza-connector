@@ -66,6 +66,29 @@ def sanitize_jinja_call_args(data: Dict[str, Any]) -> Dict[str, Any]:
     return {keyword_replace.get(k, k): v for k, v in data.items()}
 
 
+def replace_illegal_chars(key: str) -> str:
+    """Replace characters in keys that would not be valid python names."""
+    replacements = {
+        '.': '_DOT_',
+        ':': '_COLON_',
+        '-': '_DASH_',
+        '#': '_HASH_',
+        '$': '_DOLLAR_',
+        '@': '_AT_',
+        '/': '_SLASH_',
+        '*': '_STAR_',
+    }
+    new_key = key
+    for old, new in replacements.items():
+        new_key = new_key.replace(old, new)
+    return new_key
+
+
+def escape_illegal_keys(incoming_record: Dict[str, Any]) -> Dict[str, Any]:
+    """Replace keys in the root of the incoming_record with valid python names."""
+    return {replace_illegal_chars(key): value for key, value in incoming_record.items()}
+
+
 class BaseConnector(object):
 
     class ManagedConnectorProcessingException(Exception):
@@ -286,6 +309,7 @@ class BaseConnector(object):
         default_mappings = copy.deepcopy(self.FieldMappings)
 
         if self.is_managed:
+
             server_mappings = self.get_managed_mapping_from_oomnitza()
             for field, specification in server_mappings.items():
                 default_mappings[field] = {}
@@ -643,13 +667,12 @@ class BaseConnector(object):
         """
         outgoing_record = {}
         missing_fields = set()
-
         for field, specs in list(field_mappings.items()):
             source = specs.get('source', None)
             if source:
                 if self.is_managed:
                     try:
-                        incoming_value = self.get_field_value_managed(source, incoming_record)
+                        incoming_value = self.get_field_value_managed(source, escape_illegal_keys(incoming_record))
                     except Exception as e:
                         LOG.exception('Failed to render the value given in mapping')
                         raise self.ManagedConnectorRecordConversionException(source=source, error=str(e))

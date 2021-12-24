@@ -3,10 +3,10 @@ import pprint
 
 from requests import RequestException
 
+from constants import FATAL_ERROR_FLAG
 from lib.connector import BaseConnector, AuthenticationError
 from lib.error import ConfigError
 from lib.version import VERSION
-from constants import FATAL_ERROR_FLAG
 
 LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
 
@@ -182,15 +182,15 @@ class Connector(BaseConnector):
         ).json()
 
     def get_secret_by_credential_id(
-            self,
-            credential_id,
-            url,
-            http_method,
-            params,
-            headers,
-            body,
-            **kwargs
-    ):
+        self,
+        credential_id: str,
+        url: str,
+        http_method: str,
+        params: dict,
+        headers: dict,
+        body: dict,
+        **kwargs
+    ) -> dict:
         response = self.post(
             f'{self.settings["url"]}/api/v3/auth/{credential_id}/secret',
             data=dict(
@@ -199,11 +199,14 @@ class Connector(BaseConnector):
                 params=params,
                 headers=headers,
                 body=body or '',
-            ))
+            )
+        )
         response_json = response.json()
+
         return {
             'headers': response_json.get('headers', {}),
-            'params': response_json.get('params', {})
+            'params': response_json.get('params', {}),
+            'certificates': response_json.get('certificates', {}),
         }
 
     def get_token_by_token_id(
@@ -214,3 +217,7 @@ class Connector(BaseConnector):
             f'{self.settings["url"]}/api/v3/auth/oomnitza_tokens/{token_id}'
         )
         return response.json()['token']
+
+    def get_global_variables_list(self):
+        response = self.get(f'{self.settings["url"]}/api/v3/settings/global_variables')
+        return response.json()

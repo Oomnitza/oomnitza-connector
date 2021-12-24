@@ -8,6 +8,7 @@ EnabledConnectors = (
     'chef',
     'chromebooks',
     'google_mobile_devices',
+    'meraki_network_devices',
     'csv_assets',
     'csv_users',
     'jasper',
