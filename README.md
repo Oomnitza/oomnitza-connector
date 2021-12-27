@@ -156,6 +156,59 @@ For OS X environment you have to install the build tools using the following com
 
     xcode-select --install
 
+
+## Containerized Environment Setup
+
+### Prerequisites
+In order to run the following instructions, you will need to install Docker Desktop. You can find the installation instructions 
+for your operating system on the [website](https://www.docker.com/products/docker-desktop).
+
+### Run the Oomnitza Connector with Docker Compose
+Before you can start an Oomnitza Connector using Docker compose you need to create a directory on a local machine
+to save the connector configuration file template, put the path to the docker compose configuration file in volume sections
+instead of `/path/on/local/machine` and run the command:
+
+    docker-compose up generate-ini
+
+This command will copy the generated configuration file to the directory on your local machine. <br>
+Then make the necessary changes to this configuration file.<br>
+After that run the following command to start the Oomnitza Connector:
+
+    docker-compose up oomnitza-connector -d
+
+The docker container will run in detached mode (as a background process).<br><br>
+If you need to run other kinds of connectors it’s possible to add one more service to the docker compose configuration file. 
+For an example, for `ldap`:
+
+    oomnitza-connector-ldap:
+      image: oomnitza/oomnitza-connector:latest
+      command: python connector.py --ini ../config/config.ini upload ldap
+      volumes:
+        - /path/on/local/machine:/home/appuser/config/
+
+Another example to run `csv_assets`:
+
+    oomnitza-connector-csv-assets:
+      image: oomnitza/oomnitza-connector:latest
+      command: python connector.py --ini ../config/config.ini upload csv_assets --testmode
+      volumes:
+        - /path/on/local/machine:/home/appuser/config/
+        - /another/path/on/local/machine:/home/appuser/exp/
+
+The CSV file with the assets inside should be stored in some directory on the local machine, the path inside the container 
+should be defined in the configuration file (`/home/appuser/exp/file_name.csv`). An example of configuration:
+
+    [csv_assets]
+    enable = True
+    sync_field = BARCODE
+    filename = /home/appuser/exp/assets.csv
+    directory = 
+    mapping.BARCODE = {"source": "Barcode"}
+
+**Note!** If you're running Docker on a Windows 10 desktop, it might be necessary to surround the Windows folder path with single 
+or double quotes in the volumes section.
+
+
 ## Connector Configs
 
 Now you should be able to generate a default config file. Running `python connector.py generate-ini` will regenerate

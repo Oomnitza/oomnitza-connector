@@ -1,0 +1,27 @@
+version: "3"
+
+services:
+  generate-ini:
+    image: oomnitza/oomnitza-connector:latest
+    command: cp /home/appuser/oomnitza-connector/config.ini /home/appuser/config/
+    volumes:
+      - /path/on/local/machine:/home/appuser/config/
+
+  oomnitza-connector:
+    image: oomnitza/oomnitza-connector:latest
+    command: python connector.py --ini ../config/config.ini
+    volumes:
+      - /path/on/local/machine:/home/appuser/config/
+
+  oomnitza-connector-ldap:
+    image: oomnitza/oomnitza-connector:latest
+    command: python connector.py --ini ../config/config.ini upload ldap
+    volumes:
+      - /path/on/local/machine:/home/appuser/config/
+
+  oomnitza-connector-csv-assets:
+    image: oomnitza/oomnitza-connector:latest
+    command: python connector.py --ini ../config/config.ini upload csv_assets --testmode
+    volumes:
+      - /path/on/local/machine:/home/appuser/config/
+      - /another/path/on/local/machine:/home/appuser/exp/

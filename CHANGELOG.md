@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.5]
+
+### Added 
+
+- Docker image for containerized environment setup.
 
 ## [2.3.4]
 
