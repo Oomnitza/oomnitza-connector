@@ -32,6 +32,7 @@ PyChef==0.3.0
 pycparser==2.19
 PyJWT==2.0.1
 pyodbc==4.0.23
+pyOpenSSL==21.0.0
 python-dateutil==2.7.5
 python-ldap==3.2.0
 requests==2.25.1

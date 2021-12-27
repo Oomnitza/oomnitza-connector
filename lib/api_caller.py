@@ -2,19 +2,21 @@ from typing import Optional
 
 from requests import Response
 
+from lib.httpadapters import SSLAdapter
 from lib.renderer import Renderer
 
 
 class ExternalAPICaller:
 
     def perform_api_request(
-            self,
-            http_method: str,
-            url: str,
-            headers: dict,
-            params: dict,
-            body: Optional[str],
-            raise_error: bool
+        self,
+        http_method: str,
+        url: str,
+        headers: dict,
+        params: dict,
+        body: Optional[str],
+        raise_error: bool,
+        ssl_adapter: SSLAdapter = None
     ) -> Response:
 
         # preset the specific user agent
@@ -24,7 +26,11 @@ class ExternalAPICaller:
             body = body.encode()
 
         # noinspection PyUnresolvedReferences
-        response = self._get_session().request(
+        session = self._get_session()
+        if ssl_adapter:
+            session.mount(url, ssl_adapter)
+
+        response = session.request(
             method=http_method,
             url=url,
             headers=headers,

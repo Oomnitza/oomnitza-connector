@@ -21,6 +21,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * KACE Systems Management Appliance [https://www.quest.com/kace/](https://www.quest.com/kace/) 
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
+* Meraki Network Devices [https://developer.cisco.com/meraki](https://developer.cisco.com/meraki/api-v1/#!get-network-devices)
 * Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
 * Netbox [https://netbox.readthedocs.io/en/stable/](https://netbox.readthedocs.io/en/stable/)
 * Okta [https://www.okta.com](https://www.okta.com/)
@@ -74,6 +75,7 @@ ___
       - [LDAP Users Configuration](#ldap-users-configuration)
       - [LDAP Assets Configuration](#ldap-assets-configuration)
       - [Azure Active Directory Users Configuration](#azure-active-directory-users-configuration)
+      - [Meraki Organisation Network Devices Configuration](#meraki-organisation-network-devices-configuration)
       - [Meraki Systems Manager Configuration](#meraki-systems-manager-configuration)
       - [MobileIron Configuration](#mobileiron-configuration)
       - [Netbox Configuration](#netbox-configuration)
@@ -282,6 +284,11 @@ An example generated `config.ini` follows.
     group_members_attr = member
     group_member_filter = 
     sync_field = 24DCF85294E411E38A52066B556BA4EE
+
+    [meraki_network_devices]
+    enable = False
+    meraki_api_key = 
+    org_id = ******
 
     [merakism]
     enable = False
@@ -1391,6 +1398,15 @@ Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-direc
 `default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
 
 `default_position`: The position which will be assigned to the user. For example: `Employee`.
+
+##### Default Field Mappings
+    No default mappings
+
+
+#### Meraki Organisation Network Devices Configuration
+`meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
+ 
+`org_id` = Meraki organisation identifier.
 
 ##### Default Field Mappings
     No default mappings

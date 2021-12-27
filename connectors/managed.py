@@ -1,13 +1,14 @@
 import json
 import logging
 import traceback
+from typing import Optional
 
 import xmltodict
 
 from lib.api_caller import ConfigurableExternalAPICaller
 from lib.connector import BaseConnector
 from lib.error import ConfigError
-
+from lib.httpadapters import init_mtls_ssl_adapter, SSLAdapter
 
 logger = logging.getLogger()
 
@@ -173,21 +174,27 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             "params": auth_params
         }
 
-    def attach_saas_authorization(self, api_call_specification) -> (dict, dict):
+    def attach_saas_authorization(self, api_call_specification) -> (dict, dict, Optional[SSLAdapter]):
         """
         There can be two options here:
             - there is credential_id string to be used in case of cloud connector setup
             - there is a JSON containing the ready-to-use headers and params in case of on-premise connector setup
         """
+        ssl_adapter = None
+
         credential_id = self.settings['saas_authorization'].get('credential_id')
         if credential_id:
             secret = self.OomnitzaConnector.get_secret_by_credential_id(credential_id, **api_call_specification)
+            if secret['certificates']:
+                ssl_adapter = init_mtls_ssl_adapter(secret['certificates'])
+
         else:
             if self.session_auth_behavior:
                 secret = self.generate_session_based_secret()
             else:
                 secret = self.settings['saas_authorization']
-        return secret['headers'], secret['params']
+
+        return secret['headers'], secret['params'], ssl_adapter
 
     def get_list_of_items(self):
         iteration = 0
@@ -216,12 +223,13 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                         api_call_specification['headers'].update(**extra_headers)
                         api_call_specification['params'].update(**extra_params)
 
-                auth_headers, auth_params = self.attach_saas_authorization(api_call_specification)
+                auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+
                 api_call_specification['headers'].update(**auth_headers)
                 api_call_specification['params'].update(**auth_params)
+                api_call_specification['ssl_adapter'] = ssl_adapter
 
                 response = self.perform_api_request(**api_call_specification)
-
                 list_response = self.response_to_object(response.text)
 
                 self.update_rendering_context(
@@ -266,9 +274,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 list_response_item=list_response_item,
             )
             api_call_specification = self.build_call_specs(self.detail_behavior)
-            auth_headers, auth_params = self.attach_saas_authorization(api_call_specification)
+            auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+
             api_call_specification['headers'].update(**auth_headers)
             api_call_specification['params'].update(**auth_params)
+            api_call_specification['ssl_adapter'] = ssl_adapter
+
             response = self.perform_api_request(**api_call_specification)
             return self.response_to_object(response.text)
         except Exception as exc:
@@ -290,7 +301,10 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         Then, optionally, if needed, make an extra call to fetch the details of each object using the separate call
         """
-        inputs_from_cloud = {k: v.get('value') for k, v in self.inputs_from_cloud.items()}
+        inputs_from_cloud = {
+            k: self.render_to_string(v.get('value'))
+            for k, v in self.inputs_from_cloud.items()
+        }
         inputs_from_local = self.get_local_inputs()
         self.update_rendering_context(
             inputs={
@@ -353,9 +367,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
     def _call_endpoint_for_software(self):
         api_call_specification = self.build_call_specs(self.software_behavior)
-        auth_headers, auth_params = self.attach_saas_authorization(api_call_specification)
+        auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+
         api_call_specification['headers'].update(**auth_headers)
         api_call_specification['params'].update(**auth_params)
+        api_call_specification['ssl_adapter'] = ssl_adapter
+
         response = self.perform_api_request(**api_call_specification)
         return self.response_to_object(response.text)
 

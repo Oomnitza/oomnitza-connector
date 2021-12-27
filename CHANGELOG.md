@@ -3,10 +3,13 @@
 
 ## [2.3.4]
 
+### Added
+
+- Added Cisco Meraki Network Devices support. Sync all network and inventory devices under an Organization.
+
 ### Fixed
 
-- LDAP utf-8 encoding/decoding issues
-- Prevent names collision in mapping during connector execution
+- LDAP utf-8 encoding/decoding issues 
 
 ## [2.3.3]
 
