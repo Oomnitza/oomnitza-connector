@@ -44,6 +44,19 @@ ___
     - [Linux Environment](#linux-environment)
     - [Windows Environment](#windows-environment)
     - [OS X Environment](#os-x-environment)
+  - [Containerized Environment Setup](#containerized-environment-setup)
+    - [Overview](#overview)
+    - [Before you start](#before-you-start)
+      - [Download the GitHub repository](#download-the-github-repository)
+      - [Install the GitHub repository](#install-the-github-repository)
+    - [Download and install Docker Desktop](#download-and-install-docker-desktop)
+    - [Run the local connector with Docker Compose](#run-the-local-connector-with-docker-compose)
+      - [Initial configuration](#initial-configuration) 
+      - [Modify the config.ini file](#modify-the-config.ini-file)
+      - [Run the local connector](#run-the-local-connector)
+    - [Add service examples](#add-service-examples)
+      - [LDAP service](#ldap-service)
+      - [CSV Assets service](#csv-assets-service)
   - [Connector Configs](#connector-configs)
     - [Common optional settings](#common-optional-settings)
     - [Oomnitza Configuration](#oomnitza-configuration)
@@ -59,6 +72,9 @@ ___
   - [Running the connector server](#running-the-connector-server)
   - [Running the connector client](#running-the-connector-client)
     - [Setting the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode)
+      - [SaaS authorization item](#saas-authorization-item)
+      - [Oomnitza authorization item](#oomnitza-authorization-item)
+      - [Local inputs item](#local-inputs-item)
       - [Setting the export file connector](#setting-the-export-file-connector)
     - [Setting the connector to run in upload mode](#setting-the-connector-to-run-in-upload-mode)
       - [Setting the connector to run as an automated task for upload mode](#setting-the-connector-to-run-as-an-automated-task-for-upload-mode)
@@ -159,26 +175,89 @@ For OS X environment you have to install the build tools using the following com
 
 ## Containerized Environment Setup
 
-### Prerequisites
-In order to run the following instructions, you will need to install Docker Desktop. You can find the installation instructions 
-for your operating system on the [website](https://www.docker.com/products/docker-desktop).
+### Overview
 
-### Run the Oomnitza Connector with Docker Compose
-Before you can start an Oomnitza Connector using Docker compose you need to create a directory on a local machine
-to save the connector configuration file template, put the path to the docker compose configuration file in volume sections
-instead of `/path/on/local/machine` and run the command:
+You use the local connector to run basic integrations and to run extended integrations locally. 
+To run basic integrations, you must install and configure the local connector.
 
+You can run extended integrations in the Oomnitza Cloud, or you can use the local connector to run extended integrations locally. 
+
+For extended integrations, you can use the local connector to fulfill one or more of the following requirements:
+ - To access systems that cannot be accessed from the Oomnitza Cloud
+ - To store credentials locally. That is, you don’t want to store connection credentials in the Oomnitza Cloud.
+ - To connect to systems such as Microsoft Endpoint Configuration Manager (MECM), Lightweight Directory Access Protocol (LDAP), and VMWare VCenter
+
+### Before you start
+
+To run the local connector in a docker container, you must:
+ - Download and install the GitHub repository
+ - Download and install Docker Desktop
+
+#### Download the GitHub repository
+ - Go to the [Oomnitza Connector](https://github.com/Oomnitza/oomnitza-connector#connector-configs) page on GitHub.
+ - Scroll to the top of the page, click **Code**, and then click **Download Zip**.
+
+#### Install the GitHub repository
+
+You create a directory to download and install the GitHub repository on a local drive.
+
+For example, in Windows, you create a directory called **myconfig** in this file path: `C:\oomnitza\connector\myconfig`
+
+In Linux, you create a directory called **myconfig** in this file path: `/home/myconfig`
+
+#### Download and install Docker Desktop
+
+Click a link to download Docker Desktop:
+ - [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop)
+ - [Docker Desktop for Linux](https://hub.docker.com/search?offering=community&operating_system=linux&q=&type=edition)
+ - [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac?utm_source=docker&utm_medium=webreferral&utm_campaign=dd-smartbutton&utm_location=header)
+
+### Run the local connector with Docker Compose
+
+#### Initial configuration
+
+To start the local connector using Docker Compose, you must complete these steps:
+ 1. Save the template for the connector configuration file, `docker-compose.yml`, in the directory, for example **myconfig**, that you created.
+ 2. Open the `docker-compose.yml` file and replace `/path/on/local/machine` in the volumes section with the path on your local machine.
+
+    **Windows**: Replace `/path/on/local/machine` with `C:\oomnitza\connector\myconfig`.
+    
+    **Linux**: Replace `/path/on/local/machine` with `/home/myconfig`.
+
+ 3. Open a command line in the directory that you created, for example myconfig, and issue the following command:
+
+    
     docker-compose up generate-ini
 
-This command will copy the generated configuration file to the directory on your local machine. <br>
-Then make the necessary changes to this configuration file.<br>
-After that run the following command to start the Oomnitza Connector:
+**Result**
+
+The generated configuration file (`config.ini`) is copied to the directory on your local machine.
+
+#### Modify the config.ini file
+ 
+To set up the local connector for your basic or extended integration, and to connect the local connector to your Oomnitza instance, you must modify the `config.ini` file. The `config.ini` file tells the local connector which Oomnitza Cloud instance to connect to and which basic or extended integration the local connector should serve up to the Oomnitza Cloud instance.
+
+If you intend to run the local connector solely to connect to systems that are behind a firewall, you only need to maintain the [oomnitza section] and one or more of the managed sections in the `config.ini` file.
+
+For more information, see [Setting the connector to run in managed mode](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md#setting-the-connector-to-run-in-managed-mode). 
+
+#### Run the local connector
+
+To run the local connector, issue the following command:
 
     docker-compose up oomnitza-connector -d
 
-The docker container will run in detached mode (as a background process).<br><br>
-If you need to run other kinds of connectors it’s possible to add one more service to the docker compose configuration file. 
-For an example, for `ldap`:
+**Result**
+
+The docker container will run in detached mode. That is, as a background process.
+
+### Add service examples
+
+If you need to run extended integrations, you can add an additional service to the Docker Compose configuration file,  `docker-compose.yml`.
+
+#### LDAP service
+
+For LDAP, you add:
 
     oomnitza-connector-ldap:
       image: oomnitza/oomnitza-connector:latest
@@ -186,7 +265,9 @@ For an example, for `ldap`:
       volumes:
         - /path/on/local/machine:/home/appuser/config/
 
-Another example to run `csv_assets`:
+#### CSV Assets service
+
+For CSV assets, you add:
 
     oomnitza-connector-csv-assets:
       image: oomnitza/oomnitza-connector:latest
@@ -195,8 +276,9 @@ Another example to run `csv_assets`:
         - /path/on/local/machine:/home/appuser/config/
         - /another/path/on/local/machine:/home/appuser/exp/
 
-The CSV file with the assets inside should be stored in some directory on the local machine, the path inside the container 
-should be defined in the configuration file (`/home/appuser/exp/file_name.csv`). An example of configuration:
+The CSV file that contains the asset records should be stored in a directory on the local machine, the path in the container should be defined in the configuration file. For example, /home/appuser/exp/<file_name>.csv.
+
+Example
 
     [csv_assets]
     enable = True
@@ -204,9 +286,10 @@ should be defined in the configuration file (`/home/appuser/exp/file_name.csv`).
     filename = /home/appuser/exp/assets.csv
     directory = 
     mapping.BARCODE = {"source": "Barcode"}
+ 
+#### Important
 
-**Note!** If you're running Docker on a Windows 10 desktop, it might be necessary to surround the Windows folder path with single 
-or double quotes in the volumes section.
+If you run Docker on a Windows 10 desktop, you might need to enclose the Windows folder path with single or double quotes in the volumes section.
 
 
 ## Connector Configs
@@ -878,31 +961,45 @@ only the `[oomnitza]` section to be configured within the .ini file to operate
 
 ### Setting the connector to run in managed mode
 
-This is the main mode for the connector starting from the version 2.2.0
+You configure the local connector to run in `managed` mode when you want the local connector to deliver the asset and the user data for extended integrations. That is, you don’t want to use the cloud connector to manage the delivery of data.
 
-To run the connector in the `managed` mode you have to start it using any of these two commands
+In `managed` mode, the scheduling, mapping, and other parameters are configured in the Oomnitza cloud and the local connector points to them and maintains the credentials. The reasons for running the local connector in `managed` mode are as follows:
+ - You want to store credentials locally rather than storing the credentials in the Oomnitza Cloud.
+ - You want to access systems behind firewalls or in local data centers that are not accessible from the Oomnitza Cloud.
 
-    python connector.py managed
-    python connector.py
+In the `configuration.ini` file, you must create a new section for each of the extended integrations that you want to use. 
 
-The `managed` mode is used to run the connector configuration stored in the Oomnitza cloud. In the `managed` mode the schedule/mapping and other parameters are 
-configured within the Oomnitza cloud and normally the only reason to use the `managed` connector for the on-premise installation is the willing of own local secret storage usage.
+The name of the section comprises the combination of the following two strings separated by a period and enclosed in square brackets: 
+ - `managed`
+ - Integration **ID**
 
-In order to configure the managed connector you have to create a new section in the configuration .ini file. The name of the seiction is the concatenation of two strings:
-- `managed`
-- the ID of the integration in Oomnitza cloud (visible in the Web UI on the integration configuration details page)
+Example: `[managed.268]`
 
-For example, for the configuration with ID = 67, the section must be named as `managed.67`
+**Note**
 
-This section must contain two items:
-`saas_authorization`: the JSON specified dictionary with the ready-to-use HTTP headers and/or query params used for the authorization in the external data source API.
-The structure of the JSON is the following:
-    
+On the Settings page, click an integration tile. Look for the value for the **ID** parameter in the **URL**.  
+
+For example, the format of the **URL** is `https://<instance_name>.oomnitza.com/settings/connectors?id=268&type=users&view=integrations`.
+
+When you create a `managed` section, you must provide the credentials that are used when the integration is run. Because of security restrictions, you cannot use the credentials that are stored for the connectors in the Oomnitza Cloud instance. You can only use `basic` and `token based authorizations` that you pass in the header or params section of the API. The local connector does not support `OAuth 2` or `AWS based authentication`.  If you require `OAuth 2` or `AWS based authentication`, you could use the Cloud Connector  and enable certain routes using Mutual Transport Layer Security (mTLS) to enhance the security of the API calls. 
+
+To configure a managed connector, the managed section can contain the following items:
+ 
+ - saas_authorization
+ - oomnitza_authorization
+ - local_inputs
+
+#### SaaS authorization item
+
+The `saas_authorization` item is mandatory. It is a JSON defined dictionary with ready-to-use `HTTP headers` or `HTTP headers` and `query parameters` that are used to authorize with the external data source API or the **ID** of the stored credential in Oomnitza. 
+
+To specify the `header` and `parameters`, the JSON format is as follows: 
+
     {"headers": <dictionary with the key-value specification of headers>, "params": <dictionary with the key-value specification of headers>}
-    
-The `headers` or `params` or both must be set. Examples:
+ 
+The `headers` or `params` or both `headers` and `params` must be set. 
 
-Imagine the system, where the special authorization token `XYZ` must be passed as the header named `authorization` or as the query parameter with the same name
+Let’s say a system must pass a special `authorization token` called `xyz` in the `authorization header` or as a `query parameter` called authorization:
 
     {"headers": {"authorization": "XYZ"}}                   # OK
     {"headers": {"authorization": "XYZ"}, "params": {}}     # OK
@@ -910,57 +1007,67 @@ Imagine the system, where the special authorization token `XYZ` must be passed a
     {"params": {"authorization": "XYZ"}, "headers": {}}     # OK
     
     {"params": {}, "headers": {}}      # NOT OK - headers and params not set
-
-The exception from this rule is the session-based auth scenarios where the headers and params cannot be defined initially and will be generated dynamically
-
-`oomnitza_authorization`: Optional. The Oomnitza API token of user on behalf of who the connector sync will be triggered and all the changes wil lbe brought. Can be just not set. If not set the same
- user as defined in the `[oomnitza]` section will be used
-
-`local_inputs`: Optional. The alternate additional storage for the inputs to be used instead of ones coming from the cloud. Must be used only if the integration
-requires some extra secrets filled in in Oomnitza WebUI but you want to keep these secrets locally.
-
-Example #1: the config.ini file for the stored integration with ID = 67 and auth header `Authorization: Bearer ABC`:
  
+**Exception**
+
+In `session-based authorization` scenarios, `headers` and `parameters` cannot be defined initially because they are automatically generated.
+
+#### Oomnitza authorization item
+
+The `oomnitza_authorization` item is optional. The API token of the user who runs the integration. If it is not set, the user that is defined in the `[oomnitza]` section is used.
+
+#### Local inputs item
+
+The `local_inputs` item is optional unless an integration requires additional secrets that must be passed to the Oomnitza GUI, and you want to store these secrets locally.
+
+**Scenario 1**
+
+The `config.ini` file for an extended integration with an **ID** of 67, which uses an `authorization header`.
+ `Authorization: Bearer ABC`:
+
     [oomnitza]
     url = https://example.oomnitza.com
     api_token = i_am_oomnitza_api_token_1
-
+    
     [managed.67]
     oomnitza_authorization = i_am_oomnitza_api_token_2
-    saas_authorization = {"headers": {"Authorizaton": "Bearer ABC"}}
+    saas_authorization = {"headers": {"Authorization": "Bearer ABC"}}
+ 
+**Scenario 2**
 
-Example #2: the config.ini file for the stored integration with ID = 15 and session-based auth flow where all the required inputs are stored in the Oomnitza cloud:
+The `config.ini` file for an extended integration with an **ID** of 15 that uses a `session-based authorization` flow and where all the required inputs are stored in the Oomnitza Cloud.
 
     [oomnitza]
     url = https://example.oomnitza.com
     api_token = i_am_oomnitza_api_token_1
-
+    
     [managed.15]
     oomnitza_authorization = i_am_oomnitza_api_token_2
+ 
+**Scenario 3**
 
-Example #2: the config.ini file for the stored integration with ID = 34 and session-based auth flow where all the required inputs are stored locally:
-
+The `config.ini` file for an extended integration with an **ID** of 34 that uses a `session-based authorization` flow and where all the required inputs are stored locally.
+    
     [oomnitza]
     url = https://example.oomnitza.com
     api_token = i_am_oomnitza_api_token_1
-
+    
     [managed.34]
     oomnitza_authorization = i_am_oomnitza_api_token_2
     local_inputs = {"username": "john.smith", "password": "supErs3cr3T"}
 
-
 #### Setting the export file connector
 
-"Export file" connector is the subset of the managed connectors. The main difference between the "export file" connector and all the other connectors is that 
-it works in an reverse mode - it fetches the data from Oomnitza, not brings data to it. The result of sync of the "export file" connector is the .CSV file with the
+"Export file" connector is the subset of the `managed` connectors. The main difference between the "export file" connector and all the other connectors is that 
+it works in an `reverse` mode - it fetches the data from Oomnitza, not brings data to it. The result of sync of the "export file" connector is the .CSV file with the
 data from Oomnitza (assets or users).
 
-The configuration for the managed connector is the same as as for the regular managed connectors except for 2 differences
+The configuration for the `managed` connector is the same as as for the regular `managed` connectors except for 2 differences
 
 1) The section name of the "export file" connector is named with the `managed_reports`, not `managed`
 2) The section `managed_reports` does not need the `saas_authorization` to be set because there is no SaaS to deal with, we deal only with Oomnitza
 
-The full example of the config.ini file for the stored "export file" integration with ID = 68 :
+The full example of the config.ini file for the stored "export file" integration with **ID** = 68 :
 
     [oomnitza]
     url = https://example.oomnitza.com
@@ -1189,7 +1296,7 @@ Set the field mapping related to computers in the `[casper]` section and set **s
     'general.os_build'
     'general.os_type'
     'general.os_version'
-    'general.percentage_used'
+    'general.percentage_used'Containerized Environment Setup
     'general.phone_number'
     'general.serial_number'
     'general.supervised'
