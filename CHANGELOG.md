@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.6]
+
+### Added
+
+- VMware vCenter devices connector
+
 ## [2.3.5]
 
 ### Added 
