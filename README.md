@@ -31,6 +31,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
 * ServiceNow [https://www.servicenow.com/](https://www.servicenow.com/)
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
+* vCenter [https://www.vmware.com](https://www.vmware.com)
 * Workday [https://www.workday.com](https://www.workday.com)
 * ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
@@ -102,6 +103,7 @@ ___
       - [ServiceNow Configuration](#servicenow-configuration)
       - [SimpleMDM Configuration](#simplemdm-configuration)
       - [Tanium Configuration](#tanium-configuration)
+      - [vCenter Configuration](#vcenter-configuration)
       - [Workday Configuration](#workday-configuration)
       - [Zendesk Configuration](#zendesk-configuration)
   - [Advanced usage](#advanced-usage)
@@ -496,6 +498,12 @@ An example generated `config.ini` follows.
     password = ***
     domain =
     view =
+
+    [vcenter]
+    enabled = False
+    url = https://api_host
+    username = administrator@vsphere.local
+    password = change-me
 
     [workday]
     enable = False
@@ -1783,6 +1791,18 @@ If these not available attributes will be mapped on UI, null values will be push
 ##### Default Field Mappings
     No default mappings
 
+
+#### vCenter Configuration
+`url`: The API host. For example: `https://{api_host}`
+
+`username`: The username used to create a session to make vCenter REST API requests.
+
+`password`: The password used to create a session to make vCenter REST API requests. <br>
+
+**Note**: The vCenter connector supports the product version v6.5 - v7.0 U1. 
+
+##### Default Field Mappings
+    No default mappings
 
 #### Workday Configuration
 Oomnitza Connector is utilizing the Workday Report-as-a-Service (RaaS) feature. You have to configure the Custom Report 

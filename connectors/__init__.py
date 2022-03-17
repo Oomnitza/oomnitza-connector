@@ -25,6 +25,7 @@ EnabledConnectors = (
     'servicenow',
     'simplemdm',
     'tanium',
+    'vcenter',
     'workday',
     'zendesk',
 )
