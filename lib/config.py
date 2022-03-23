@@ -323,8 +323,9 @@ def get_default_ini():
     Calls example_ini_settings() on each found connector.
     :return: the contents of the INI file.
     """
-    sections = {}
     from connectors import EnabledConnectors
+
+    sections = {}
     prefix = 'connectors.'
 
     for modname in [prefix+name for name in EnabledConnectors]:
@@ -347,20 +348,25 @@ def get_default_ini():
         except Exception as exp:
             sections[name] = [('enable', 'False'), ("# Exception: {0}".format(str(exp)), None)]
 
-    return format_sections_for_ini(sections)
+    return format_sections_for_ini(sections, EnabledConnectors)
 
 
-def format_sections_for_ini(sections):
+def format_sections_for_ini(sections, enabled_connectors):
     parts = []
-    for section in ['oomnitza'] + sorted([section for section in sections.keys() if section != 'oomnitza']):
-        parts.append('[{0}]'.format(section))
-        for key, value in sections[section]:
+
+    for connector, config in sorted(enabled_connectors.items(), key=lambda x: x[1]['order']):
+
+        connector_label = config.get('label', connector)
+        parts.append('[{0}]'.format(connector_label))
+
+        for key, value in sections[connector]:
             if not isinstance(value, str):
                 value = json.dumps(value)
 
             tpl = "{0} = {1}"
             if '\n' in value:
                 tpl = "{0}:{1}"
+
             parts.append(tpl.format(key, value))
         parts.append('')
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.7]
+
+### Removed
+
+- Deprecated connectors (docs)
+
 ## [2.3.6]
 
 ### Added

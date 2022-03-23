@@ -22,9 +22,26 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
     """
     Settings = {
         # NOTE: it is expected for on-premise installation to set this 2 params to be set in the .ini file
-        'saas_authorization':       {'order': 1, "default": {}},
-        'oomnitza_authorization':   {'order': 2, "default": {}},
-        'local_inputs':             {'order': 3, "default": {}}
+        'saas_authorization': {
+            'order': 1,
+            'example': {'params': {'api-token': 'saas-api-token'}, 'headers': {'Authorization': 'Bearer Example'}},
+            'default': {}
+        },
+        'oomnitza_authorization': {
+            'order': 2,
+            'example': 'oomnitza-api-token',
+            'default': {}
+        },
+        'local_inputs': {
+            'order': 3,
+            'example': {'username': 'username@example.com', 'password': 'ThePassword'},
+            'default': {}
+        },
+        'test_run': {
+            'order': 4,
+            'example': False,
+            'default': False
+        },
     }
 
     session_auth_behavior = None

@@ -10,30 +10,18 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
  can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can
  presently pull data from the following sources:
 
-* Airwatch [http://www.air-watch.com](http://www.air-watch.com/)
-* Azure Users [https://azure.microsoft.com](https://azure.microsoft.com)
-* BambhooHR [http://www.bamboohr.com](http://www.bamboohr.com/)
-* Jamf Pro (former Casper) [https://www.jamf.com/products/Jamf-Pro/](https://www.jamf.com/products/Jamf-Pro/)
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
-* Google mobile devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
 * KACE Systems Management Appliance [https://www.quest.com/kace/](https://www.quest.com/kace/) 
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
-* Meraki Network Devices [https://developer.cisco.com/meraki](https://developer.cisco.com/meraki/api-v1/#!get-network-devices)
-* Meraki Systems Manager [https://documentation.meraki.com/SM/Systems_Manager_Quick_Start](https://documentation.meraki.com/SM/Systems_Manager_Quick_Start)
 * Netbox [https://netbox.readthedocs.io/en/stable/](https://netbox.readthedocs.io/en/stable/)
-* Okta [https://www.okta.com](https://www.okta.com/)
-* OneLogin [https://www.onelogin.com](https://www.onelogin.com/)
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
 * SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
-* ServiceNow [https://www.servicenow.com/](https://www.servicenow.com/)
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
 * vCenter [https://www.vmware.com](https://www.vmware.com)
-* Workday [https://www.workday.com](https://www.workday.com)
-* ZenDesk [https://www.zendesk.com](https://www.zendesk.com/)
 * Plain CSV files
 
 There is also the support for the arbitrary set of the many others SaaS with the configuration fully managed within the Oomnitza Cloud
@@ -79,33 +67,21 @@ ___
       - [Setting the export file connector](#setting-the-export-file-connector)
     - [Setting the connector to run in upload mode](#setting-the-connector-to-run-in-upload-mode)
       - [Setting the connector to run as an automated task for upload mode](#setting-the-connector-to-run-as-an-automated-task-for-upload-mode)
-      - [Airwatch Configuration](#airwatch-configuration)
       - [CSV Assets Configuration](#csv-assets-configuration)
       - [CSV Users Configuration](#csv-users-configuration)
-      - [BambooHR Configuration](#bamboohr-configuration)
-      - [Jamf Configuration](#jamf-configuration)
       - [Chef Configuration](#chef-configuration)
       - [Google Chrome Devices](#google-chrome-devices)
-      - [Google Mobile Devices](#google-mobile-devices)
       - [Jasper Configuration](#jasper-configuration)
       - [KACE SMA Configuration](#kace-sma-configuration)
       - [LDAP Users Configuration](#ldap-users-configuration)
       - [LDAP Assets Configuration](#ldap-assets-configuration)
-      - [Azure Active Directory Users Configuration](#azure-active-directory-users-configuration)
-      - [Meraki Organisation Network Devices Configuration](#meraki-organisation-network-devices-configuration)
-      - [Meraki Systems Manager Configuration](#meraki-systems-manager-configuration)
       - [MobileIron Configuration](#mobileiron-configuration)
       - [Netbox Configuration](#netbox-configuration)
-      - [Okta Configuration](#okta-configuration)
-      - [OneLogin Configuration](#onelogin-configuration)
       - [Open-AudIT Configuration](#open-audit-configuration)
       - [SCCM Configuration](#sccm-configuration)
-      - [ServiceNow Configuration](#servicenow-configuration)
       - [SimpleMDM Configuration](#simplemdm-configuration)
       - [Tanium Configuration](#tanium-configuration)
       - [vCenter Configuration](#vcenter-configuration)
-      - [Workday Configuration](#workday-configuration)
-      - [Zendesk Configuration](#zendesk-configuration)
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -309,41 +285,16 @@ An example generated `config.ini` follows.
 
     [oomnitza]
     url = https://example.oomnitza.com
-    api_token =
+    api_token = 
     username = oomnitza-sa
     password = ThePassword
-
-    [airwatch]
+    
+    [managed.xxx]
     enable = False
-    url = https://apidev.awmdm.com
-    username = username@example.com
-    password = change-me
-    api_token = YOUR AirWatch API TOKEN
-    dep_uuid = 
-
-    [azureusers]
-    enable = False
-    tenant_id = 
-    client_id = 
-    secret = 
-    default_role = 25
-    default_position = Employee
-
-    [bamboohr]
-    enable = False
-    url = https://api.bamboohr.com/api/gateway.php
-    system_name = YOUR BambooHR SYSTEM NAME
-    api_token = YOUR BambooHR API TOKEN
-    default_role = 25
-    default_position = Employee
-
-    [casper]
-    enable = False
-    url = https://jss.jamfcloud.com/example
-    username = username@example.com
-    password = change-me
-    sync_type = computers
-    group_name = 
+    saas_authorization = {"params": {"api-token": "saas-api-token"}, "headers": {"Authorization": "Bearer Example"}}
+    oomnitza_authorization = oomnitza-api-token
+    local_inputs = {"username": "username@example.com", "password": "ThePassword"}
+    test_run = false
     
     [chef]
     enable = False
@@ -371,19 +322,14 @@ An example generated `config.ini` follows.
     default_position = Employee
     sync_field = USER
     
-    [google_mobile_devices]
-    enable = False
-    service_account_impersonate = username@example.com
-    service_account_json_key = {}
-    
     [jasper]
     enable = False
     wsdl_path = http://api.jasperwireless.com/ws/schema/Terminal.wsdl
     username = username@example.com
     password = change-me
-    storage = storage.db
     api_token = YOUR Jasper API TOKEN
-
+    storage = storage.db
+    
     [kace]
     enable = False
     url = https://KACE_SMA
@@ -391,12 +337,12 @@ An example generated `config.ini` follows.
     password = ***
     organization_name = Default
     api_version = 8
-
+    
     [ldap]
     enable = False
     url = ldaps://ldap.com:389
     username = cn=read-only-admin,dc=example,dc=com
-    password =
+    password = 
     base_dn = dc=example,dc=com
     group_dn = 
     protocol_version = 3
@@ -407,12 +353,12 @@ An example generated `config.ini` follows.
     groups_dn = []
     group_members_attr = member
     group_member_filter = 
-
+    
     [ldap_assets]
     enable = False
     url = ldaps://ldap.com:389
     username = cn=read-only-admin,dc=example,dc=com
-    password =
+    password = 
     base_dn = dc=example,dc=com
     group_dn = 
     protocol_version = 3
@@ -422,17 +368,7 @@ An example generated `config.ini` follows.
     group_members_attr = member
     group_member_filter = 
     sync_field = 24DCF85294E411E38A52066B556BA4EE
-
-    [meraki_network_devices]
-    enable = False
-    meraki_api_key = 
-    org_id = ******
-
-    [merakism]
-    enable = False
-    meraki_api_key = 
-    network_id = N_**************
-
+    
     [mobileiron]
     enable = False
     url = https://na1.mobileiron.com
@@ -440,35 +376,20 @@ An example generated `config.ini` follows.
     password = change-me
     partitions = ["Drivers"]
     api_version = 1
-
+    include_checkin_devices_only = True
+    last_checkin_date_threshold = 129600
+    
     [netbox]
     enable = False
     url = https://NETBOX
     auth_token = *******
-
-    [okta]
-    enable = False
-    url = https://example-admin.okta.com
-    api_token = YOUR Okta API TOKEN
-    default_role = 25
-    default_position = Employee
-    deprovisioned = false
-
-    [onelogin]
-    enable = False
-    url = https://api.us.onelogin.com/api/1/users
-    client_id = qwerty12345678901234567890
-    client_secret = qwerty12345678901234567890
-    default_role = 25
-    default_position = Employee
-    api_token = 
-
+    
     [open_audit]
     enable = False
     url = http://XXX.XXX.XXX.XXX
     username = 
     password = 
-
+    
     [sccm]
     enable = False
     server = server.example.com
@@ -477,50 +398,27 @@ An example generated `config.ini` follows.
     password = change-me
     authentication = SQL Server
     driver = 
-
-    [servicenow]
-    enable = False
-    url = https://xxx.service-now.com
-    username = ***
-    password = ***
-
+    
     [simplemdm]
     enable = False
     secret_access_key = ***
     device_groups = 
     device_types = computers,mobiledevices
     custom_attributes = 0
-
+    
     [tanium]
     enable = False
     url = https://TANIUM_SERVER
     username = ***
     password = ***
-    domain =
-    view =
+    domain = 
+    view = 
 
     [vcenter]
     enabled = False
     url = https://api_host
     username = administrator@vsphere.local
     password = change-me
-
-    [workday]
-    enable = False
-    report_url = 
-    username = change-me
-    password = ***
-    default_role = 25
-    default_position = Employee
-    
-    [zendesk]
-    enable = False
-    system_name = oomnitza
-    api_token = YOUR Zendesk API TOKEN
-    username = username@example.com
-    default_role = 25
-    default_position = Employee
-    load_organizations = false
 
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
@@ -1105,21 +1003,6 @@ There are many ways to automate the sync, here are a few:
 * Linux: http://www.cyberciti.biz/faq/how-do-i-add-jobs-to-cron-under-linux-or-unix-oses/
 * Windows: http://bytes.com/topic/python/answers/32605-windows-xp-cron-scheduler-python
 
-#### Airwatch Configuration
-`url`: the url of the Airwatch server
-
-`username`: the Airwatch username to use
-
-`password`: the Airwatch password to use
-
-`api_token`: API token for the connection
-
-`dep_uuid`: Additional id of the Apple DEP group used to extend the data pulling from the Airwatch with additional details. Feature is supported by Airwatch starting from v9.2 
-
-##### Default Field Mappings
-    No default mappings
-
-
 #### CSV Assets Configuration
 `filename`: CSV file with assets inside
 
@@ -1141,224 +1024,6 @@ There are many ways to automate the sync, here are a few:
 
 ##### Default Field Mappings
     No default mapping. Everything should be defined in the config
-
-
-#### BambooHR Configuration
-`url`: the url of the BambooHR server
-
-`system_name`: Identifier of your system in the Bamboo HR environment
-
-`api_token`: API token for the connection
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-
-##### Default Field Mappings
-    mapping.USER =           {'source': "workEmail"}
-    mapping.FIRST_NAME =     {'source': "firstName"}
-    mapping.LAST_NAME =      {'source': "lastName"}
-    mapping.EMAIL =          {'source': "workEmail"}
-    mapping.PHONE =          {'source': "mobilePhone"}
-    mapping.POSITION =       {'source': "jobTitle"}
-    mapping.PERMISSIONS_ID = {'setting': "default_role"}
-
-
-#### Jamf Configuration
-The `[casper]` section contains a similar set of preferences; your JSS URL, and the login credentials for an auditor
-account in Jamf (See the [Casper Suite Administrator’s Guide](http://resources.jamfsoftware.com/documents/products/documentation/Casper-Suite-9.63-Administrators-Guide.pdf?mtime=1420481585), pg. 42).
-
-`url`: the url of the Jamf server
-
-`username`: the Jamf username to use
-
-`password`: the Jamf password to use. Note: the Jamf API will **_NOT_** work with a password which contains `%` or `*`. `!` is an acceptable character to use.
-
-`sync_type`: Sets the type of data to pull from Jamf. Options are `computers` or `mobiledevices`. 
-**Note**: If you need to pull computers AND mobile devices info from Jamf, copy Jamf configuration section to the same `config.ini` and name it as `[casper.MDM]`. 
-Set the field mapping related to computers in the `[casper]` section and set **sync_type = computers**. Set the field mapping related to mobile devices in the `[casper.MDM]` section and set
- **sync_type = mobiledevices**
-
-`group_name`: Specifies the Group from which to load assets. If `group_name` is missing or empty, all assets will be loaded.
-  If present, only assets from this Group will be processed.
-
-##### List of currently supported Jamf external fields (computers)
-    'general.alt_mac_address'
-    'general.asset_tag'
-    'general.barcode_1'
-    'general.barcode_2'
-    'general.distribution_point'
-    'general.id'
-    'general.initial_entry_date'
-    'general.initial_entry_date_epoch'
-    'general.initial_entry_date_utc'
-    'general.ip_address'
-    'general.jamf_version'
-    'general.last_cloud_backup_date_epoch'
-    'general.last_cloud_backup_date_utc'
-    'general.last_contact_time'
-    'general.last_contact_time_epoch'
-    'general.last_contact_time_utc'
-    'general.mac_address'
-    'general.mdm_capable'
-    'general.name'
-    'general.netboot_server'
-    'general.platform'
-    'general.report_date'
-    'general.report_date_epoch'
-    'general.report_date_utc'
-    'general.serial_number'
-    'general.sus'
-    'general.udid'
-    'hardware.active_directory_status'
-    'hardware.available_ram_slots'
-    'hardware.battery_capacity'
-    'hardware.boot_rom'
-    'hardware.bus_speed'
-    'hardware.bus_speed_mhz'
-    'hardware.cache_size'
-    'hardware.cache_size_kb'
-    'hardware.make'
-    'hardware.model'
-    'hardware.model_identifier'
-    'hardware.nic_speed'
-    'hardware.number_processors'
-    'hardware.optical_drive'
-    'hardware.os_build'
-    'hardware.os_name'
-    'hardware.os_version'
-    'hardware.processor_architecture'
-    'hardware.processor_speed'
-    'hardware.processor_speed_mhz'
-    'hardware.processor_type'
-    'hardware.service_pack'
-    'hardware.smc_version'
-    'hardware.total_ram'
-    'hardware.total_ram_mb'
-    'location.building'
-    'location.department'
-    'location.email_address'
-    'location.phone'
-    'location.position'
-    'location.real_name'
-    'location.room'
-    'location.username'
-    'purchasing.applecare_id'
-    'purchasing.is_leased'
-    'purchasing.is_purchased'
-    'purchasing.lease_expires'
-    'purchasing.lease_expires_epoch'
-    'purchasing.lease_expires_utc'
-    'purchasing.life_expectancy'
-    'purchasing.os_applecare_id'
-    'purchasing.os_maintence_expires'
-    'purchasing.po_date'
-    'purchasing.po_date_epoch'
-    'purchasing.po_date_utc'
-    'purchasing.po_number'
-    'purchasing.purchase_price'
-    'purchasing.purchasing_account'
-    'purchasing.purchasing_contact'
-    'purchasing.vendor'
-    'purchasing.warranty_expires'
-    'purchasing.warranty_expires_epoch'
-    'purchasing.warranty_expires_utc'
-
-##### List of currently supported Jamf external fields (mobile devices)
-    'general.airplay_password'
-    'general.asset_tag'
-    'general.available'
-    'general.available_mb'
-    'general.battery_level'
-    'general.bluetooth_mac_address'
-    'general.capacity'
-    'general.capacity_mb'
-    'general.bluetooth_mac_address'
-    'general.cloud_backup_enabled'
-    'general.device_id'
-    'general.device_name'
-    'general.device_ownership_level'
-    'general.display_name'
-    'general.do_not_disturb_enabled'
-    'general.id'
-    'general.initial_entry_date_epoch'
-    'general.initial_entry_date_utc'
-    'general.ip_address'
-    'general.itunes_store_account_is_active'
-    'general.last_backup_time_epoch'
-    'general.last_backup_time_utc'
-    'general.last_cloud_backup_date_epoch'
-    'general.last_cloud_backup_date_utc'
-    'general.last_inventory_update'
-    'general.last_inventory_update_epoch'
-    'general.last_inventory_update_utc'
-    'general.locales'
-    'general.managed'
-    'general.model'
-    'general.model_display'
-    'general.model_identifier'
-    'general.modelDisplay'  # looks like the same as 'general.model_display'
-    'general.modem_firmware'
-    'general.name'
-    'general.os_build'
-    'general.os_type'
-    'general.os_version'
-    'general.percentage_used'Containerized Environment Setup
-    'general.phone_number'
-    'general.serial_number'
-    'general.supervised'
-    'general.tethered'
-    'general.udid'
-    'general.wifi_mac_address'
-    'location.building'
-    'location.department'
-    'location.email_address'
-    'location.phone'
-    'location.position'
-    'location.real_name'
-    'location.room'
-    'location.username'
-    'network.carrier_settings_version'
-    'network.cellular_technology'
-    'network.current_carrier_network'
-    'network.current_mobile_country_code'
-    'network.current_mobile_network_code'
-    'network.data_roaming_enabled'
-    'network.home_carrier_network'
-    'network.home_mobile_country_code'
-    'network.home_mobile_network_code'
-    'network.iccid'
-    'network.imei'
-    'network.roaming'
-    'network.voice_roaming_enabled'
-    'purchasing.applecare_id'
-    'purchasing.is_leased'
-    'purchasing.is_purchased'
-    'purchasing.lease_expires'
-    'purchasing.lease_expires_epoch'
-    'purchasing.lease_expires_utc'
-    'purchasing.life_expectancy'
-    'purchasing.po_date'
-    'purchasing.po_date_epoch'
-    'purchasing.po_date_utc'
-    'purchasing.po_number'
-    'purchasing.purchase_price'
-    'purchasing.purchasing_account'
-    'purchasing.purchasing_contact'
-    'purchasing.vendor'
-    'purchasing.warranty_expires'
-    'purchasing.warranty_expires_epoch'
-    'purchasing.warranty_expires_utc'
-    'security.block_level_encryption_capable'
-    'security.data_protection'
-    'security.file_level_encryption_capable'
-    'security.passcode_compliant'
-    'security.passcode_compliant_with_profile'
-    'security.passcode_present'
-    
-##### Default Field Mappings
-    No default mappings
 
 
 #### Chef Configuration
@@ -1423,28 +1088,6 @@ The `[chromebooks]` section contains the following attributes:
 ##### Default Field Mappings
 
     No default mappings. All mappings need to be defined in the config file.
-
-#### Google Mobile Devices
-
-NOTE: The Google mobile devices connector does not have a UI and must be configured using the config file.  The Google mobile devices management API reference with attributes description can be found [here](https://developers.google.com/admin-sdk/directory/v1/reference/mobiledevices).
-
-The following steps need to be taken to allow automated retrieval from Google Admin API:
-
- 1) [Enable API access for your G Suite domain](https://support.google.com/a/answer/60757)
- 2) Create a new project in [Google Developers Console](https://console.developers.google.com/) and enable the Admin SDK.
- 3) Create a service account in this project and delegate a domain-wide authority to it.  For more details, please refer to [Using OAuth 2.0 for Server to Server Applications](https://developers.google.com/identity/protocols/OAuth2ServiceAccount) and follow the instructions.
-The Oomnitza connector requires read-only API scope enable to successfully operate _`https://www.googleapis.com/auth/admin.directory.device.mobile.readonly`_
-
-The `[google_mobile_devices]` section contains the following attributes:
-
-`service_account_impersonate`: the email of the real G Suite administrator to be impersonated by the service account.
-
-`service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
-
-##### Default Field Mappings
-
-    No default mappings. All mappings need to be defined in the config file.
-
 
 #### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.
@@ -1552,43 +1195,6 @@ Default is "member" but can vary in different LDAP systems.
     No default mappings
 
 
-#### Azure Active Directory Users Configuration
-
-This relates to the `[azureusers]`:
-
-`tenant_id`: The ID of your tenant.
-
-`client_id`: The ID of the Service Principal used to access the user's data. 
-Check the [official MS docs](https://docs.microsoft.com/en-us/azure/active-directory/develop/howto-create-service-principal-portal) of how to create a service principal using Azure Portal. 
-
-`secret`: The Service Principal secret/key value
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-##### Default Field Mappings
-    No default mappings
-
-
-#### Meraki Organisation Network Devices Configuration
-`meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
- 
-`org_id` = Meraki organisation identifier.
-
-##### Default Field Mappings
-    No default mappings
-
-
-#### Meraki Systems Manager Configuration
-`meraki_api_key` = The API key used to access the Meraki API. Please follow the instructions from the "Enable API access" paragraph from the [official documentation](https://documentation.meraki.com/zGeneral_Administration/Other_Topics/The_Cisco_Meraki_Dashboard_API).
- 
-`network_id` = Meraki network identifier.
-
-##### Default Field Mappings
-    No default mappings
-
-
 #### MobileIron Configuration
 `url`: The full URI for the MobileIron server. For example: `https://na1.mobileiron.com`
 
@@ -1616,51 +1222,6 @@ The cloud instances are using v1 by default. For the CORE instances (on-premise 
 
 ##### Default Field Mappings
     No default mappings
-
-
-#### Okta Configuration
-`url`: The full URI for the Okta server. For example: `https://oomnitza-admin.okta.com`
-
-`api_token`: The Okta API Token.
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-`deprovisioned`: When it is `false` (default) the users with status `DEPROVISIONED` in Okta will not be pushed to Oomnitza.
-
-##### Default Field Mappings
-    mapping.USER =           {'source': "profile.login"},
-    mapping.FIRST_NAME =     {'source': "profile.firstName"},
-    mapping.LAST_NAME =      {'source': "profile.lastName"},
-    mapping.EMAIL =          {'source': "profile.email"},
-    mapping.PHONE =          {'source': "profile.mobilePhone"},
-    mapping.PERMISSIONS_ID = {'setting': "default_role"},
-
-
-#### OneLogin Configuration
-`url`: The full URI for the OneLogin server. For example: `https://api.us.onelogin.com/api/1/users`
-
-`client_id`: The Client ID used to connect to the API.
- 
-`client_secret`: The Client Secret used to connect to th API.
-
-`api_token`: The OneLogin API Token. 
-**Note:** OUTDATED. Is used for the old and outdated version of OneLogin API and left for compatibility reasons. 
-if this old API is used another url should be set in the configuration as `url`: `https://app.onelogin.com/api/v2/users.xml`. 
-If you have an issues during the connection to the OneLogin, please switch to the new API by defining the correct `client_id` and `client_secret` instead of `api_token`.
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-##### Default Field Mappings
-    mapping.USER =           {'source': "username"}
-    mapping.FIRST_NAME =     {'source': "firstname"}
-    mapping.LAST_NAME =      {'source': "lastname"}
-    mapping.EMAIL =          {'source': "email"}
-    mapping.PHONE =          {'source': "phone"}
-    mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
 #### Open-AudIT Configuration
@@ -1741,20 +1302,6 @@ for the currently logged in user will be used when making the connection to the 
 ##### Default Field Mappings
     No default mappings
 
-#### ServiceNow Configuration
-Note: the connector has been designed to work with the `New York` version of the ServiceNow API. 
-
-`url`: The ServiceNow instance url.
-
-`username`: The username used to authorize.
-
-`password`: The password used to authorize.
-
-
-##### Default Field Mappings
-    No default mappings
-
-
 #### SimpleMDM Configuration
 `secret_access_key`: The API keys used to authenticate. You can retrieve your API key by signing into your SimpleMDM account, visiting “Settings” and then selecting the “API” tab.
 
@@ -1795,7 +1342,7 @@ If these not available attributes will be mapped on UI, null values will be push
 #### vCenter Configuration
 `url`: The API host. For example: `https://{api_host}`
 
-`username`: The username used to create a session to make vCenter REST API requests.
+`username`: The username used to create a session to make vCenter REST API requests. 
 
 `password`: The password used to create a session to make vCenter REST API requests. <br>
 
@@ -1803,45 +1350,6 @@ If these not available attributes will be mapped on UI, null values will be push
 
 ##### Default Field Mappings
     No default mappings
-
-#### Workday Configuration
-Oomnitza Connector is utilizing the Workday Report-as-a-Service (RaaS) feature. You have to configure the Custom Report 
-and copy the JSON link generated for this report.
-
-`report_url`: The Custom Report JSON link.
-
-`username`: The Workday account's username used to access the report.
-
-`password`: The Workday account's password.
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-
-##### Default Field Mappings
-    mapping.PERMISSIONS_ID = {'setting': "default_role"}
-
-
-#### Zendesk Configuration
-`system_name`: The Zendesk system name to use. For example: `oomnitza`
-
-`api_token`: The Zendesk API Token.
-
-`username`: the Zendesk username to use.
-
-`default_role`: The numeric ID of the role which will be assigned to imported users. For example: `25`.
-
-`default_position`: The position which will be assigned to the user. For example: `Employee`.
-
-
-##### Default Field Mappings
-    mapping.USER =           {'source': "email"}
-    mapping.FIRST_NAME =     {'source': "name", 'converter': "first_from_full"}
-    mapping.LAST_NAME =      {'source': "name", 'converter': "last_from_full"}
-    mapping.EMAIL =          {'source': "email"}
-    mapping.PHONE =          {'source': "phone"}
-    mapping.PERMISSIONS_ID = {'setting': "default_role"}
 
 
 ## Advanced usage
