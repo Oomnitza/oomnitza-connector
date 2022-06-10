@@ -7,7 +7,6 @@ EnabledConnectors = {
         'label': 'managed.xxx',
         'order': 2
     },
-
     'chef': {
         'label': 'chef',
         'order': 3
@@ -67,5 +66,9 @@ EnabledConnectors = {
     'vcenter': {
         'label': 'vcenter',
         'order': 17
+    },
+    'workspaceone_devicesoftware': {
+        'label': 'workspaceone_devicesoftware',
+        'order': 18
     }
 }

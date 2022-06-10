@@ -22,6 +22,7 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
 * vCenter [https://www.vmware.com](https://www.vmware.com)
+* WorkspaceOne [https://www.workspaceone.com](https://www.workspaceone.com)
 * Plain CSV files
 
 There is also the support for the arbitrary set of the many others SaaS with the configuration fully managed within the Oomnitza Cloud
@@ -82,6 +83,7 @@ ___
       - [SimpleMDM Configuration](#simplemdm-configuration)
       - [Tanium Configuration](#tanium-configuration)
       - [vCenter Configuration](#vcenter-configuration)
+      - [WorkspaceOne Configuration](#workspace-one-configuration)
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -420,6 +422,13 @@ An example generated `config.ini` follows.
     username = administrator@vsphere.local
     password = change-me
 
+    [workspaceone_devicesoftware]
+    enable = False
+    subdomain = tech-dev
+    client_id = ***
+    client_secret = ***
+    region = na
+
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
 Oomnitza. You can use an existing user’s credentials for username and password, but best practice is to create a
@@ -471,7 +480,7 @@ set the mapping in Oomnitza for these data sources at the current moment.
 `api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used.
 
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
-Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Settings / Certificates" page.
+Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Configuration/ Security/ Certificates" page.
 
 ## Storage for Connector secrets
 
@@ -883,7 +892,7 @@ Example: `[managed.268]`
 
 **Note**
 
-On the Settings page, click an integration tile. Look for the value for the **ID** parameter in the **URL**.  
+On the Configuration page, click an integration tile. Look for the value for the **ID** parameter in the **URL**. 
 
 For example, the format of the **URL** is `https://<instance_name>.oomnitza.com/settings/connectors?id=268&type=users&view=integrations`.
 
@@ -1347,6 +1356,20 @@ If these not available attributes will be mapped on UI, null values will be push
 `password`: The password used to create a session to make vCenter REST API requests. <br>
 
 **Note**: The vCenter connector supports the product version v6.5 - v7.0 U1. 
+
+##### Default Field Mappings
+    No default mappings
+
+
+#### WorkspaceOne Configuration
+`client_id`: The WorkspaceOne Client ID, used to fetch access token.
+
+`client_secret`: The WorkspaceOne Client Secret, used to fetch access token.
+
+`region`: The WorkspaceOne region. ie. na, apac, emer or uat
+
+`subdomain`:  The subdomain of the url including
+
 
 ##### Default Field Mappings
     No default mappings

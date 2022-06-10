@@ -78,7 +78,7 @@ class Connector(BaseConnector):
         self.post(url, {'correlation_id': str(correlation_id), 'added': 1})
 
     def create_synthetic_finalized_failed_portion(
-            self, service_id, correlation_id, error, is_fatal=False
+            self, service_id, correlation_id, error, is_fatal=False, test_run=False
     ):
         url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
 
@@ -86,10 +86,21 @@ class Connector(BaseConnector):
             'correlation_id': str(correlation_id),
             'failed': 1,
             'error_message': error,
+            'test_run': test_run
         }
 
         if is_fatal:
             payload['error_type'] = FATAL_ERROR_FLAG
+
+        self.post(url, payload)
+
+    def create_synthetic_finalized_empty_portion(self, service_id, correlation_id):
+        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+
+        payload = {
+            'correlation_id': str(correlation_id),
+            'is_empty_run': True
+        }
 
         self.post(url, payload)
 
@@ -127,8 +138,8 @@ class Connector(BaseConnector):
         """
         url = f"{self.settings['url']}/api/v3/media_storage?filter=" \
               f"(creation_date gt {creation_date}) and " \
-              f"(created_by_type eq '{source_type}') and " \
-              f"(created_by_id eq '{source_id}')" \
+              f"(created_by_type eq '{source_type}')" \
+              f"&created_by_id={source_id}" \
               f"&sortby=creation_date asc"
         response = self.get(url)
         return response.json()
@@ -220,4 +231,8 @@ class Connector(BaseConnector):
 
     def get_global_variables_list(self):
         response = self.get(f'{self.settings["url"]}/api/v3/settings/global_variables')
+        return response.json()
+
+    def get_credential_details(self, credential_id: str,) -> dict:
+        response = self.get(f'{self.settings["url"]}/api/v3/auth/{credential_id}')
         return response.json()

@@ -255,8 +255,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                     list_response_links=response.links
                 )
                 result = self.render_to_native(self.list_behavior['result'])
+
                 if not result:
-                    break
+                    if iteration == 0:
+                        raise self.ManagedConnectorListGetEmptyInBeginningException()
+                    else:
+                        break
 
                 for entity in result:
                     yield entity
@@ -265,6 +269,9 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 self.update_rendering_context(
                     iteration=iteration
                 )
+
+        except self.ManagedConnectorListGetEmptyInBeginningException as exc:
+            raise exc
         except Exception as exc:
             logger.exception('Failed to fetch the list of items')
             if iteration == 0:
@@ -345,9 +352,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
                     self._add_desktop_software(item_details)
                     self._add_saas_information(item_details)
-                except (self.ManagedConnectorSoftwareGetException,
+                except (
+                    self.ManagedConnectorSoftwareGetException,
                     self.ManagedConnectorDetailsGetException,
-                    self.ManagedConnectorSaaSGetException) as e:
+                    self.ManagedConnectorSaaSGetException
+                ) as e:
                     yield list_response_item, str(e)
                 else:
                     yield item_details
@@ -356,7 +365,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             # this is a very beginning of the iteration, we do not have a started portion yet,
             # So create a new synthetic one with the traceback of the error and exit
             self.OomnitzaConnector.create_synthetic_finalized_failed_portion(
-                self.ConnectorID, self.gen_portion_id(), error=traceback.format_exc(), is_fatal=True
+                self.ConnectorID,
+                self.gen_portion_id(),
+                error=traceback.format_exc(),
+                is_fatal=True,
+                test_run=bool(self.settings.get('test_run'))
             )
             raise
         except self.ManagedConnectorListGetInMiddleException as e:
@@ -364,6 +377,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             # we are somewhere in the middle of the processing, send the traceback of the error attached to the portion and stop
             self.send_to_oomnitza({}, error=traceback.format_exc(), is_fatal=True)
             self.finalize_processed_portion()
+            raise
+        except self.ManagedConnectorListGetEmptyInBeginningException:
+            self.OomnitzaConnector.create_synthetic_finalized_empty_portion(
+                self.ConnectorID,
+                self.gen_portion_id(),
+            )
             raise
 
     def _add_desktop_software(self, item_details):
@@ -418,10 +437,14 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
     def _add_saas_information(self, item_details):
         try:
-            if self.saas_behavior is not None and self.saas_behavior.get('enabled') and self.saas_behavior.get('sync_key'):
+            if isinstance(self.saas_behavior, dict) and self.saas_behavior.get('enabled') and self.saas_behavior.get('sync_key'):
                 item_details['saas'] = {
                     'sync_key': self.saas_behavior['sync_key']
                 }
+
+                selected_saas_id = self.saas_behavior.get('selected_saas_id')
+                if selected_saas_id:
+                    item_details['saas']['selected_saas_id'] = selected_saas_id
 
                 saas_name = self.saas_behavior.get('name')
                 if saas_name:

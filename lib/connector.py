@@ -5,7 +5,7 @@ import logging
 import os
 from datetime import datetime, date
 from distutils.util import strtobool
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from uuid import uuid4
 
 import requests
@@ -117,6 +117,13 @@ class BaseConnector(object):
         """
         message_template = 'Failed to fetch the first block of data. The error is: {error}. The further processing is impossible'
 
+    class ManagedConnectorListGetEmptyInBeginningException(ManagedConnectorProcessingException):
+        """
+        Special exception used to be raised in certain cases when in the very beginning of processing
+        the managed connector has received a empty first page of data
+        """
+        message_template = 'The first block of data was empty.'
+
     class ManagedConnectorListGetInMiddleException(ManagedConnectorProcessingException):
         """
         Special exception used to be raised in certain cases when in the middle of processing
@@ -186,6 +193,7 @@ class BaseConnector(object):
         self.send_counter = 0
         self._session = None
         self.portion = self.gen_portion_id()
+        self._cached_credential_details = None
 
         for key, value in list(settings.items()):
             if key.startswith('mapping.'):
@@ -305,7 +313,7 @@ class BaseConnector(object):
         It supports loading mappings from Oomnitza API.
         :return: the default mappings
         """
-        # Connector mappings are stored in Oomnitza, so get them.
+        # NOTE: Connector mappings are stored in Oomnitza, so get them.
         default_mappings = copy.deepcopy(self.FieldMappings)
 
         if self.is_managed:
@@ -313,12 +321,22 @@ class BaseConnector(object):
             server_mappings = self.get_managed_mapping_from_oomnitza()
             for field, specification in server_mappings.items():
                 default_mappings[field] = {}
+
                 if specification['type'] == 'attribute':
-                    # fetch the value for the attribute from the data source
+                    # NOTE: Fetch the value for the attribute from the data source
                     default_mappings[field]['source'] = specification['value']
+
                 elif specification['type'] == 'value':
-                    # the value for the attribute is hardcoded and does not relate to the data source
+                    # NOTE: The value for the attribute is hardcoded and does not relate to the data source
                     default_mappings[field]['hardcoded'] = specification['value']
+
+                elif specification['type'] in ('catalog_input', 'credential_input'):
+                    # NOTE: Mappings for synthetic inputs like fields from software catalog or credential info
+                    default_mappings[field]['extra_input'] = {
+                        'type': specification['type'],
+                        'value': specification['value']
+                    }
+
         else:
             if self.settings.get('use_server_map', True) in TrueValues:
                 server_mappings = self.get_mapping_from_oomnitza()
@@ -554,6 +572,10 @@ class BaseConnector(object):
                         else:
                             self.sender(rec, explicit_error)
 
+                        # only 10 records for test connector run
+                        if bool(self.settings.get('test_run')) and self.processed_records_counter == 10:
+                            self.stop_sync()
+
             if connection_pool:
                 connection_pool.join(timeout=30)  # set non-empty timeout to guarantee context switching in case of threading
 
@@ -592,7 +614,8 @@ class BaseConnector(object):
             "data_type": self.RecordType,
             "insert_only": insert_only,
             "update_only": update_only,
-            "error": error
+            "error": error,
+            "test_run": bool(self.settings.get('test_run'))
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
         # otherwise use the name set as the `MappingName`; back compatibility with the `upload` mode for the non-managed connectors
@@ -669,15 +692,22 @@ class BaseConnector(object):
         missing_fields = set()
         for field, specs in list(field_mappings.items()):
             source = specs.get('source', None)
-            if source:
+            extra_input = specs.get('extra_input', None)
+
+            if source or extra_input:
                 if self.is_managed:
                     try:
-                        incoming_value = self.get_field_value_managed(source, escape_illegal_keys(incoming_record))
+                        if source:
+                            incoming_value = self.get_field_value_managed(source, escape_illegal_keys(incoming_record))
+                        else:
+                            incoming_value = self.get_extra_input_value(extra_input)
+
                     except Exception as e:
                         LOG.exception('Failed to render the value given in mapping')
                         raise self.ManagedConnectorRecordConversionException(source=source, error=str(e))
                 else:
                     incoming_value = self.get_field_value(source, incoming_record)
+
             else:
                 setting = specs.get('setting')
                 if setting:
@@ -751,6 +781,29 @@ class BaseConnector(object):
 
         if isinstance(value, _RawValue):
             return value.render()
+
+        return value
+
+    # noinspection PyUnresolvedReferences
+    def get_extra_input_value(self, extra_inputs: str) -> Optional[str]:
+        """
+        Implement the value retrieval support for the managed connectors using the Jinja2 templating engine
+        """
+        input_type = extra_inputs['type']
+        input_value = extra_inputs['value']
+
+        value = None
+
+        if input_type == 'catalog_input':
+            value = self.render_to_string(self.inputs_from_cloud.get(input_value, {}).get('value'))
+
+        elif input_type == 'credential_input':
+
+            if not self._cached_credential_details:
+                credential_id = self.settings['saas_authorization']['credential_id']
+                self._cached_credential_details = self.OomnitzaConnector.get_credential_details(credential_id)
+
+            value = self._cached_credential_details.get('name') if self._cached_credential_details else None
 
         return value
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.8]
+
+### Added
+
+- WorkspaceOne Connector for devices with apps/software
+- Support of 'completed with empty response' status
+
+### Updated
+
+- README.md to respect new system wordings
+
+### Fixed
+
+- Updated certifi version to fix certificate verify failed error
+- CSV Export issue that leads to the incorrect file processing
+
+
 ## [2.3.7]
 
 ### Removed
