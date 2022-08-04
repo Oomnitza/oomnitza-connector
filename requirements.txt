@@ -9,7 +9,6 @@ certifi>=2022.5.18.1
 cffi==1.12.3
 chardet==3.0.4
 cryptography==3.4.7
-enum34==1.1.6
 gevent==1.4.0
 google-api-python-client==1.7.7
 google-auth==1.6.2
@@ -34,7 +33,7 @@ PyJWT==2.0.1
 pyodbc==4.0.23
 pyOpenSSL==21.0.0
 python-dateutil==2.7.5
-python-ldap==3.2.0
+python-ldap==3.4.0
 requests==2.25.1
 requests-oauthlib==1.0.0
 rsa==4.7.2
