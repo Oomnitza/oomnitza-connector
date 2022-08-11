@@ -6,9 +6,7 @@ The further maintenance, support and development of the python2 based version is
 Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
 
 # The Oomnitza Connector
-Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that
- can be used to pull data from multiple sources and push it to your Oomnitza application. The connector can
- presently pull data from the following sources:
+Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that can be installed on your local machine. This local connector contains multiple integrations, which can be used to pull data from the following sources and push it to your Oomnitza application:
 
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
@@ -25,7 +23,40 @@ Oomnitza has created a unified connector, lovingly crafted using Python, which i
 * WorkspaceOne [https://www.workspaceone.com](https://www.workspaceone.com)
 * Plain CSV files
 
-There is also the support for the arbitrary set of the many others SaaS with the configuration fully managed within the Oomnitza Cloud
+## Before you begin
+You can use the local connector to create basic or extended integrations in Oomnitza.
+
+**Basic integrations**
+
+Basic integrations run on our local connector and can presently pull data from the sources listed above. To get started with a basic integration, procced to the next steps to begin the process of downloading the code from this GitHub repository. We'll guide you through the process of how to manually update the configuration file and push it to your Oomnitza instance. From there, you can map the integration fields to Oomnitza fields so that the information is visible in the Oomnitza UI.
+
+ ___
+
+**Extended integrations**
+
+![integrationtypes_basic_and_extended](https://user-images.githubusercontent.com/106762328/184131676-e1b0fe85-cef1-42db-b484-b73970259098.png)
+
+You can run extended integrations in the Oomnitza Cloud using our cloud connector, or using the local connector discussed above. While the initial setup and configuration of extended integrations is similar to that of a basic integration, once an extended integration is pushed to your Oomnitza instance you can use the Oomnitza UI to:
+  - Create and manage schedules
+ - Review detailed error logs
+ - Easily add mapping fields
+
+To setup an extended integration locally, follow the setup steps and [set the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode).You may wish to host an extended integration locally to fulfill one or more of the following requirements:
+ - To access systems that cannot be accessed from the Oomnitza Cloud
+ - To store credentials locally. That is, you don’t want to store connection credentials in the Oomnitza Cloud.
+ - To connect to systems such as Microsoft Endpoint Configuration Manager (MECM), Lightweight Directory Access Protocol (LDAP), and VMWare VCenter.
+
+Alternatively, you can create extended connector integrations in the Oomnitza Cloud. You can use our cloud connector to avail of even more features and benefits:
+
+ - Ease of setup and maintenance. Simply navigate to **Extended>New Integration** in your Oomnitza instance and follow the easy to install steps. No manual configuration is required.
+ - Secure storage of credentials in the Oomnitza Cloud. For detailed information refer to our [documentation](https://oomnitza.zendesk.com/hc/en-us/articles/360058760613-Adding-credentials-to-the-Oomnitza-vault).
+ -  Additional authentication options (such as OAuth and AWS)
+  - Ability to sync SaaS users. 
+ 
+ We also have more extended cloud integrations to choose from! 
+To view a complete list of our supported extended integrations navigate to **Configuration>Extended>New Integration** in your Oomnitza instance or checkout our [ documentation](https://oomnitza.zendesk.com/hc/en-us/sections/6552754147735-Extended-connector-integrations).
+
+See an extended integration not on our list? Check out our article on how to [request extended integrations](https://oomnitza.zendesk.com/hc/en-us/articles/360056773473-Requesting-custom-extended-integrations).
 ___
 
   - [Getting Started](#getting-started)
@@ -35,14 +66,13 @@ ___
     - [Windows Environment](#windows-environment)
     - [OS X Environment](#os-x-environment)
   - [Containerized Environment Setup](#containerized-environment-setup)
-    - [Overview](#overview)
     - [Before you start](#before-you-start)
       - [Download the GitHub repository](#download-the-github-repository)
       - [Install the GitHub repository](#install-the-github-repository)
     - [Download and install Docker Desktop](#download-and-install-docker-desktop)
     - [Run the local connector with Docker Compose](#run-the-local-connector-with-docker-compose)
       - [Initial configuration](#initial-configuration) 
-      - [Modify the config.ini file](#modify-the-config.ini-file)
+      - [Modify the config.ini file](#modify-the-configini-file)
       - [Run the local connector](#run-the-local-connector)
     - [Add service examples](#add-service-examples)
       - [LDAP service](#ldap-service)
@@ -83,7 +113,7 @@ ___
       - [SimpleMDM Configuration](#simplemdm-configuration)
       - [Tanium Configuration](#tanium-configuration)
       - [vCenter Configuration](#vcenter-configuration)
-      - [WorkspaceOne Configuration](#workspace-one-configuration)
+      - [WorkspaceOne Configuration](#workspaceone-configuration)
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -94,21 +124,16 @@ ___
 
 
 ## Getting Started
-The Oomnitza Connector can be hosted on Oomnitza's
- server cloud, free of charge, if the third party server is
- or can be made accessible from the Oomnitza Cloud. Contact us for more details!
- Organizations with dedicated internal services may prefer to run this connector
- in-house, behind the same firewall that prevents outside access.
-
 The most current version of this documentation can always be found on
  [GitHub](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md).
+ 
+ Use this local connector to run basic integrations and to run extended integrations locally. 
+ 
+To run basic integrations, follow the steps to install and configure the local connector.
 
-Since Oomnitza is highly customizable, there are many possibilities with the connector. Because of this, it is
- important to think ahead about what data you want to bring in and how you want to store it. Before we
- begin, take time to think about what information you want, and what Oomnitza fields you want filled out with data. 
- If the fields you want to map in haven’t been created yet, now is a good time to do so.
- (Refer to our [Guide to creating custom fields in Oomnitza](https://wiki.oomnitza.com/wiki/Creating_Fields_in_Oomnitza)
- to get started.)
+To run extended integrations locally, follow the steps to install the local connector and [set the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode). 
+
+If you would prefer to run extended integrations in the Oomnitza Cloud, refer to [Before you begin](#before-you-begin).
 
 ## System Requirements
 The Oomnitza Connector supports Linux, Windows, and Mac OS. 
@@ -154,18 +179,13 @@ For OS X environment you have to install the build tools using the following com
 
 
 ## Containerized Environment Setup
-
-### Overview
-
-You use the local connector to run basic integrations and to run extended integrations locally. 
-To run basic integrations, you must install and configure the local connector.
-
-You can run extended integrations in the Oomnitza Cloud, or you can use the local connector to run extended integrations locally. 
-
-For extended integrations, you can use the local connector to fulfill one or more of the following requirements:
- - To access systems that cannot be accessed from the Oomnitza Cloud
- - To store credentials locally. That is, you don’t want to store connection credentials in the Oomnitza Cloud.
- - To connect to systems such as Microsoft Endpoint Configuration Manager (MECM), Lightweight Directory Access Protocol (LDAP), and VMWare VCenter
+Before we begin installing the local connector, it is important to think ahead about what data you want to bring in and how you want to store in Oomnitza. Since Oomnitza is highly customizable, there are many possibilities. Before proceeding to the next steps, take time to think about what information you want, and what Oomnitza fields you want filled out with data. Complete the following steps in your Oomnitza instance: 
+ - Click **Configuration > Integrations**.
+ - In the **Basic** section for Asset or User Integrations, click the tile corresponding to the integration, such as Workspace ONE.
+ - In the **Mappings** section, map the integration fields to the Oomnitza fields.  
+- Select a unique identifier for the sync key, which will synchronize the data that is streamed from your integration to Oomnitza.
+ 
+ If the fields you want to map to Oomnitza haven’t been created yet, refer to our [Guide to creating custom fields in Oomnitza](https://oomnitza.zendesk.com/hc/en-us/articles/220045028-Creating-custom-fields).
 
 ### Before you start
 
@@ -432,8 +452,7 @@ An example generated `config.ini` follows.
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
 Oomnitza. You can use an existing user’s credentials for username and password, but best practice is to create a
-service account using your standard naming convention. (See the (documentation)[http://docs)
-for managing user accounts in Oomnitza.)
+service account using your standard naming convention. See the documentation for [managing user accounts in Oomnitza](https://oomnitza.zendesk.com/hc/en-us/sections/204396587-Managing-people).
 
 The remaining sections each deal with a single connection to an external service. The "enable" field is common to all
 connections and if set to "True" will enable this service for processing. Some fields are common to a type of
@@ -477,7 +496,7 @@ set the mapping in Oomnitza for these data sources at the current moment.
 
 `password`: the Oomnitza password to use
 
-`api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used.
+`api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used. For further information, refer to [Creating an API token](https://oomnitza.zendesk.com/hc/en-us/articles/360049276794-Creating-an-API-token).
 
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
 Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Configuration/ Security/ Certificates" page.
@@ -881,6 +900,10 @@ You configure the local connector to run in `managed` mode when you want the loc
 In `managed` mode, the scheduling, mapping, and other parameters are configured in the Oomnitza cloud and the local connector points to them and maintains the credentials. The reasons for running the local connector in `managed` mode are as follows:
  - You want to store credentials locally rather than storing the credentials in the Oomnitza Cloud.
  - You want to access systems behind firewalls or in local data centers that are not accessible from the Oomnitza Cloud.
+ 
+Once the configuration below is complete, you can manage your integration in Oomnitza by going to **Extended>New Integration** and selecting **Local** as your **Installation type**.
+
+**Getting Started**
 
 In the `configuration.ini` file, you must create a new section for each of the extended integrations that you want to use. 
 
@@ -892,11 +915,11 @@ Example: `[managed.268]`
 
 **Note**
 
-On the Configuration page, click an integration tile. Look for the value for the **ID** parameter in the **URL**. 
+On the **Configuration>Integrations** page, click an integration tile. Look for the value for the **ID** parameter in the **URL**. 
 
 For example, the format of the **URL** is `https://<instance_name>.oomnitza.com/settings/connectors?id=268&type=users&view=integrations`.
 
-When you create a `managed` section, you must provide the credentials that are used when the integration is run. Because of security restrictions, you cannot use the credentials that are stored for the connectors in the Oomnitza Cloud instance. You can only use `basic` and `token based authorizations` that you pass in the header or params section of the API. The local connector does not support `OAuth 2` or `AWS based authentication`.  If you require `OAuth 2` or `AWS based authentication`, you could use the Cloud Connector  and enable certain routes using Mutual Transport Layer Security (mTLS) to enhance the security of the API calls. 
+When you create a `managed` section, you must provide the credentials that are used when the integration is run. Because of security restrictions, you cannot use the credentials that are stored for the connectors in the Oomnitza Cloud instance. You can only use `basic` and `token based authorizations` that you pass in the header or params section of the API. The local connector does not support `OAuth 2` or `AWS based authentication`.  If you require `OAuth 2` or `AWS based authentication`, you could use the cloud connector and enable certain routes using Mutual Transport Layer Security (mTLS) to enhance the security of the API calls. 
 
 To configure a managed connector, the managed section can contain the following items:
  
@@ -970,6 +993,7 @@ The `config.ini` file for an extended integration with an **ID** of 34 that uses
     [managed.34]
     oomnitza_authorization = i_am_oomnitza_api_token_2
     local_inputs = {"username": "john.smith", "password": "supErs3cr3T"}
+    
 
 #### Setting the export file connector
 
