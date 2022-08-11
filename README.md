@@ -5,7 +5,7 @@ The further maintenance, support and development of the python2 based version is
 
 Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
 
-# The Oomnitza Connector
+# Oomnitza's local connector
 Oomnitza has created a unified connector, lovingly crafted using Python, which is a single application that can be installed on your local machine. This local connector contains multiple integrations, which can be used to pull data from the following sources and push it to your Oomnitza application:
 
 * Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
