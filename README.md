@@ -55,7 +55,7 @@ To set up an extended integration locally, complete the steps and [set the conne
 Alternatively, you can create extended connector integrations that run in the Oomnitza Cloud. When you run extended integrations in the Oomnitza cloud, you get more more benefits and features such as:
 
  - The onboarding wizard to set up instances in minutes.
- - The Oomnitza vault with built-in security for storing credentials in the Cloud. See [documentation](https://oomnitza.zendesk.com/hc/en-us/articles/360058760613-Adding-credentials-to-the-Oomnitza-vault).
+ - The Oomnitza vault with built-in security for storing credentials in the Cloud. See [Adding credentials to the Oomnitza vault](https://oomnitza.zendesk.com/hc/en-us/articles/360058760613-Adding-credentials-to-the-Oomnitza-vault).
  -  More authentication options such as OAuth and AWS.
   - The syncing of SaaS users.
  
@@ -140,7 +140,7 @@ To run basic integrations, follow the steps to install and configure the local c
 
 To run extended integrations locally, follow the steps to install the local connector and [set the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode). 
 
-If you would prefer to run extended integrations in the Oomnitza Cloud, refer to [Before you begin](#before-you-begin).
+If you would prefer to run extended integrations in the Oomnitza Cloud, refer to [extended integrations](#extended-integrations).
 
 ## System Requirements
 The Oomnitza Connector supports Linux, Windows, and Mac OS. 
@@ -189,7 +189,7 @@ For OS X environment you have to install the build tools using the following com
 
 ### Overview
 
-Before we begin installing the local connector, it is important to think ahead about what data you want to bring in and how you want to store in Oomnitza. Since Oomnitza is highly customizable, there are many possibilities. Before proceeding to the next steps, take time to think about what information you want, and what Oomnitza fields you want filled out with data. Complete the following steps in your Oomnitza instance: 
+Before we begin installing the local connector, it is important to think ahead about what data you want to bring in and how you want to store it in Oomnitza. Since Oomnitza is highly customizable, there are many possibilities. Before proceeding to the next steps, take time to think about what information you want, and what Oomnitza fields you want filled out with data. Complete the following steps in your Oomnitza instance: 
  - Click **Configuration > Integrations**.
  - In the **Basic** section for Asset or User Integrations, click the tile corresponding to the integration, such as Workspace ONE.
  - In the **Mappings** section, map the integration fields to the Oomnitza fields.  
@@ -506,7 +506,7 @@ set the mapping in Oomnitza for these data sources at the current moment.
 
 `password`: the Oomnitza password to use
 
-`api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used.For further information, refer to [Creating an API token](https://oomnitza.zendesk.com/hc/en-us/articles/360049276794-Creating-an-API-token).
+`api_token`: The API Token belonging to the Oomnitza user. If provided, `username` and `password` will not be used. For further information, refer to [Creating an API token](https://oomnitza.zendesk.com/hc/en-us/articles/360049276794-Creating-an-API-token).
 
 `user_pem_file`: The path to the PEM-encoded certificate containing the both private and public keys of the user. 
 Has to be used **_only_** if there is enabled two factor authentication in your environment. The certificate has to be also uploaded to Oomnitza in the "Configuration/ Security/ Certificates" page.
