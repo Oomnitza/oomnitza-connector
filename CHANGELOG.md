@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.3.9]
+
+### Added
+
+- Support of AWS IAM flow
+- Show error in the UI when max exceptions count are reached
+
+### Updated
+
+- python-ldap library 3.2.0 -> 3.4.0 version
+- Get rid of enum34 library
+
+### Fixed
+
+- Chef Integration handle empty nodes gracefully
+- Rogue Integration running forever issue
+
 ## [2.3.8]
 
 ### Added

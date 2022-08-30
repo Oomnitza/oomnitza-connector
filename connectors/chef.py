@@ -60,7 +60,8 @@ class BaseAudit(object):
         # process configured attribute extensions
         try:
             for platform in cls.AttributeExtension:
-                if platform in ['__default__', node['automatic']['platform']]:
+                platforms_list = cls.get_platforms_list(node)
+                if platform in platforms_list:
                     extensions = cls.AttributeExtension[platform]
                     for extension in extensions:
                         hardware[extension] = get_field_value(node, cls.AttributeExtension[platform][extension])
@@ -68,6 +69,15 @@ class BaseAudit(object):
             logger.exception('error: exception processing attribute extensions - %r' % cls.AttributeExtension)
 
         return {'hardware': hardware}
+
+    @classmethod
+    def get_platforms_list(cls, node):
+        platforms = ['__default__']
+        if cls.platform(node):
+            platforms.append(node['automatic']['platform'])
+        else:
+            logger.warning("Unknown 'platform' for node named - %r" % cls.name(node))
+        return platforms
 
     @classmethod
     def name(cls, node):
@@ -126,13 +136,13 @@ class BaseAudit(object):
     @classmethod
     def model(cls, node):
         # TODO is there a smart default we can use?
-        logger.warning('no default `model` lookup - %r' % cls.name(node))
+        logger.warning('no default `model` lookup for node named - %r' % cls.name(node))
         return None
 
     @classmethod
     def serial_number(cls, node):
         # TODO is there a smart default we can use?
-        logger.warning('no default `serial_number` lookup - %r' % cls.name(node))
+        logger.warning('no default `serial_number` lookup for node named - %r' % cls.name(node))
         return None
 
 

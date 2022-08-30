@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import traceback
@@ -6,6 +7,7 @@ from typing import Optional
 import xmltodict
 
 from lib.api_caller import ConfigurableExternalAPICaller
+from lib.aws_iam import AWSIAM
 from lib.connector import BaseConnector
 from lib.error import ConfigError
 from lib.httpadapters import init_mtls_ssl_adapter, SSLAdapter
@@ -53,6 +55,8 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
     RecordType = None
     MappingName = None
     ConnectorID = None
+
+    MAX_ITERATIONS = 1000
 
     def __init__(self, section, settings):
         self.inputs_from_cloud = settings.pop('inputs', {})
@@ -213,7 +217,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         return secret['headers'], secret['params'], ssl_adapter
 
-    def get_list_of_items(self):
+    def get_list_of_items(self, iam_credentials: dict = None):
         iteration = 0
         try:
             self.update_rendering_context(
@@ -222,10 +226,10 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 list_response_headers={},
                 list_response_links={}
             )
-            while True:
+            while iteration < self.MAX_ITERATIONS:
                 api_call_specification = self.build_call_specs(self.list_behavior)
 
-                # check if we have to add the pagination extra things
+                # NOTE: Check if we have to add the pagination extra things
                 pagination_control = self.list_behavior.get('pagination')
                 if pagination_control:
                     # check the break early condition in case we could fetch the first page and this is the only page we have
@@ -240,7 +244,17 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                         api_call_specification['headers'].update(**extra_headers)
                         api_call_specification['params'].update(**extra_params)
 
-                auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+                if iam_credentials:
+                    iam_call_specification = copy.deepcopy(api_call_specification)
+                    iam_call_specification.update(**iam_credentials)
+
+                    iam_session_secret = self.OomnitzaConnector.get_aws_session_secret(**iam_call_specification)
+                    auth_headers = iam_session_secret['headers']
+                    auth_params = iam_session_secret['params']
+                    # NOTE: There are no required mTLS Certs for AWS API. So skip it
+                    ssl_adapter = None
+                else:
+                    auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
 
                 api_call_specification['headers'].update(**auth_headers)
                 api_call_specification['params'].update(**auth_params)
@@ -278,6 +292,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
             else:
                 raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
+
+        if iteration >= self.MAX_ITERATIONS:
+            logger.exception(f'Failed to fetch the list of items '
+                             f'Connector exceeded processing limit of {self.MAX_ITERATIONS} iterations')
+            raise self.ManagedConnectorListMaxIterationException(error='Reached max iterations')
 
     def get_oomnitza_auth_for_sync(self):
         """
@@ -319,6 +338,52 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             raise ConfigError(f'Managed connector #{self.ConnectorID}: local inputs have invalid format. Exiting')
         return inputs_from_local
 
+    def _load_list(self, iam_credentials: dict = None):
+        # NOTE: There are no Details and Software Behaviours for AWS Connectors
+        # So special IAM adjustments are not required
+        for list_response_item in self.get_list_of_items(iam_credentials=iam_credentials):
+            try:
+                if self.detail_behavior:
+                    item_details = self.get_detail_of_item(list_response_item)
+                else:
+                    item_details = list_response_item
+
+                self._add_desktop_software(item_details)
+                self._add_saas_information(item_details)
+            except (
+                self.ManagedConnectorSoftwareGetException,
+                self.ManagedConnectorDetailsGetException,
+                self.ManagedConnectorSaaSGetException
+            ) as e:
+                yield list_response_item, str(e)
+            else:
+                yield item_details
+
+    def _load_iam_list(self):
+        # NOTE: In the case of AWS IAM we should keep the same Exception behavior as in the
+        # paginated requests: different errors at the beginning and in the middle of the process
+        try:
+            credential_id = self.settings['saas_authorization']['credential_id']
+            iam = AWSIAM(managed_connector=self, credential_id=credential_id)
+            iam_policies = iam.get_policies_list()
+        except Exception as exc:
+            logger.exception('Failed to fetch AWS IAM Policies')
+            raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+
+        iteration = 0
+        for policy in iam_policies:
+            try:
+                iam_credentials = iam.get_role_credentials(policy=policy)
+            except Exception as exc:
+                logger.exception('Failed to fetch AWS IAM Credentials')
+                if iteration == 0:
+                    raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+                else:
+                    raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
+
+            yield from self._load_list(iam_credentials=iam_credentials)
+            iteration += 1
+
     def _load_records(self, options):
         """
         Process the given configuration. First try to download the list of records (with the pagination support)
@@ -337,29 +402,17 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             }
         )
 
-        # the managed sync happen on behalf of a specific user that is defined separately
+        # NOTE: The managed sync happen on behalf of a specific user that is defined separately
         oomnitza_access_token = self.get_oomnitza_auth_for_sync()
         self.OomnitzaConnector.settings['api_token'] = oomnitza_access_token
         self.OomnitzaConnector.authenticate()
 
         try:
-            for list_response_item in self.get_list_of_items():
-                try:
-                    if self.detail_behavior:
-                        item_details = self.get_detail_of_item(list_response_item)
-                    else:
-                        item_details = list_response_item
-
-                    self._add_desktop_software(item_details)
-                    self._add_saas_information(item_details)
-                except (
-                    self.ManagedConnectorSoftwareGetException,
-                    self.ManagedConnectorDetailsGetException,
-                    self.ManagedConnectorSaaSGetException
-                ) as e:
-                    yield list_response_item, str(e)
-                else:
-                    yield item_details
+            iam_roles = self.inputs_from_cloud.get('iam_roles', {}).get('value')
+            if iam_roles:
+                yield from self._load_iam_list()
+            else:
+                yield from self._load_list()
 
         except self.ManagedConnectorListGetInBeginningException as e:
             # this is a very beginning of the iteration, we do not have a started portion yet,
@@ -383,6 +436,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 self.ConnectorID,
                 self.gen_portion_id(),
             )
+            raise
+        except self.ManagedConnectorListMaxIterationException as e:
+            # This is due to the connector running in excess and either had a faulty break_early or
+            # the pagination/list request is getting the same page endlessly.
+            self.send_to_oomnitza({}, error=traceback.format_exc(), is_fatal=True)
+            self.finalize_processed_portion()
             raise
 
     def _add_desktop_software(self, item_details):

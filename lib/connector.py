@@ -129,7 +129,7 @@ class BaseConnector(object):
         Special exception used to be raised in certain cases when in the middle of processing
         the managed connector has failed to fetch the new page of data
         """
-        message_template = 'Failed to fetch the another block of data. The error is: {error}. The further processing is impossible'
+        message_template = 'Failed to fetch the next block of data. The error is: {error}. The further processing is impossible'
 
     class ManagedConnectorDetailsGetException(ManagedConnectorProcessingException):
         """
@@ -151,6 +151,13 @@ class BaseConnector(object):
         the managed connector has failed to fetch the software info for the entity
         """
         message_template = 'Failed to fetch the saas information. The error is: {error}'
+
+    class ManagedConnectorListMaxIterationException(ManagedConnectorProcessingException):
+        """
+        Special exception to be raised in cases when the processing of a managed connector
+        has iterated for MAX_ITERATIONS (1000 iterations) and would spin forever otherwise.
+        """
+        message_template = 'Connector exceeded processing limit. The error is: {error}'
 
     ConnectorID = None
     Settings = {}

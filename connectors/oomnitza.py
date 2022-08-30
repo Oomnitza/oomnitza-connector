@@ -236,3 +236,36 @@ class Connector(BaseConnector):
     def get_credential_details(self, credential_id: str,) -> dict:
         response = self.get(f'{self.settings["url"]}/api/v3/auth/{credential_id}')
         return response.json()
+
+    def get_aws_session_secret(
+        self,
+        url: str,
+        http_method: str,
+        params: dict,
+        headers: dict,
+        body: dict,
+        access_key: str,
+        secret_key: str,
+        session_token: str,
+        **kwargs
+    ) -> dict:
+        response = self.post(
+            f'{self.settings["url"]}/api/v3/auth/aws/session/secret',
+            data=dict(
+                url=url,
+                http_method=http_method,
+                params=params,
+                headers=headers,
+                body=body or '',
+                access_key=access_key,
+                secret_key=secret_key,
+                session_token=session_token
+            )
+        )
+        response_json = response.json()
+
+        return {
+            'headers': response_json.get('headers', {}),
+            'params': response_json.get('params', {}),
+            'certificates': response_json.get('certificates', {}),
+        }
