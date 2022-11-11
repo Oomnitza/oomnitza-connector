@@ -16,3 +16,8 @@ FATAL_ERROR_FLAG = 'Fatal Error'
 class MTLSType:
     PFX = 'pfx'
     CERT_KEY = 'cert_key'
+
+
+class ConfigFieldType:
+    STR = 'str'
+    MULTI_STR = 'multi_str'

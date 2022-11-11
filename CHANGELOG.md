@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.3.10]
+
+### Added
+
+- Support processing of multiple AWS Regions
+- Process initial AWS Credentials altogether with AWS IAM
+
+### Updated
+
+- Actualize README.md
+
+### Fixed
+
+- Multiply AWS IAM fixes
+
 ## [2.3.9]
 
 ### Added

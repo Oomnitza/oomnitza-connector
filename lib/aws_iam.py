@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import List
+from typing import List, Iterator
 from urllib.parse import unquote
 
 
@@ -35,6 +35,23 @@ class AWSIAM:
         return response_object
 
     def _get_user(self) -> str:
+        """
+        :response_object:
+        <GetUserResponse xmlns="https://iam.amazonaws.com/doc/2010-05-08/">
+            <GetUserResult>
+                <User>
+                    <Path>/</Path>
+                    <UserName>ow-34223.cross-account-read-only</UserName>
+                    <Arn>arn:aws:iam::376535914443:user/ow-34223.cross-account-read-only</Arn>
+                    <UserId>AIDAVPK2KC7FZFEX4SWKW</UserId>
+                    <CreateDate>2022-10-24T09:46:59Z</CreateDate>
+                </User>
+            </GetUserResult>
+            <ResponseMetadata>
+                <RequestId>c8068156-a61d-4931-959f-ced875abf797</RequestId>
+            </ResponseMetadata>
+        </GetUserResponse>
+        """
         api_call_specification = {
             'raise_error': True,
             'http_method': 'GET',
@@ -53,6 +70,22 @@ class AWSIAM:
         return user
 
     def _list_user_policies(self, user: str) -> List[str]:
+        """
+        :response_object:
+        <ListUserPoliciesResponse xmlns="https://iam.amazonaws.com/doc/2010-05-08/">
+            <ListUserPoliciesResult>
+                <IsTruncated>false</IsTruncated>
+                <PolicyNames>
+                    <member>AmazonEC2ReadOnlyAccess</member>
+                    <member>CrossAccountEC2ReadOnly</member>
+                    <member>OomnitzaaOw-34223IAM</member>
+                </PolicyNames>
+            </ListUserPoliciesResult>
+            <ResponseMetadata>
+                <RequestId>cae089b0-98a9-4cf0-b391-d4dc2439d762</RequestId>
+            </ResponseMetadata>
+        </ListUserPoliciesResponse>
+        """
         api_call_specification = {
             'raise_error': True,
             'http_method': 'GET',
@@ -67,25 +100,51 @@ class AWSIAM:
         }
 
         response_object = self._perform_aws_api_call(api_call_specification=api_call_specification)
+        policies_list = response_object['ListUserPoliciesResponse']['ListUserPoliciesResult']['PolicyNames']['member']
 
-        # It's possible to format of PolicyNames
-        # 1. two and more policies
-        # OrderedDict([('member', ['AssumeRoleOW30369', 'OW30369AccessRole2'])]
-        # 2. only one policy
-        # OrderedDict([('member', 'AssumeRoleOW30369')]
-
-        policies_list = list(response_object['ListUserPoliciesResponse']['ListUserPoliciesResult']['PolicyNames'].values())
-
-        if policies_list and isinstance(policies_list[0], list):
-            policies_list = policies_list[0]
+        # NOTE: PolicyNames can be presented as a list or string
+        if not isinstance(policies_list, list):
+            policies_list = [policies_list]
 
         return policies_list
 
-    def get_policies_list(self) -> List[str]:
-        policies_list = self._list_user_policies(user=self._user)
-        return policies_list
+    def _get_user_resources(self, user: str, policy: str) -> List[str]:
+        """
+        :response_object:
+        <GetUserPolicyResponse xmlns="https://iam.amazonaws.com/doc/2010-05-08/">
+            <GetUserPolicyResult>
+                <PolicyDocument>%7B%0A%20%20%20%20%22Version%22%3A%20%222012-10-17%22%2C%0A%20%20%20%20%22Statement%22%3A%20%5B%0A%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Sid%22%3A%20%22MultiAccountsEC2%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Effect%22%3A%20%22Allow%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Action%22%3A%20%22sts%3AAssumeRole%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Resource%22%3A%20%5B%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%22arn%3Aaws%3Aiam%3A%3A884019882798%3Arole%2FCrossAccountEC2ReadOnly%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%22arn%3Aaws%3Aiam%3A%3A819956701132%3Arole%2FCrossAccountEC2ReadOnly%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%22arn%3Aaws%3Aiam%3A%3A159485965151%3Arole%2FCrossAccountEC2ReadOnly%22%0A%20%20%20%20%20%20%20%20%20%20%20%20%5D%0A%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Sid%22%3A%20%22TestEC2%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Effect%22%3A%20%22Allow%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Action%22%3A%20%22sts%3AAssumeRole%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22Resource%22%3A%20%22arn%3Aaws%3Aiam%3A%3A724523256435%3Arole%2FCrossAccountEC2ReadOnly%22%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%5D%0A%7D</PolicyDocument>
+                <PolicyName>CrossAccountEC2ReadOnly</PolicyName>
+                <UserName>ow-34223.cross-account-read-only</UserName>
+            </GetUserPolicyResult>
+            <ResponseMetadata>
+                <RequestId>fc295fbc-528d-42c6-bb5f-2a9b370b5722</RequestId>
+            </ResponseMetadata>
+        </GetUserPolicyResponse>
 
-    def _get_user_policy(self, user: str, policy: str) -> str:
+        :PolicyDocument:
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "MultiAccountsEC2",
+                    "Effect": "Allow",
+                    "Action": "sts:AssumeRole",
+                    "Resource": [
+                        "arn:aws:iam::884019882798:role/CrossAccountEC2ReadOnly",
+                        "arn:aws:iam::819956701132:role/CrossAccountEC2ReadOnly",
+                        "arn:aws:iam::159485965151:role/CrossAccountEC2ReadOnly"
+                    ]
+                },
+                {
+                    "Sid": "TestEC2",
+                    "Effect": "Allow",
+                    "Action": "sts:AssumeRole",
+                    "Resource": "arn:aws:iam::724523256435:role/CrossAccountEC2ReadOnly"
+                }
+            ]
+        }
+        """
         api_call_specification = {
             'raise_error': True,
             'http_method': 'GET',
@@ -101,13 +160,53 @@ class AWSIAM:
         }
 
         response_object = self._perform_aws_api_call(api_call_specification=api_call_specification)
-
         policy_document = response_object['GetUserPolicyResponse']['GetUserPolicyResult']['PolicyDocument']
-        user_policy = json.loads(unquote(policy_document))['Statement']['Resource']
 
-        return user_policy
+        # NOTE: Statement can be presented as a list or dict
+        policy_statement = json.loads(unquote(policy_document))['Statement']
+        if not isinstance(policy_statement, list):
+            policy_statement = [policy_statement]
+
+        # NOTE: Statement can contain entities not related to IAM and Roles Assuming
+        policy_statement = [
+            statement
+            for statement in policy_statement
+            if statement['Action'] == 'sts:AssumeRole'
+        ]
+
+        statement_resources = []
+        for statement in policy_statement:
+            if statement['Action'] == 'sts:AssumeRole':
+                # NOTE: Resource can be presented as a list or string
+                statement_resource = statement['Resource']
+                if not isinstance(statement_resource, list):
+                    statement_resource = [statement_resource]
+
+                statement_resources.extend(statement_resource)
+
+        return statement_resources
 
     def _assume_role(self, user_policy: str) -> dict:
+        """
+        :response_object:
+        <AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
+            <AssumeRoleResult>
+                <AssumedRoleUser>
+                    <AssumedRoleId>AROASKIQ2WNP5N3WZI62Y:AssumeRoleSession1</AssumedRoleId>
+                    <Arn>arn:aws:sts::159485965151:assumed-role/CrossAccountEC2ReadOnly/AssumeRoleSession1</Arn>
+                </AssumedRoleUser>
+                <Credentials>
+                    <AccessKeyId>ASIASKIQ2WNPW2YXSZ5E</AccessKeyId>
+                    <SecretAccessKey>Kaul5Z2SeXl5rZnSEHc0BHGliZysXiNlLejrYqRo</SecretAccessKey>
+                    <SessionToken>FwoGZXIvYXdzEA8aDLrz6JP6KMH1qHuchiK2ATtq7D56CPBoSy5bQ3VX6uRwVJaNtPWLxX8pDZaf0Gq0iPAZ8zty/8MCruw+N0DVslcTCKENvfr3+ikOvs03ziGAK0nCuJVKy+RGhLitgWW2ahX1Ch7aP9HRD8sNLhgAVhXp372HLw7B98KTCr87AAoZBy7APZKE/+TQhnvFr2ziqYL+hj/nzCH0PbltVnpq6OqVGT1F3Viu3q4vzrBAti4tp3m3W421IYLFb/jTAlKEQaoMbQC7KLfJ35oGMi0E7Y32Axe2FlB/1l5LEeWdpON7rooSe8O6mgAcOd2YQvVsWhgzWcaRAEH3B1E=</SessionToken>
+                    <Expiration>2022-10-25T14:29:27Z</Expiration>
+                </Credentials>
+            </AssumeRoleResult>
+            <ResponseMetadata>
+                <RequestId>afeb812c-c756-419f-a850-77f0879da838</RequestId>
+            </ResponseMetadata>
+        </AssumeRoleResponse>
+        """
         api_call_specification = {
             'raise_error': True,
             'http_method': 'GET',
@@ -133,7 +232,10 @@ class AWSIAM:
 
         return role
 
-    def get_role_credentials(self, policy: str) -> dict:
-        user_policy = self._get_user_policy(user=self._user, policy=policy)
-        role = self._assume_role(user_policy=user_policy)
-        return role
+    def get_iam_credentials(self) -> Iterator[dict]:
+        policies_list = self._list_user_policies(user=self._user)
+        for policy in policies_list:
+            resources = self._get_user_resources(user=self._user, policy=policy)
+            for resource in resources:
+                credentials = self._assume_role(user_policy=resource)
+                yield credentials

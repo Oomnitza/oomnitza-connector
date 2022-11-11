@@ -14,14 +14,13 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import sys
 import argparse
 import getpass
 import logging
+import sys
 
 from lib import version
 from lib.strongbox import save_secret_to_strongbox
-
 
 LOG = logging.getLogger("strongbox.py")
 
@@ -33,17 +32,32 @@ class SecretPromptAction(argparse.Action):
     """
 
     def __call__(self, parser, args, values, option_string=None):
-        secret_value = getpass.getpass(prompt='Your secret: ')
+        secret_value = getpass.getpass(prompt="Your secret: ")
         setattr(args, self.dest, secret_value)
 
 
 def parse_command_line_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--version', action='store_true', help="Show the vault version.")
-    parser.add_argument('--connector', type=str, required=True, help="Connector name or vault alias under which secret is saved in vault.")
-    parser.add_argument('--key', type=str, default="api_token", required=True, help="Secret key name.")
-    parser.add_argument('--value', type=str, action=SecretPromptAction, required=True, help="Secret value.")
+    parser.add_argument(
+        "--version", action="store_true", help="Show the vault version."
+    )
+    parser.add_argument(
+        "--connector",
+        type=str,
+        required=True,
+        help="Connector name or vault alias under which secret is saved in vault.",
+    )
+    parser.add_argument(
+        "--key", type=str, default="api_token", required=True, help="Secret key name."
+    )
+    parser.add_argument(
+        "--value",
+        type=str,
+        action=SecretPromptAction,
+        required=True,
+        help="Secret value.",
+    )
 
     return parser.parse_args()
 

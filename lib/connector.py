@@ -13,7 +13,7 @@ from gevent.pool import Pool
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
 
-from constants import FATAL_ERROR_FLAG
+from constants import FATAL_ERROR_FLAG, ConfigFieldType
 from lib import TrueValues
 from utils.data import get_field_value
 from .converters import Converter
@@ -609,6 +609,15 @@ class BaseConnector(object):
         if insert_only and update_only:
             raise ValueError('"insert_only" and "update_only" can not be both of True value')
 
+    def get_multi_str_input_value(self):
+        inputs_from_cloud = getattr(self, 'inputs_from_cloud', None)
+        if not inputs_from_cloud:
+            return
+
+        for input_value in inputs_from_cloud.values():
+            if input_value.get('type') == ConfigFieldType.MULTI_STR:
+                return input_value.get('value')
+
     def _collect_payload(self, records, error, is_fatal=False):
         insert_only = bool(strtobool(self.settings.get('insert_only', '0')))
         update_only = bool(strtobool(self.settings.get('update_only', '0')))
@@ -622,7 +631,8 @@ class BaseConnector(object):
             "insert_only": insert_only,
             "update_only": update_only,
             "error": error,
-            "test_run": bool(self.settings.get('test_run'))
+            "test_run": bool(self.settings.get('test_run')),
+            "multi_str_input_value": self.get_multi_str_input_value()
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
         # otherwise use the name set as the `MappingName`; back compatibility with the `upload` mode for the non-managed connectors

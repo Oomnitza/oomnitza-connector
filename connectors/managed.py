@@ -217,7 +217,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         return secret['headers'], secret['params'], ssl_adapter
 
-    def get_list_of_items(self, iam_credentials: dict = None):
+    def get_list_of_items(self, iam_credentials: dict = None, skip_empty_response: bool = False):
         iteration = 0
         try:
             self.update_rendering_context(
@@ -271,7 +271,8 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 result = self.render_to_native(self.list_behavior['result'])
 
                 if not result:
-                    if iteration == 0:
+                    # NOTE: In the case of AWS IAM, we should proceed with all the chunks ignoring empty ones
+                    if iteration == 0 and not skip_empty_response:
                         raise self.ManagedConnectorListGetEmptyInBeginningException()
                     else:
                         break
@@ -338,10 +339,10 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             raise ConfigError(f'Managed connector #{self.ConnectorID}: local inputs have invalid format. Exiting')
         return inputs_from_local
 
-    def _load_list(self, iam_credentials: dict = None):
+    def _load_list(self, iam_credentials: dict = None, skip_empty_response: bool = False):
         # NOTE: There are no Details and Software Behaviours for AWS Connectors
         # So special IAM adjustments are not required
-        for list_response_item in self.get_list_of_items(iam_credentials=iam_credentials):
+        for list_response_item in self.get_list_of_items(iam_credentials=iam_credentials, skip_empty_response=skip_empty_response):
             try:
                 if self.detail_behavior:
                     item_details = self.get_detail_of_item(list_response_item)
@@ -360,29 +361,33 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 yield item_details
 
     def _load_iam_list(self):
-        # NOTE: In the case of AWS IAM we should keep the same Exception behavior as in the
-        # paginated requests: different errors at the beginning and in the middle of the process
+        iteration = 0
+        iam_records = 0
+
         try:
             credential_id = self.settings['saas_authorization']['credential_id']
             iam = AWSIAM(managed_connector=self, credential_id=credential_id)
-            iam_policies = iam.get_policies_list()
+
+            # NOTE: AWS Credentials have a short life-time, so we can't pre-generate them
+            for iam_credentials in iam.get_iam_credentials():
+                iam_response = list(self._load_list(iam_credentials=iam_credentials, skip_empty_response=True))
+                yield iam_response
+
+                iteration += 1
+                iam_records += len(iam_response)
+
         except Exception as exc:
-            logger.exception('Failed to fetch AWS IAM Policies')
-            raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+            logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
+            if iteration == 0:
+                raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+            else:
+                raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
 
-        iteration = 0
-        for policy in iam_policies:
-            try:
-                iam_credentials = iam.get_role_credentials(policy=policy)
-            except Exception as exc:
-                logger.exception('Failed to fetch AWS IAM Credentials')
-                if iteration == 0:
-                    raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
-                else:
-                    raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
-
-            yield from self._load_list(iam_credentials=iam_credentials)
-            iteration += 1
+        # NOTE: We have such functionality as ManagedConnectorListGetEmptyInBeginningException exception
+        # So to properly handle it we should analyze AWS IAM Responses. If we have any records there then we shouldn't
+        # raise an exception with an empty Response during default AWS Account processing
+        skip_empty_response = True if iam_records > 0 else False
+        yield from self._load_list(skip_empty_response=skip_empty_response)
 
     def _load_records(self, options):
         """
@@ -421,6 +426,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 self.ConnectorID,
                 self.gen_portion_id(),
                 error=traceback.format_exc(),
+                multi_str_input_value=self.get_multi_str_input_value(),
                 is_fatal=True,
                 test_run=bool(self.settings.get('test_run'))
             )
@@ -435,6 +441,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             self.OomnitzaConnector.create_synthetic_finalized_empty_portion(
                 self.ConnectorID,
                 self.gen_portion_id(),
+                self.get_multi_str_input_value()
             )
             raise
         except self.ManagedConnectorListMaxIterationException as e:

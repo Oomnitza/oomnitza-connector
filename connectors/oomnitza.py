@@ -78,7 +78,13 @@ class Connector(BaseConnector):
         self.post(url, {'correlation_id': str(correlation_id), 'added': 1})
 
     def create_synthetic_finalized_failed_portion(
-            self, service_id, correlation_id, error, is_fatal=False, test_run=False
+        self,
+        service_id,
+        correlation_id,
+        error,
+        multi_str_input_value=None,
+        is_fatal=False,
+        test_run=False
     ):
         url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
 
@@ -86,7 +92,8 @@ class Connector(BaseConnector):
             'correlation_id': str(correlation_id),
             'failed': 1,
             'error_message': error,
-            'test_run': test_run
+            'test_run': test_run,
+            "multi_str_input_value": multi_str_input_value
         }
 
         if is_fatal:
@@ -94,12 +101,13 @@ class Connector(BaseConnector):
 
         self.post(url, payload)
 
-    def create_synthetic_finalized_empty_portion(self, service_id, correlation_id):
+    def create_synthetic_finalized_empty_portion(self, service_id, correlation_id, multi_str_input_value=None):
         url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
 
         payload = {
             'correlation_id': str(correlation_id),
-            'is_empty_run': True
+            'is_empty_run': True,
+            "multi_str_input_value": multi_str_input_value
         }
 
         self.post(url, payload)
