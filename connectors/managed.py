@@ -325,7 +325,13 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             api_call_specification['ssl_adapter'] = ssl_adapter
 
             response = self.perform_api_request(**api_call_specification)
-            return self.response_to_object(response.text)
+
+            # We should keep the list_response_item as it contains some useful information most of the time.
+            detail_response_object = self.response_to_object(response.text)
+            if type(detail_response_object) is dict:
+                detail_response_object['list_response_item'] = list_response_item
+
+            return detail_response_object
         except Exception as exc:
             logger.exception('Failed to fetch the details of item')
             raise self.ManagedConnectorDetailsGetException(error=str(exc))

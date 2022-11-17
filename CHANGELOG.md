@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.11]
+
+### Fixed
+
+- Processing of ManageEngine Integration
+
 ## [2.3.10]
 
 ### Added
