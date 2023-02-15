@@ -131,9 +131,17 @@ class CyberArkClient(object):
         if not skip_auth and self.is_authenticated():
             headers['Authorization'] = self._get_auth_header()
 
+        logger.info('Issuing %s %s', method, url)
+
         response = self.session.request(
             method, url, headers=headers, allow_redirects=False, **kwargs
         )
-        response.raise_for_status()
-
+        
+        try:
+            response.raise_for_status()
+        except Exception:
+            logger.exception('Encounterd an exception')                    
+            raise
+            
+        logger.debug('Response code [%s]', response.status_code)                    
         return response

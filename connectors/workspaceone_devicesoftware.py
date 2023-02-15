@@ -1,9 +1,7 @@
-import logging
 import base64
+
 import arrow
 from lib.connector import AssetsConnector
-
-logger = logging.getLogger("connectors/workspaceone_devicesoftware")  # pylint:disable=invalid-name
 
 
 class Connector(AssetsConnector):
@@ -68,7 +66,7 @@ class Connector(AssetsConnector):
             response = self.get(formatted_url)
             if response.status_code != 200:  # WorkspaceOne returns a 204 when there is no more content.
                 if iteration == 0:
-                    logger.info("No software detected for devices.")
+                    self.logger.info("No software detected for devices.")
                 break
             _apps_list = response.json().get('Application', [])
 
@@ -131,4 +129,4 @@ class Connector(AssetsConnector):
             for device_with_software in self.yield_devices_with_software(subdomain):
                 yield device_with_software
         else:
-            logger.info("No subdomain supplied. Can not run. Exiting.")
+            self.logger.warning("No subdomain supplied. Can not run. Exiting.")

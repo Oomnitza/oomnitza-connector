@@ -1,11 +1,5 @@
-import logging
-
-from requests import ConnectionError, HTTPError
-
 from lib import TrueValues
 from lib.connector import UserConnector
-
-logger = logging.getLogger("connectors/okta")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):

@@ -1,18 +1,15 @@
 import copy
 import json
-import logging
 import traceback
 from typing import Optional
 
-import xmltodict
-
 from lib.api_caller import ConfigurableExternalAPICaller
 from lib.aws_iam import AWSIAM
-from lib.connector import BaseConnector
+from lib.connector import BaseConnector, response_to_object
 from lib.error import ConfigError
 from lib.httpadapters import init_mtls_ssl_adapter, SSLAdapter
 
-logger = logging.getLogger()
+from requests.exceptions import HTTPError
 
 
 class Connector(ConfigurableExternalAPICaller, BaseConnector):
@@ -147,30 +144,16 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         else:
             raise ConfigError(f'Managed connector #{self.ConnectorID}: Oomnitza authorization format is invalid. Exiting')
 
-    # noinspection PyBroadException
-    @staticmethod
-    def response_to_object(response_text):
-        """
-        Try to represent the response as the native object from the JSON- or XML-based response
-        """
-        try:
-            return json.loads(response_text)
-        except:
-            try:
-                return xmltodict.parse(response_text)
-            except:
-                return response_text
-
     def generate_session_based_secret(self) -> dict:
         """
         Generate the session-based auth settings based on the given inputs, etc
         """
         api_call_specification = self.build_call_specs(self.session_auth_behavior)
 
-        response = self.perform_api_request(**api_call_specification)
+        response = self.perform_api_request(logger=self.logger, **api_call_specification)
         response_headers = response.headers
 
-        response = self.response_to_object(response.text)
+        response = response_to_object(response.text)
 
         self.update_rendering_context(
             response=response,
@@ -260,8 +243,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 api_call_specification['params'].update(**auth_params)
                 api_call_specification['ssl_adapter'] = ssl_adapter
 
-                response = self.perform_api_request(**api_call_specification)
-                list_response = self.response_to_object(response.text)
+                response = self.perform_api_request(logger=self.logger, **api_call_specification)
+                list_response = response_to_object(response.text)
+
+                if list_response and "shim_error_message" in list_response:
+                    # If we use the shim service we don't want to see http://localhost in the webui error screen.
+                    raise HTTPError(list_response['shim_error_message'])
 
                 self.update_rendering_context(
                     list_response=list_response,
@@ -288,14 +275,14 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         except self.ManagedConnectorListGetEmptyInBeginningException as exc:
             raise exc
         except Exception as exc:
-            logger.exception('Failed to fetch the list of items')
+            self.logger.exception('Failed to fetch the list of items')
             if iteration == 0:
                 raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
             else:
                 raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
 
         if iteration >= self.MAX_ITERATIONS:
-            logger.exception(f'Failed to fetch the list of items '
+            self.logger.exception(f'Failed to fetch the list of items '
                              f'Connector exceeded processing limit of {self.MAX_ITERATIONS} iterations')
             raise self.ManagedConnectorListMaxIterationException(error='Reached max iterations')
 
@@ -324,16 +311,16 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             api_call_specification['params'].update(**auth_params)
             api_call_specification['ssl_adapter'] = ssl_adapter
 
-            response = self.perform_api_request(**api_call_specification)
+            response = self.perform_api_request(logger=self.logger, **api_call_specification)
 
             # We should keep the list_response_item as it contains some useful information most of the time.
-            detail_response_object = self.response_to_object(response.text)
+            detail_response_object = response_to_object(response.text)
             if type(detail_response_object) is dict:
                 detail_response_object['list_response_item'] = list_response_item
 
             return detail_response_object
         except Exception as exc:
-            logger.exception('Failed to fetch the details of item')
+            self.logger.exception('Failed to fetch the details of item')
             raise self.ManagedConnectorDetailsGetException(error=str(exc))
 
     def get_local_inputs(self) -> dict:
@@ -383,7 +370,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 iam_records += len(iam_response)
 
         except Exception as exc:
-            logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
+            self.logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
             if iteration == 0:
                 raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
             else:
@@ -465,7 +452,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 list_of_software = self._build_list_of_software(software_response)
                 self._add_list_of_software(item_details, list_of_software)
         except Exception as exc:
-            logger.exception('Failed to fetch the software info')
+            self.logger.exception('Failed to fetch the software info')
             raise self.ManagedConnectorSoftwareGetException(error=str(exc))
 
     def _get_software_response(self, default_response):
@@ -481,8 +468,8 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         api_call_specification['params'].update(**auth_params)
         api_call_specification['ssl_adapter'] = ssl_adapter
 
-        response = self.perform_api_request(**api_call_specification)
-        return self.response_to_object(response.text)
+        response = self.perform_api_request(logger=self.logger, **api_call_specification)
+        return response_to_object(response.text)
 
     def _build_list_of_software(self, software_response):
         self.update_rendering_context(
@@ -523,5 +510,5 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                     item_details['saas']['name'] = saas_name
 
         except Exception as exc:
-            logger.exception('Failed to fetch the saas info')
+            self.logger.exception('Failed to fetch the saas info')
             raise self.ManagedConnectorSaaSGetException(error=str(exc))

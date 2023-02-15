@@ -70,5 +70,9 @@ EnabledConnectors = {
     'workspaceone_devicesoftware': {
         'label': 'workspaceone_devicesoftware',
         'order': 18
+    },
+    'munki_report': {
+        'label': 'munki_report',
+        'order': 19
     }
 }

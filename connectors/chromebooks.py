@@ -1,13 +1,8 @@
 import json
-import logging
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-
 from lib.connector import AssetsConnector
-
-LOG = logging.getLogger("connectors/chromebooks")  # pylint:disable=invalid-name
-
 
 CHROMEDEVICES_API_SCOPE = (
     'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
@@ -48,10 +43,12 @@ class Connector(AssetsConnector):
     def _load_records(self, options):
         credentials = self.get_sa_credentials()
         if not credentials:
-            LOG.error("Set the email of the G Suite administrator and service account's json key")
+            self.logger.error("Set the email of the G Suite administrator and service account's json key")
             raise StopIteration
 
         api_client = build('admin', 'directory_v1', credentials=credentials, cache_discovery=False)
+
+        self.logger.info("Getting user list")
 
         chromeosdevices = api_client.chromeosdevices()
         request = chromeosdevices.list(customerId='my_customer', projection='FULL')

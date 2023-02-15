@@ -1,12 +1,7 @@
-import logging
-
 import arrow
 from gevent.pool import Pool
-from requests.auth import _basic_auth_str
-
 from lib.connector import AssetsConnector
-
-LOG = logging.getLogger("connectors/servicenow")
+from requests.auth import _basic_auth_str
 
 
 class Connector(AssetsConnector):

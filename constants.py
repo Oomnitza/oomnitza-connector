@@ -12,6 +12,9 @@ MODE_CLOUD_INITIATED_UPLOAD = 'managed'
 
 FATAL_ERROR_FLAG = 'Fatal Error'
 
+# Shim-Service Constants
+SHIM_PORT = 8699
+
 
 class MTLSType:
     PFX = 'pfx'

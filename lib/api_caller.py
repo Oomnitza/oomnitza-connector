@@ -1,22 +1,22 @@
+import logging
 from typing import Optional
-
-from requests import Response
 
 from lib.httpadapters import SSLAdapter
 from lib.renderer import Renderer
-
+from requests import Response
 
 class ExternalAPICaller:
 
     def perform_api_request(
         self,
+        logger: logging.Logger,
         http_method: str,
         url: str,
         headers: dict,
         params: dict,
         body: Optional[str],
         raise_error: bool,
-        ssl_adapter: SSLAdapter = None
+        ssl_adapter: SSLAdapter = None,
     ) -> Response:
 
         # preset the specific user agent
@@ -30,6 +30,9 @@ class ExternalAPICaller:
         if ssl_adapter:
             session.mount(url, ssl_adapter)
 
+        logger.info('Issuing %s %s', http_method, url)
+        logger.debug('..params=[%s]', params)
+
         response = session.request(
             method=http_method,
             url=url,
@@ -39,14 +42,25 @@ class ExternalAPICaller:
         )
 
         if raise_error:
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except Exception as ex:
+                logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+                raise ex
+            
+        logger.debug('Response code [%s]', response.status_code)                    
 
         return response
 
 
 class ConfigurableExternalAPICaller(ExternalAPICaller, Renderer):
 
-    def build_call_specs(self, http_specs: dict, raise_error: bool = True) -> dict:
+    def build_call_specs(
+        self, 
+        http_specs: dict, 
+        raise_error: bool = True
+    ) -> dict:
+        
         call_spec = dict(
             raise_error=raise_error,
             http_method=http_specs['http_method'],
@@ -61,5 +75,3 @@ class ConfigurableExternalAPICaller(ExternalAPICaller, Renderer):
         call_spec['params'] = {_['key']: self.render_to_string(_['value']) for _ in http_specs['params']}
         return call_spec
 
-    def api_call(self, *args, **kwargs):
-        return self.perform_api_request(**self.build_call_specs(*args, **kwargs))

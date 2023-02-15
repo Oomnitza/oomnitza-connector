@@ -59,7 +59,7 @@ class SafeEnvironmentWithImportSupport(ImportSupportJinjaEnvMixin, SandboxedEnvi
         # https://docs.python.org/3.8/library/
         # https://docs.python.org/3.9/library/
         'string',
-        're'
+        're',
         'struct',
         'datetime',
         'calendar',

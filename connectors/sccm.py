@@ -1,13 +1,8 @@
-import logging
-
-import pyodbc
-
 import re
 
+import pyodbc
 from lib.connector import AssetsConnector
 from lib.error import ConfigError
-
-logger = logging.getLogger("connectors/sccm")  # pylint:disable=invalid-name
 
 #  http://www.mssccm.com/category/sccm-reports-sccm-sql-queries/
 #
@@ -151,7 +146,7 @@ class Connector(AssetsConnector):
             columns = [column[0] for column in cursor.description]
             return [dict(list(zip(columns, row))) for row in results.fetchall()]
         except Exception as exception:
-            logger.error("Unable to perform query: %s" % (exception))
+            self.logger.error("Unable to perform query: %s" % (exception))
             return []
 
     def _load_records(self, options):
@@ -175,7 +170,7 @@ class Connector(AssetsConnector):
 
             return audit
         except Exception:
-            logger.exception("Unhandled exception in build audit")
+            self.logger.exception("Unhandled exception in build audit")
             return None
 
     def get_installed_software(self, resource_id):
@@ -198,6 +193,6 @@ class Connector(AssetsConnector):
                     "path": None
                 })
             except:
-                logger.exception("Exception in get_installed_software")
+                self.logger.exception("Exception in get_installed_software")
 
         return installed_software

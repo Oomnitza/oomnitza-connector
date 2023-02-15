@@ -1,38 +1,49 @@
 import copy
 import errno
 import json
+import xmltodict
 import logging
 import os
-from datetime import datetime, date
+from datetime import date, datetime
 from distutils.util import strtobool
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 import requests
+from constants import FATAL_ERROR_FLAG, ConfigFieldType
 from gevent.pool import Pool
+from lib import TrueValues
+from lib.converters import Converter
+from lib.error import AuthenticationError, ConfigError
+from lib.filter import DynamicException
+from lib.httpadapters import AdapterMap, retries
+from lib.logger import ContextLoggingAdapter
+from lib.renderer import _RawValue
+from lib.strongbox import Strongbox, StrongboxBackend
+from lib.version import VERSION
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
-
-from constants import FATAL_ERROR_FLAG, ConfigFieldType
-from lib import TrueValues
 from utils.data import get_field_value
-from .converters import Converter
-from .error import ConfigError, AuthenticationError
-from .filter import DynamicException
-from .httpadapters import AdapterMap, retries
-from .strongbox import Strongbox, StrongboxBackend
-from .renderer import _RawValue
-from .version import VERSION
 
-LOG = logging.getLogger("lib/connector")
 
+# noinspection PyBroadException
+def response_to_object(response_text):
+    """
+    Try to represent the response as the native object from the JSON- or XML-based response
+    """
+    try:
+        return json.loads(response_text)
+    except:
+        try:
+            return xmltodict.parse(response_text)
+        except:
+            return response_text
 
 def run_connector(connector_cfg, options):
-    global LOG
+
+    LOG = logging.getLogger(connector_cfg['__name__'])
 
     try:
-        LOG = logging.getLogger(connector_cfg['__name__'])
-
         connector_instance = connector_cfg["__connector__"]
 
         try:
@@ -165,8 +176,8 @@ class BaseConnector(object):
     Converters = {}
     FieldMappings = {}
     MappingName = "unnamed"
-
     OomnitzaConnector = None
+    Loggers = {}
 
     CommonSettings = {
         'verify_ssl':     {'order': 0, 'default': "True"},
@@ -185,6 +196,29 @@ class BaseConnector(object):
         'user_pem_file':  {'order': 13, 'default': ""}
     }
 
+    def get_connector_name(self):
+        """ Return connector name to be used for logging. """
+        return self.connector_name
+
+    def is_oomnitza_connector(self):
+        return BaseConnector.OomnitzaConnector == self        
+
+    @property
+    def logger(self):
+        """
+        Return context based logger for a given connector name
+
+        We cannot make the logger assignment in 
+        the __init__ method due to serialization issues
+        """
+        name = self.get_connector_name()
+        logger = BaseConnector.Loggers.get(name)
+        if not logger:
+            logger = ContextLoggingAdapter(logging.getLogger(name), self.context_id)
+            BaseConnector.Loggers[name] = logger
+
+        return logger
+
     @staticmethod
     def gen_portion_id():
         return str(uuid4())
@@ -202,6 +236,11 @@ class BaseConnector(object):
         self.portion = self.gen_portion_id()
         self._cached_credential_details = None
 
+        self.context_id = ContextLoggingAdapter.generate_unique_context_id()
+        
+        connector_name = self.MappingName.lower().replace('-', '_')
+        self.connector_name = f"connectors/{connector_name}"
+        
         for key, value in list(settings.items()):
             if key.startswith('mapping.'):
                 # it is a field mapping from the ini
@@ -219,7 +258,8 @@ class BaseConnector(object):
                     continue
 
                 if key not in self.Settings and key not in self.CommonSettings:
-                    LOG.debug("Extra line in %r section: %r." % (section, key))
+                    # Should this be a warning?
+                    self.logger.debug("Extra line in %r section: %r." % (section, key))
                     continue
 
                 self.settings[key] = value
@@ -384,7 +424,7 @@ class BaseConnector(object):
             if user_pem_file:
                 self._session.cert = user_pem_file
             if protocol:
-                LOG.info("Forcing SSL Protocol to: %s", protocol)
+                self.logger.info("Forcing SSL Protocol to: %s", protocol)
                 if protocol.lower() in AdapterMap:
                     self._session.mount("https://", AdapterMap[protocol.lower()](max_retries=retries))
                 else:
@@ -403,16 +443,26 @@ class BaseConnector(object):
         :param headers: optional headers to override the headers from get_headers()
         :return: the response object
         """
-        LOG.debug("getting url: %s", url)
         session = self._get_session()
-
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        # LOG.debug("headers: %r", headers)
+
+        if self.is_oomnitza_connector():
+            # Reduce logging verbosity
+            self.logger.debug("Issuing GET %s", url)
+        else:
+            self.logger.info("Issuing GET %s", url)
+                    
         response = session.get(url, headers=headers, auth=auth,
                                verify=self.get_verification())
 
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            raise ex
+            
+        self.logger.debug('Response code [%s]', response.status_code)                    
         return response
 
     def post(self, url, data, headers=None, auth=None, post_as_json=True):
@@ -422,16 +472,29 @@ class BaseConnector(object):
         :param headers: optional headers to override the headers from get_headers()
         :return: the response object
         """
-        LOG.debug("posting url: %s", url)
         session = self._get_session()
-
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
+        
         if post_as_json:
             data = json.dumps(data, default=self.json_serializer)
+            
+        if self.is_oomnitza_connector():
+            # Reduce logging verbosity
+            self.logger.debug("Issuing GET %s", url)
+        else:            
+            self.logger.info("Issuing POST %s", url)
+            
         response = session.post(url, data=data, headers=headers, auth=auth,
                                 verify=self.get_verification())
-        response.raise_for_status()
+        
+        try:
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            raise ex
+            
+        self.logger.debug('Response code [%s]', response.status_code)                    
         return response
 
     def get_verification(self):
@@ -456,7 +519,7 @@ class BaseConnector(object):
         Perform authentication to target service, if needed. Many APIs don't really support this.
         :return: Nothing
         """
-        LOG.debug("%s has no authenticate() method.", self.__class__.__module__)
+        self.logger.debug("%s has no authenticate() method.", self.__class__.__module__)
 
     def stop_sync(self):
         self.keep_going = False
@@ -470,7 +533,7 @@ class BaseConnector(object):
             return
 
         if not (self.__filter__ is None or self.__filter__(rec)):
-            LOG.info("Skipping record %r because it did not pass the filter.", rec)
+            self.logger.info("Skipping record %r because it did not pass the filter.", rec)
             return
 
         try:
@@ -480,7 +543,7 @@ class BaseConnector(object):
             self.send_to_oomnitza(rec, error=str(e))
         else:
             if not converted_record:
-                LOG.info("Skipping record %r because it has not been converted properly", rec)
+                self.logger.info("Skipping record %r because it has not been converted properly", rec)
                 return
             self.send_to_oomnitza(converted_record)
 
@@ -492,10 +555,10 @@ class BaseConnector(object):
         try:
             self.authenticate()
         except AuthenticationError as exp:
-            LOG.error("Authentication failed: %r.", str(exp))
+            self.logger.error("Authentication failed: %r.", str(exp))
             return False
         except requests.exceptions.ConnectionError as exp:
-            LOG.exception("Authentication Failed: %r.", str(exp))
+            self.logger.exception("Authentication Failed: %r.", str(exp))
             return False
 
         return True
@@ -527,6 +590,7 @@ class BaseConnector(object):
 
         if save_data:
             try:
+                # TODO exists_ok=True
                 os.makedirs("./saved_data")
             except OSError as exc:
                 if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
@@ -555,7 +619,7 @@ class BaseConnector(object):
                 if save_data:
                     filename = "./saved_data/{}.json".format(str(index))
                     with open(filename, "w") as save_file:
-                        LOG.info("Saving fetched payload data to %s.", filename)
+                        self.logger.info("Saving fetched payload data to %s.", filename)
                         json.dump(record, save_file, indent=2, default=self.json_serializer)
 
                 if not isinstance(record, list):
@@ -568,7 +632,11 @@ class BaseConnector(object):
                         # increase records counter
                         self.processed_records_counter += 1
                         if not self.processed_records_counter % 10:
-                            LOG.info("Processed %d records from the source. Sent %d records to the destination." % (self.processed_records_counter, self.sent_records_counter))
+                            msg = (
+                                f"Processed {self.processed_records_counter} record(s) from the source. "
+                                f"Sent {self.sent_records_counter} record(s) to the destination."
+                            )
+                            self.logger.info(msg)
 
                         if not self.keep_going:
                             break
@@ -590,9 +658,14 @@ class BaseConnector(object):
             self.finalize_processed_portion()
 
             if not (self.is_media_export and not self.processed_records_counter):
-                # it is known that the media_export connectors might have no items to process most of the time, so
-                # lets not spam the messages to the stdout and log only when we have at least one file processed
-                LOG.info("Finished! Processed %d records. %d records have been sent to the destination" % (self.processed_records_counter, self.sent_records_counter))
+                # it is known that the media_export connectors might have no items to process 
+                # most of the time, so lets not spam the messages to the stdout and 
+                # log only when we have at least one file processed
+                msg = (
+                    f"Finished! Processed {self.processed_records_counter} record(s). "
+                    f"{self.sent_records_counter} record(s) have been sent to the destination"
+                )
+                self.logger.info(msg)
 
             return True
         except RequestException as exp:
@@ -600,7 +673,7 @@ class BaseConnector(object):
 
     def _save_data(self, payload):
         filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
-        LOG.info("Saving processed payload data to %s.", filename)
+        self.logger.info("Saving processed payload data to %s.", filename)
         with open(filename, 'w') as save_file:
             self.send_counter += 1
             json.dump(payload, save_file, indent=2, default=self.json_serializer)
@@ -661,7 +734,7 @@ class BaseConnector(object):
             try:
                 self._save_data(payload)
             except:
-                LOG.exception("Error saving data.")
+                self.logger.exception("Error saving data.")
 
         if self.settings['__testmode__']:
             result = self.OomnitzaConnector.test_upload(payload)
@@ -720,7 +793,7 @@ class BaseConnector(object):
                             incoming_value = self.get_extra_input_value(extra_input)
 
                     except Exception as e:
-                        LOG.exception('Failed to render the value given in mapping')
+                        self.logger.exception('Failed to render the value given in mapping')
                         raise self.ManagedConnectorRecordConversionException(source=source, error=str(e))
                 else:
                     incoming_value = self.get_field_value(source, incoming_record)
@@ -741,7 +814,7 @@ class BaseConnector(object):
                 try:
                     incoming_value = self.apply_converter(converter, source or field, incoming_record, incoming_value)
                 except Exception as exp:
-                    LOG.exception("Failed to run converter: %s", converter)
+                    self.logger.exception("Failed to run converter: %s", converter)
                     incoming_value = None
 
             f_type = specs.get('type', None)
@@ -757,7 +830,7 @@ class BaseConnector(object):
         #     outgoing_record.update(subrecords)
 
         if missing_fields:
-            LOG.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
+            self.logger.warning("Record missing fields: %r. Incoming Record: %r", list(missing_fields), incoming_record)
             return None
 
         return outgoing_record

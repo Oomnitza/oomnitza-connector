@@ -1,11 +1,7 @@
 import os
-import logging
 import json
 import glob
 from lib.connector import AssetsConnector
-
-
-LOGGER = logging.getLogger("connectors/json_assets")  # pylint:disable=invalid-name
 
 
 class Connector(AssetsConnector):
@@ -34,7 +30,7 @@ class Connector(AssetsConnector):
     def _load_records(self, options):
         for filename in glob.glob(os.path.join(self._directory, '*.json')):
             with open(filename, 'rb') as input_file:
-                LOGGER.info("Processing input file: %s", filename)
+                self.logger.info("Processing input file: %s", filename)
                 input_data = json.load(input_file)
 
                 if isinstance(input_data, list):
@@ -47,4 +43,4 @@ class Connector(AssetsConnector):
                 else:
                     raise Exception("File %r does not contain a list or object." % filename)
         else:
-            LOGGER.info("No data files processed.")
+            self.logger.warning("No data files processed.")

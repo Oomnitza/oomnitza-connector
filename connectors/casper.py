@@ -1,18 +1,13 @@
 import json
-import logging
 import urllib.error
 import urllib.parse
 import urllib.request
 
 import gevent
 from gevent.pool import Pool
-from requests import ConnectionError, HTTPError
-
 from lib.connector import AssetsConnector
 from lib.error import ConfigError
-
-LOG = logging.getLogger("connectors/casper")  # pylint:disable=invalid-name
-
+from requests import HTTPError
 
 COMPUTERS = 'computers'
 MOBILE_DEVICES = 'mobiledevices'
@@ -88,7 +83,7 @@ class Connector(AssetsConnector):
     def get_sync_type_from_settings(self):
         sync_type = self.settings.get('sync_type', None)
         if not sync_type:
-            LOG.warning("No sync_type configured or set as empty. Defaulting to '%s'." % COMPUTERS)
+            self.logger.warning("No sync_type configured or set as empty. Defaulting to '%s'." % COMPUTERS)
             sync_type = COMPUTERS
 
         if sync_type not in SyncTypes:
@@ -128,7 +123,7 @@ class Connector(AssetsConnector):
         self.sync_config = SyncTypes[self.sync_type]
         self.group_name = self.settings.get("group_name", "")
         if self.group_name:
-            LOG.info("Loading assets from group: %r", self.group_name)
+            self.logger.info("Loading assets from group: %r", self.group_name)
             self.ids_url = self.url_template.format(
                 self.sync_config['group_ids_path'].format(
                     name=urllib.parse.quote(self.group_name)
@@ -172,9 +167,9 @@ class Connector(AssetsConnector):
             return [c['id'] for c in data]
         except HTTPError:
             if self.group_name:
-                LOG.error("Error loading assets for group: %r. Please verify the group name is correct.", self.group_name)
+                self.logger.error("Error loading assets for group: %r. Please verify the group name is correct.", self.group_name)
             else:
-                LOG.exception("Error loading IDs from Casper.")
+                self.logger.exception("Error loading IDs from Casper.")
             return []
 
     def fetch_asset_details(self, device_id):
@@ -189,7 +184,7 @@ class Connector(AssetsConnector):
 
             return details
         except:
-            LOG.exception("fetch_asset_details( %s ) failed." % device_id)
+            self.logger.exception("fetch_asset_details( %s ) failed." % device_id)
             return None
 
     def server_handler(self, body, wsgi_env, options):
@@ -212,10 +207,10 @@ class Connector(AssetsConnector):
                     elif event_type.startswith('MobileDevice'):
                         device = self.get(self.get_details_url(MOBILE_DEVICES).format(object_id)).json()['mobile_device']
                     else:
-                        LOG.warning('Casper unknown event caught. Cannot handle')
+                        self.logger.warning('Casper unknown event caught. Cannot handle')
                         return
 
                     # sync retrieved device with Oomnitza
                     gevent.spawn(self.sender, *(self.OomnitzaConnector, device, None)).start()
         except:
-            LOG.exception('Casper server handler failed')
+            self.logger.exception('Casper server handler failed')

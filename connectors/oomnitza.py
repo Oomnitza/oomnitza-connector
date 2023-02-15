@@ -1,14 +1,10 @@
-import logging
 import pprint
 
-from requests import RequestException
-
 from constants import FATAL_ERROR_FLAG
-from lib.connector import BaseConnector, AuthenticationError
+from lib.connector import AuthenticationError, BaseConnector
 from lib.error import ConfigError
 from lib.version import VERSION
-
-LOG = logging.getLogger("connectors/oomnitza")  # pylint:disable=invalid-name
+from requests import RequestException
 
 
 class Connector(BaseConnector):
@@ -26,6 +22,10 @@ class Connector(BaseConnector):
         super(Connector, self).__init__(section, settings)
         self.authenticate()
 
+    def get_connector_name(self):
+        """ Return connector name to be used for logging. """
+        return "connectors/oomnitza"        
+
     def get_field_mappings(self, extra_mappings):
         """ Override base to always return an empty mapping set.
         :param extra_mappings:
@@ -35,7 +35,12 @@ class Connector(BaseConnector):
 
     def get_headers(self):
         if self.settings['api_token']:
-            return {'Content-Type': 'application/json; charset=utf-8', 'Authorization2': self.settings['api_token']}
+            return {
+                'Content-Type': 'application/json; charset=utf-8', 
+                'Authorization2': self.settings['api_token'],
+                # TODO - Pass context id to Oomnitza
+                # ContextLoggingAdapter.HEADER_CONTEXT_ID: self.context_id
+            }
         # these empty headers because of the old implementation of request_token endpoint, body SHOULD NOT be interpreted as JSON here!
         return {}
 
@@ -49,10 +54,10 @@ class Connector(BaseConnector):
 
         try:
             if self.settings['api_token']:
-                self.get("{url}/api/v2/mappings?name=AuthTest".format(**self.settings))
+                self.get("{url}:6543/api/v2/mappings?name=AuthTest".format(**self.settings))
                 return
 
-            auth_url = "{url}/api/request_token".format(**self.settings)
+            auth_url = "{url}:6543/api/request_token".format(**self.settings)
             response = self.post(
                 auth_url,
                 {'login': self.settings['username'],
@@ -64,17 +69,17 @@ class Connector(BaseConnector):
             raise AuthenticationError(str(exp))
 
     def upload(self, payload):
-        url = f"{self.settings['url']}/api/v3/bulk"
+        url = f"{self.settings['url']}:8082/api/v3/bulk"
         response = self.post(url, payload)
         return response
 
     def finalize_portion(self, portion_id):
-        url = f"{self.settings['url']}/api/v3/bulk/{portion_id}/finalize"
+        url = f"{self.settings['url']}:8082/api/v3/bulk/{portion_id}/finalize"
         response = self.post(url, {})
         return response
 
     def create_synthetic_finalized_successful_portion(self, service_id, correlation_id):
-        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+        url = f"{self.settings['url']}:8082/api/v3/bulk/{service_id}/add_ready_portion"
         self.post(url, {'correlation_id': str(correlation_id), 'added': 1})
 
     def create_synthetic_finalized_failed_portion(
@@ -86,7 +91,7 @@ class Connector(BaseConnector):
         is_fatal=False,
         test_run=False
     ):
-        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+        url = f"{self.settings['url']}:8082/api/v3/bulk/{service_id}/add_ready_portion"
 
         payload = {
             'correlation_id': str(correlation_id),
@@ -102,7 +107,7 @@ class Connector(BaseConnector):
         self.post(url, payload)
 
     def create_synthetic_finalized_empty_portion(self, service_id, correlation_id, multi_str_input_value=None):
-        url = f"{self.settings['url']}/api/v3/bulk/{service_id}/add_ready_portion"
+        url = f"{self.settings['url']}:8082/api/v3/bulk/{service_id}/add_ready_portion"
 
         payload = {
             'correlation_id': str(correlation_id),
@@ -130,12 +135,12 @@ class Connector(BaseConnector):
         return settings[1:]
 
     def get_mappings(self, name):
-        url = f"{self.settings['url']}/api/v2/mappings?name={name}"
+        url = f"{self.settings['url']}:6543/api/v2/mappings?name={name}"
         response = self.get(url)
         return response.json()
 
     def get_mappings_for_managed(self, connector_id):
-        url = f"{self.settings['url']}/api/v2/mappings?connector_id={connector_id}"
+        url = f"{self.settings['url']}:6543/api/v2/mappings?connector_id={connector_id}"
         response = self.get(url)
         return response.json()
 
@@ -144,7 +149,7 @@ class Connector(BaseConnector):
         The API endpoint that returns the list of report files is de-facto paginated but because the connector is running every twenty seconds it is OK
         to just fetch the current page and process only it, so the next connector run will process the next page and so on
         """
-        url = f"{self.settings['url']}/api/v3/media_storage?filter=" \
+        url = f"{self.settings['url']}:6543/api/v3/media_storage?filter=" \
               f"(creation_date gt {creation_date}) and " \
               f"(created_by_type eq '{source_type}')" \
               f"&created_by_id={source_id}" \
@@ -154,20 +159,22 @@ class Connector(BaseConnector):
 
     def get_location_mappings(self, id_field, label_field):
         try:
-            url = "{0}/api/v3/locations".format(self.settings['url'])
+            url = "{0}:6543/api/v3/locations".format(self.settings['url'])
             response = self.get(url)
             mappings = {loc[label_field]: loc[id_field] for loc in response.json() if loc.get(id_field, None) and loc.get(label_field, None)}
-            LOG.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
+            
+            self.logger.info("Location Map to %s: External Value -> Oomnitza ID", id_field)
             for name in sorted(mappings.keys()):
-                LOG.info("    %s -> %s" % (name, mappings[name]))
+                self.logger.info("    %s -> %s" % (name, mappings[name]))
+                
             return mappings
         except:
-            LOG.exception("Failed to load Locations from Oomnitza.")
+            self.logger.exception("Failed to load Locations from Oomnitza.")
             return {}
 
     def get_settings(self, connector, *keys):
         try:
-            url = "{0}/api/v3/settings/{1}/{2}".format(
+            url = "{0}:6543/api/v3/settings/{1}/{2}".format(
                 self.settings['url'],
                 connector,
                 '/'.join(keys)
@@ -175,19 +182,19 @@ class Connector(BaseConnector):
             response = self.get(url)
             return response.json()['value']  ##!!!!!
         except:
-            LOG.exception("Failed to load settings from Oomnitza.")
+            self.logger.exception("Failed to load settings from Oomnitza.")
             raise
 
     def get_setting(self, key):
         try:
-            url = "{0}/api/v3/settings/{1}".format(
+            url = "{0}:6543/api/v3/settings/{1}".format(
                 self.settings['url'],
                 key
             )
             response = self.get(url)
             return response.json()['value']
         except:
-            LOG.exception("Failed to load setting from Oomnitza.")
+            self.logger.exception("Failed to load setting from Oomnitza.")
             raise
 
     def check_managed_cloud_configs(self) -> list:
@@ -196,7 +203,7 @@ class Connector(BaseConnector):
         Process
         """
         return self.post(
-            f'{self.settings["url"]}/api/v3/bulk/check_managed',
+            f'{self.settings["url"]}:8082/api/v3/bulk/check_managed',
             data={'version': VERSION}
         ).json()
 
@@ -211,7 +218,7 @@ class Connector(BaseConnector):
         **kwargs
     ) -> dict:
         response = self.post(
-            f'{self.settings["url"]}/api/v3/auth/{credential_id}/secret',
+            f'{self.settings["url"]}:6543/api/v3/auth/{credential_id}/secret',
             data=dict(
                 url=url,
                 http_method=http_method,
@@ -233,16 +240,16 @@ class Connector(BaseConnector):
             token_id,
     ):
         response = self.get(
-            f'{self.settings["url"]}/api/v3/auth/oomnitza_tokens/{token_id}'
+            f'{self.settings["url"]}:6543/api/v3/auth/oomnitza_tokens/{token_id}'
         )
         return response.json()['token']
 
     def get_global_variables_list(self):
-        response = self.get(f'{self.settings["url"]}/api/v3/settings/global_variables')
+        response = self.get(f'{self.settings["url"]}:6543/api/v3/settings/global_variables')
         return response.json()
 
     def get_credential_details(self, credential_id: str,) -> dict:
-        response = self.get(f'{self.settings["url"]}/api/v3/auth/{credential_id}')
+        response = self.get(f'{self.settings["url"]}:6543/api/v3/auth/{credential_id}')
         return response.json()
 
     def get_aws_session_secret(
@@ -258,7 +265,7 @@ class Connector(BaseConnector):
         **kwargs
     ) -> dict:
         response = self.post(
-            f'{self.settings["url"]}/api/v3/auth/aws/session/secret',
+            f'{self.settings["url"]}:6543/api/v3/auth/aws/session/secret',
             data=dict(
                 url=url,
                 http_method=http_method,

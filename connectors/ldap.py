@@ -1,11 +1,8 @@
 import json
-import logging
 
 from lib.connector import UserConnector
 from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
-
-LOG = logging.getLogger("connectors/ldap_users")  # pylint:disable=invalid-name
 
 
 def json_validator(value):
@@ -45,6 +42,10 @@ class Connector(UserConnector):
         super(Connector, self).__init__(section, settings)
         fields = list(set([str(f['source']) for f in self.field_mappings.values() if 'source' in f]+['sAMAccountName']))
         self.ldap_connection = LdapConnection(self.settings, fields)
+
+    def get_connector_name(self):
+        """ Return connector name to be used for logging. """
+        return "connectors/ldap_users"        
 
     def authenticate(self):
         self.ldap_connection.authenticate()

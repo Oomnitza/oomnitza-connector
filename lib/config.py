@@ -393,9 +393,15 @@ def setup_logging(args):
 
     try:
         with open(config_file, 'r') as config:
-            logging.config.dictConfig(json.load(config))
+            cfg_json = json.load(config)
+            try:
+                logging.config.dictConfig(cfg_json)
+                LOG.info("Loaded logging configuration from file [%s] [%s]", config_file, cfg_json)            
+            except Exception as exc:
+                LOG.error("Unable to configure logging using configuration [%s]", cfg_json)
 
         logging.captureWarnings(True)
-    except IOError:
-        sys.stderr.write("Error opening logging config file: {0}!\n".format(config_file))
+    except IOError as e:
+        err_msg = f"Error opening logging config file: {config_file}! Reason:{str(e)}"
+        sys.stderr.write(err_msg)
         sys.exit(1)

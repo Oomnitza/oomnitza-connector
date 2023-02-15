@@ -1,12 +1,8 @@
 import os
-import logging
 import json
 import glob
 
 from lib.connector import UserConnector
-
-
-LOGGER = logging.getLogger("connectors/json_users")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -37,7 +33,7 @@ class Connector(UserConnector):
     def _load_records(self, options):
         for filename in glob.glob(os.path.join(self._directory, '*.json')):
             with open(filename, 'rb') as input_file:
-                LOGGER.info("Processing input file: %s", filename)
+                self.logger.info("Processing input file: %s", filename)
                 input_data = json.load(input_file)
 
                 if isinstance(input_data, list):

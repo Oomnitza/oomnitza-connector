@@ -1,11 +1,9 @@
 import logging
+
 import requests
-from requests.packages.urllib3.util.retry import Retry
-from requests.adapters import HTTPAdapter
-
 from lib.connector import AssetsConnector
-
-logger = logging.getLogger("connectors/vcenter")  # pylint:disable=invalid-name
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 
 
 class Connector(AssetsConnector):
@@ -81,8 +79,12 @@ class Connector(AssetsConnector):
 
             url = self._build_url(f"/rest/vcenter/vm/{vm_id}/guest/identity")
             headers = {"vmware-api-session-id": self.session_token}
+            
+            self.logger.info("Issuing GET %s", url)
+        
             resp = http.get(url, headers=headers, verify=self.get_verification())
             return {} if resp.status_code != 200 else resp.json()['value']
+        
         except Exception as e:
             return {}
 

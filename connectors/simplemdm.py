@@ -1,18 +1,12 @@
-import logging
-
 from gevent.pool import Pool
-from requests.auth import _basic_auth_str
-
 from lib import TrueValues
 from lib.connector import AssetsConnector
 from lib.error import ConfigError
-
+from requests.auth import _basic_auth_str
 
 COMPUTERS = 'computers'
 MOBILE_DEVICES = 'mobiledevices'
 
-
-LOG = logging.getLogger("connectors/simplemdm")
 
 
 class Connector(AssetsConnector):

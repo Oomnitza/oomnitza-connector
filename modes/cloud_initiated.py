@@ -25,8 +25,8 @@ def run_the_managed_sync(cloud_config, cmdline_args):
         )
     except KeyboardInterrupt:
         raise
-    except:
-        LOG.exception("Error processing configuration.")
+    except Exception:
+        LOG.exception("Error processing configuration")
         sys.exit(1)
 
     run_connector(connector_config, {})
@@ -41,7 +41,7 @@ def cloud_initiated_upload(cmdline_args):
         sys.exit(1)
     except KeyboardInterrupt:
         raise
-    except:
+    except Exception:
         LOG.exception("Error processing config.ini file.")
         sys.exit(1)
 

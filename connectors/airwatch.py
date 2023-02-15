@@ -1,13 +1,8 @@
-import logging
-
 from gevent.pool import Pool
+from lib.connector import AssetsConnector
 from requests import HTTPError
 from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
-
-from lib.connector import AssetsConnector
-
-logger = logging.getLogger("connectors/airwatch")  # pylint:disable=invalid-name
 
 
 class Connector(AssetsConnector):
@@ -30,7 +25,7 @@ class Connector(AssetsConnector):
         for key, value in self.field_mappings.items():
             if 'network.' in value.get('source', ''):
                 self.__load_network_data = True
-                logger.info("Network data request.")
+                self.logger.info("Network data request.")
                 break
 
     def get_headers(self):
@@ -61,7 +56,7 @@ class Connector(AssetsConnector):
 
         if response.status_code == 204:
             # Sometimes it is just an empty response!
-            # logger.error("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
+            self.logger.warning("Got a 204 (Empty Response) from AirWatch! No devices found to process.")
             return []
 
         response = response.json()
@@ -142,5 +137,5 @@ class Connector(AssetsConnector):
             response = self.get(url).json()
             return response
         except (HTTPError, RetryError):
-            logger.exception("Error trying to load network details for device: %s", device_id)
+            self.logger.exception("Error trying to load network details for device: %s", device_id)
             return {}

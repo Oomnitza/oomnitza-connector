@@ -23,6 +23,7 @@ The local connector can pull data from the following sources:
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
 * vCenter [https://www.vmware.com](https://www.vmware.com)
 * WorkspaceOne [https://www.workspaceone.com](https://www.workspaceone.com)
+* Munki Report [https://github.com/munkireport/munkireport-php](https://github.com/munkireport/munkireport-php)
 * Plain CSV files
 
 ## Before you begin
@@ -122,6 +123,7 @@ ___
       - [Tanium Configuration](#tanium-configuration)
       - [vCenter Configuration](#vcenter-configuration)
       - [WorkspaceOne Configuration](#workspaceone-configuration)
+      - [Munki Report Configuration](#munkireport-configuration)
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -459,6 +461,13 @@ An example generated `config.ini` follows.
     client_id = ***
     client_secret = ***
     region = na
+
+    [munki_report]
+    enabled = False
+    url = https://munki_report
+    username = administrator
+    password = change-me
+    addition_columns = ["change.me"]
 
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
@@ -1404,6 +1413,29 @@ If these not available attributes will be mapped on UI, null values will be push
 
 ##### Default Field Mappings
     No default mappings
+
+#### Munki Report Configuration
+`url`: The Munki Report Url, used to fetch csrf token and assets.
+
+`username`: The Munki Report Username, used to login.
+
+`password`: The Munki Report password, used to login.
+
+`additional_columns`:  The Munki Report DB column names in a list. Example ["machine.serial_number", "machine.hostname"]
+
+
+##### Default Field Mappings
+    List default mapped Munki Report Database Columns.
+    [
+        "machine.serial_number",
+        "machine.hostname",
+        "machine.machine_desc",
+        "reportdata.timestamp",
+        "reportdata.console_user",
+        "machine.os_version",
+        "reportdata.remote_ip",
+        "munkireport.manifestname"
+    ]
 
 
 ## Advanced usage

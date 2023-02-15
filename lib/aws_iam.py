@@ -2,6 +2,7 @@ import json
 import uuid
 from typing import List, Iterator
 from urllib.parse import unquote
+from lib.connector import response_to_object
 
 
 class AWSIAM:
@@ -29,8 +30,11 @@ class AWSIAM:
         api_call_specification['headers'].update(**signature['headers'])
         api_call_specification['params'].update(**signature['params'])
 
-        response = self._managed_connector.perform_api_request(**api_call_specification)
-        response_object = self._managed_connector.response_to_object(response.text)
+        response = self._managed_connector.perform_api_request(
+            logger=self._managed_connector.logger, 
+            **api_call_specification
+        )
+        response_object = response_to_object(response.text)
 
         return response_object
 

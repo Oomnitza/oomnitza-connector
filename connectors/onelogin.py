@@ -1,5 +1,4 @@
 import json
-import logging
 from enum import Enum
 
 import xmltodict
@@ -7,8 +6,6 @@ from requests.auth import _basic_auth_str
 
 from lib.connector import UserConnector
 from lib.error import ConfigError, AuthenticationError
-
-LOG = logging.getLogger("connectors/onelogin")  # pylint:disable=invalid-name
 
 
 class Connector(UserConnector):
@@ -106,7 +103,7 @@ class Connector(UserConnector):
         if self.settings.get('client_id') and self.settings.get('client_secret'):
             self.api_version = Connector.Version.slash_one
         elif self.settings.get('api_token'):
-            LOG.warning('Deprecated API used! Please switch to the new OneLogin API')
+            self.logger.warning('Deprecated API used! Please switch to the new OneLogin API')
             self.api_version = Connector.Version.v1_to_v3
         else:
             raise ConfigError('OneLogin connector configured improperly')

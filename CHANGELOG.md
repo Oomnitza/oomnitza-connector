@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.12]
+
+### Added
+
+- Adding Munki Report asset load connector.
+- Added the Shim-Service
+- Updated some Connectors to Take advantage of the new service
+
 ## [2.3.11]
 
 ### Fixed

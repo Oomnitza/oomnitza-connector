@@ -304,7 +304,7 @@ class Connector(AssetsConnector):
         try:
             return [self.build_audit(node) for node in self.chef_nodes()]
         except Exception:
-            logger.exception("error: unable to perform query")
+            self.logger.exception("error: unable to perform query")
             return []
 
     def _load_records(self, options):
@@ -323,7 +323,7 @@ class Connector(AssetsConnector):
 
             return audit
         except Exception:
-            logger.exception("Unhandled exception in build audit")
+            self.logger.exception("Unhandled exception in build audit")
             return None
 
     def chef_nodes(self):

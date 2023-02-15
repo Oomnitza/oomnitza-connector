@@ -1,17 +1,13 @@
-import logging
 import math
 import time
 from distutils.util import strtobool
 from enum import Enum
 
 from gevent.pool import Pool
+from lib.connector import AssetsConnector
 from requests import HTTPError
 from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
-
-from lib.connector import AssetsConnector
-
-LOG = logging.getLogger("connectors/mobileiron")
 
 Version = Enum('Version', ['v1', 'v2'])  # TODO: set proper cases
 
@@ -67,7 +63,7 @@ class Connector(AssetsConnector):
             response = self.get(url).json()
             device_hardware = response.get('result')
         except (HTTPError, RetryError) as exc:
-            LOG.exception(f'Unable to fetch hardware data for device: {id}')
+            self.logger.exception(f'Unable to fetch hardware data for device: {id}')
         return device_hardware
 
     @staticmethod
@@ -158,7 +154,7 @@ class Connector(AssetsConnector):
                                                    maxsize=pool_size):
                     yield device
             else:
-                LOG.debug("Skipping partition %r", partition)
+                self.logger.debug("Skipping partition %r", partition)
 
     def load_spaces_api_v2(self):
         url = self.settings['url'] + "/api/v2/device_spaces/mine"
@@ -251,7 +247,7 @@ class Connector(AssetsConnector):
 
         while start < total_count:
             if self._retry_counter > Connector.RetryCount:
-                LOG.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
+                self.logger.error("Retry limit of %s attempts has been exceeded.", Connector.RetryCount)
                 break
             if start == -1:
                 start = 0
@@ -261,18 +257,18 @@ class Connector(AssetsConnector):
                 if total_count == 0:
                     total_count = result['totalCount']
 
-                LOG.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
+                self.logger.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
                 # yield result['searchResults']
                 results = [r for r in result['searchResults'] if self.keep_device_in_results(now, r.get('lastCheckin'))]
                 if results:
                     yield results
                 else:
-                    LOG.info("No more records found after cutoff date.")
+                    self.logger.info("No more records found after cutoff date.")
                     break  # we have run out of records to process. The rest will be before the cutoff date.
                 start += len(result['searchResults'])
             except:
-                LOG.exception("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
+                self.logger.warning("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
                 self._retry_counter += 1
                 sleep_secs = math.pow(2, min(self._retry_counter, 8))
-                LOG.warning("Sleeping for %s seconds.", sleep_secs)
+                self.logger.info("Sleeping for %s seconds.", sleep_secs)
                 time.sleep(sleep_secs)

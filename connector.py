@@ -1,14 +1,20 @@
 from gevent import monkey
+
 monkey.patch_all()
 
-import sys
 import argparse
-import logging.config
+import logging
+import sys
 
-from constants import MODE_CLOUD_INITIATED_UPLOAD, MODE_VERSION, MODE_CLIENT_INITIATED_UPLOAD, MODE_GENERATE_INI_TEMPLATE
+# Shim-Service
+import threading
+from shim_service.shim_service import ShimService
+
+from constants import (MODE_CLIENT_INITIATED_UPLOAD, MODE_CLOUD_INITIATED_UPLOAD,
+                       MODE_GENERATE_INI_TEMPLATE, MODE_VERSION)
 from lib import config, version
-from modes.cloud_initiated import cloud_initiated_upload
 from modes.client_initiated import client_initiated_upload
+from modes.cloud_initiated import cloud_initiated_upload
 from utils.relative_path import relative_app_path
 
 
@@ -61,6 +67,14 @@ def parse_command_line_args(for_server=False):
     return cmdline_args
 
 
+def deploy_shim_service():
+    shim_service = ShimService()
+    # Daemon thread so it dies when the connector dies.
+    shim_thread = threading.Thread(target=shim_service.start_service, args=("shim_service",), daemon=True)
+    shim_thread.name = "Shim-Service-main-tread-1"
+    shim_thread.start()
+    LOG.info(f"Shim-Service pid: {shim_thread.name}")
+
 if __name__ == "__main__":
 
     args = parse_command_line_args()
@@ -75,6 +89,7 @@ if __name__ == "__main__":
     }
 
     try:
+        deploy_shim_service()
         mode_handlers[args.mode](args)
     except KeyboardInterrupt:
         LOG.info('Interrupted... Exiting')

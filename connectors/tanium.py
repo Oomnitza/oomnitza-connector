@@ -1,8 +1,4 @@
-import logging
-
 from lib.connector import AssetsConnector
-
-LOG = logging.getLogger("connectors/tanium")
 
 
 class Connector(AssetsConnector):

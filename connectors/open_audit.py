@@ -1,11 +1,7 @@
 import logging
 
 import requests
-
 from lib.connector import AssetsConnector
-
-
-LOG = logging.getLogger("connectors/open_audit")  # pylint:disable=invalid-name
 
 
 class Connector(AssetsConnector):
@@ -33,7 +29,8 @@ class Connector(AssetsConnector):
         self.oa = OpenAuditCommunityAPI(
             url=self.settings['url'],
             username=self.settings['username'],
-            password=self.settings['password']
+            password=self.settings['password'], 
+            logger=self.logger
         )
 
     def authenticate(self):
@@ -60,11 +57,12 @@ class Connector(AssetsConnector):
 
 class OpenAuditCommunityAPI(object):
     """https://community.opmantek.com/display/OA/The+Open-AudIT+API"""
-    def __init__(self, url, username, password):
+    def __init__(self, url, username, password, logger):
         self.url = url
         self.username = username
         self.password = password
         self.session_id = None
+        self.logger = logger
 
     def get_url(self, parts):
         """Returns a complete URL, combining the base url and provided parts."""
@@ -72,31 +70,53 @@ class OpenAuditCommunityAPI(object):
 
     def establish_session(self):
         """Establishes a session by invoking the logon endpoint."""
-        response = requests.post(
-            url=self.get_url('/logon'),
-            data={
-                'username': self.username,
-                'password': self.password
-            },
-            headers={
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json'
-            }
-        )
-        response.raise_for_status()
+        
+        url = self.get_url('/logon')
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        }
+        data = {
+            'username': self.username,
+            'password': self.password
+        }
+        
+        self.logger.info("Issuing POST %s", url)
+        
+        response = requests.post(url=url, data=data, headers=headers)
+        
+        try:
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            raise ex
+        
+        self.logger.debug('Response code [%s]', response.status_code)                    
         self.session_id = response.cookies.get('PHPSESSID')
 
     def perform_api_get(self, url):
         """Performs an HTTP GET API request using providing URL. Returns dictionary of parsed result."""
+
+        headers = {
+            'Cookie': 'PHPSESSID=' + self.session_id,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+        self.logger.info("Issuing GET %s", url)
+            
         response = requests.get(
             url=url,
-            headers={
-                'Cookie': 'PHPSESSID=' + self.session_id,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+            headers=headers
         )
-        response.raise_for_status()
+        
+        try:
+            response.raise_for_status()
+        except Exception as ex:
+            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            raise ex
+        
+        self.logger.debug('Response code [%s]', response.status_code)                    
         return response.json()
 
     def get_devices(self, limit=1000):

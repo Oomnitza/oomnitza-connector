@@ -1,10 +1,5 @@
-import logging
-
-from requests.auth import _basic_auth_str
-
 from lib.connector import UserConnector
-
-logger = logging.getLogger("connectors/zendesk")  # pylint:disable=invalid-name
+from requests.auth import _basic_auth_str
 
 
 class Connector(UserConnector):
@@ -72,7 +67,7 @@ class Connector(UserConnector):
         if not self.settings.get('load_organizations'):
             return None
 
-        logger.info("Loading Zendesk Organizations...")
+        self.logger.info("Loading Zendesk Organizations...")
 
         organization_map = {}
         url = self.url_template.format("v2/organizations.json")
@@ -88,5 +83,5 @@ class Connector(UserConnector):
                     organization_map[organization["id"]] = organization
                 url = response['next_page']
 
-        logger.info("Loaded %s organizations.", len(organization_map))
+        self.logger.info("Loaded %s organizations.", len(organization_map))
         return organization_map

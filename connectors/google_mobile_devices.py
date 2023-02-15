@@ -1,12 +1,8 @@
 import json
-import logging
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-
 from lib.connector import AssetsConnector
-
-LOG = logging.getLogger("connectors/googlemobiledevices")  # pylint:disable=invalid-name
 
 GOOGLEMDM_API_SCOPE = (
     'https://www.googleapis.com/auth/admin.directory.device.mobile.readonly',
@@ -41,11 +37,12 @@ class Connector(AssetsConnector):
     def _load_records(self, options):
         credentials = self.get_sa_credentials()
         if credentials is None:
-            LOG.error("Set the email of the G Suite administrator and service account's json key")
+            self.logger.error("Set the email of the G Suite administrator and service account's json key")
             raise StopIteration
 
         api_client = build('admin', 'directory_v1', credentials=credentials, cache_discovery=False)
 
+        self.logger.info("Getting user list")
         mobiledevices = api_client.mobiledevices()
         request = mobiledevices.list(customerId='my_customer', projection='FULL')
 

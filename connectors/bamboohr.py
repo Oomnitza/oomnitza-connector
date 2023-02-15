@@ -1,11 +1,5 @@
-import logging
-
-from requests import ConnectionError, HTTPError
-from requests.auth import _basic_auth_str
-
 from lib.connector import UserConnector
-
-logger = logging.getLogger("connectors/bamboohr")  # pylint:disable=invalid-name
+from requests.auth import _basic_auth_str
 
 
 class Connector(UserConnector):

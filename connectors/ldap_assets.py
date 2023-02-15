@@ -1,13 +1,8 @@
 import json
-import logging
 
-import ldap
-
-from lib.connector import AssetsConnector, AuthenticationError
+from lib.connector import AssetsConnector
 from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
-
-LOG = logging.getLogger("connectors/ldap_assets")  # pylint:disable=invalid-name
 
 
 def json_validator(value):

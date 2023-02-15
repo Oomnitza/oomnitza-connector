@@ -1,12 +1,8 @@
 import os
-import logging
 
+from lib.connector import AssetsConnector
 from suds.client import Client
 from suds.wsse import Security, UsernameToken
-
-from lib.connector import AssetsConnector, AuthenticationError
-
-logger = logging.getLogger("connectors/jasper")  # pylint:disable=invalid-name
 
 
 class Connector(AssetsConnector):
@@ -36,7 +32,7 @@ class Connector(AssetsConnector):
         Parses WSDL file to determine available services and objects.
         Sets WSSE security object as well.
         """
-        logger.debug("Parsing WSDL: %s...", self.settings['wsdl_path'])
+        self.logger.debug("Parsing WSDL: %s...", self.settings['wsdl_path'])
         self.jasper_client = Client(self.settings['wsdl_path'])
 
         # WSSE security
@@ -58,26 +54,26 @@ class Connector(AssetsConnector):
         keeping client side data in sync with Jasper's.
         """
         # extracting since variable
-        storage_path = '../{}'.format(self.settings['storage'])  # FixMe: fix me!
+        storage_path = f"../{self.settings['storage']}"
         if os.path.exists(storage_path):
             with open(storage_path, 'r') as f:
                 since = str(f.read().strip())
         else:
             since = '2015-03-04T00:00:00Z'
 
-        logger.debug("Fetching Modified Terminal ID(s) since %s...", since)
+        self.logger.debug("Fetching Modified Terminal ID(s) since %s...", since)
         _args = dict(
             since=since,
             licenseKey=self.settings['api_token']
         )
         response = self.jasper_client.service.GetModifiedTerminals(**_args)
         ids = response['iccids'][0]
-        logger.debug("Found %s modified terminals.", len(ids))
+        self.logger.debug("Found %s modified terminals.", len(ids))
         last_modified_date = since
         try:
             while ids:
                 to_send, ids = ids[:10], ids[10:]
-                logger.debug("yielding %r for processing.", to_send)
+                self.logger.debug("yielding %r for processing.", to_send)
                 yield to_send
                 last_modified_date = to_send[-1]['dateModified']
         finally:

@@ -1,6 +1,5 @@
 from azure.common.credentials import ServicePrincipalCredentials
 from azure.graphrbac import GraphRbacManagementClient
-
 from lib.connector import UserConnector
 
 AUTH_RESOURCE = "https://graph.windows.net"
@@ -38,5 +37,8 @@ class Connector(UserConnector):
             tenant_id
         )
 
+        self.logger.info('Getting user list Client ID [%s] Tenant ID [%s]', 
+            client_id, tenant_id)
+                                        
         for user in graphrbac_client.users.list():
             yield user.__dict__
