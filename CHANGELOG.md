@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.13]
+
+### Fixed
+
+- Incorrect internal Oomnitza calls
+
 ## [2.3.12]
 
 ### Added
