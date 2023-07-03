@@ -74,5 +74,13 @@ EnabledConnectors = {
     'munki_report': {
         'label': 'munki_report',
         'order': 19
+    },
+    'insight': {
+        'label': 'insight',
+        'order': 20
+    },
+    'dell_asset_order_status': {
+        'label': 'dell_asset_order_status',
+        'order': 21
     }
 }

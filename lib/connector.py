@@ -6,7 +6,7 @@ import logging
 import os
 from datetime import date, datetime
 from distutils.util import strtobool
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import requests
@@ -25,6 +25,8 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
 from utils.data import get_field_value
 
+SAVED_DATA_PATH = "./save_data"
+
 
 # noinspection PyBroadException
 def response_to_object(response_text):
@@ -39,8 +41,8 @@ def response_to_object(response_text):
         except:
             return response_text
 
-def run_connector(connector_cfg, options):
 
+def run_connector(connector_cfg, options):
     LOG = logging.getLogger(connector_cfg['__name__'])
 
     try:
@@ -91,7 +93,8 @@ def replace_illegal_chars(key: str) -> str:
     }
     new_key = key
     for old, new in replacements.items():
-        new_key = new_key.replace(old, new)
+        if old in new_key:
+            new_key = new_key.replace(old, new)
     return new_key
 
 
@@ -465,11 +468,22 @@ class BaseConnector(object):
         self.logger.debug('Response code [%s]', response.status_code)                    
         return response
 
-    def post(self, url, data, headers=None, auth=None, post_as_json=True):
+    def post(
+            self,
+            url: str,
+            data: Dict[str, Any],
+            headers: Dict[str, Any] = None,
+            auth: Union[Tuple, Callable] = None,
+            post_as_json: bool = True,
+    ):
         """
-        Performs a HTTP GET against the passed URL using either the standard or passed headers
-        :param url: the full url to retrieve.
-        :param headers: optional headers to override the headers from get_headers()
+        Performs a HTTP POST against the passed URL.
+
+        :param url: the full url to POST to.
+        :param data: the payload.
+        :param headers: optional headers to override the headers from defaults
+        :param auth: Auth tuple or callable to enable Basic/Digest/Custom HTTP Auth.
+        :param post_as_json: True to ensure dates in the json appear correctly.
         :return: the response object
         """
         session = self._get_session()
@@ -481,7 +495,7 @@ class BaseConnector(object):
             
         if self.is_oomnitza_connector():
             # Reduce logging verbosity
-            self.logger.debug("Issuing GET %s", url)
+            self.logger.debug("Issuing POST %s", url)
         else:            
             self.logger.info("Issuing POST %s", url)
             
@@ -575,6 +589,33 @@ class BaseConnector(object):
     def finalize_processed_portion(self):
         self.OomnitzaConnector.finalize_portion(self.portion)
 
+    def create_connection_pool(self):
+        pool_size = self.settings['__workers__']
+        if pool_size == 0:
+            # do not use gevent at all, for example for the testing
+            connection_pool = None
+        else:
+            connection_pool = Pool(size=pool_size)
+        return connection_pool
+
+    def make_data_dir(self, path=SAVED_DATA_PATH):
+        os.makedirs(path, exist_ok=True)
+
+    def save_data_locally(self, record, index, path=SAVED_DATA_PATH):
+        filename = f"{path}/{index}.json"
+        self.save_to_json_file(record, filename, path)
+
+    def _save_processed_payload_locally(self, payload, path=SAVED_DATA_PATH):
+        filename = "{0}/oom.payload{1:0>3}.json".format(path, self.send_counter)
+        self.save_to_json_file(payload, filename, path)
+        self.send_counter += 1
+
+    def save_to_json_file(self, data, filename, path=SAVED_DATA_PATH):
+        self.make_data_dir(path)
+        with open(filename, "w") as save_file:
+            self.logger.info("Saving payload data to %s.", filename)
+            json.dump(data, save_file, indent=2, default=self.json_serializer)
+
     def perform_sync(self, options):
         """
         This method controls the sync process. Called from the command line script to do the work.
@@ -587,24 +628,15 @@ class BaseConnector(object):
         limit_records = float(options.get('record_count', 'inf'))
 
         save_data = self.settings.get("__save_data__", False)
+        is_test_run = bool(self.settings.get('test_run', False))
+        is_custom = bool(self.settings.get('is_custom', False))
 
-        if save_data:
-            try:
-                # TODO exists_ok=True
-                os.makedirs("./saved_data")
-            except OSError as exc:
-                if exc.errno == errno.EEXIST and os.path.isdir("./saved_data"):
-                    pass
-                else:
-                    raise
+        if is_custom and is_test_run:
+            self.save_test_response_to_file()
+            return True
 
         try:
-            pool_size = self.settings['__workers__']
-            if pool_size == 0:
-                # do not use gevent at all, for example for the testing
-                connection_pool = None
-            else:
-                connection_pool = Pool(size=pool_size)
+            connection_pool = self.create_connection_pool()
             for index, record in enumerate(self._load_records(options)):
 
                 explicit_error = None
@@ -617,10 +649,7 @@ class BaseConnector(object):
                     break
 
                 if save_data:
-                    filename = "./saved_data/{}.json".format(str(index))
-                    with open(filename, "w") as save_file:
-                        self.logger.info("Saving fetched payload data to %s.", filename)
-                        json.dump(record, save_file, indent=2, default=self.json_serializer)
+                    self.save_data_locally(record, index)
 
                 if not isinstance(record, list):
                     record = [record]
@@ -628,6 +657,13 @@ class BaseConnector(object):
                 for rec in record:
 
                     if self.processed_records_counter < limit_records:
+                        if not self.keep_going:
+                            break
+
+                        if connection_pool:
+                            connection_pool.spawn(self.sender, *(rec, explicit_error))
+                        else:
+                            self.sender(rec, explicit_error)
 
                         # increase records counter
                         self.processed_records_counter += 1
@@ -638,17 +674,8 @@ class BaseConnector(object):
                             )
                             self.logger.info(msg)
 
-                        if not self.keep_going:
-                            break
-
-                        if connection_pool:
-                            connection_pool.spawn(self.sender, *(rec, explicit_error))
-
-                        else:
-                            self.sender(rec, explicit_error)
-
                         # only 10 records for test connector run
-                        if bool(self.settings.get('test_run')) and self.processed_records_counter == 10:
+                        if is_test_run and self.processed_records_counter == 10:
                             self.stop_sync()
 
             if connection_pool:
@@ -667,16 +694,8 @@ class BaseConnector(object):
                 )
                 self.logger.info(msg)
 
-            return True
         except RequestException as exp:
             raise ConfigError("Error loading records from %s: %s" % (self.MappingName, str(exp)))
-
-    def _save_data(self, payload):
-        filename = "./saved_data/oom.payload{0:0>3}.json".format(self.send_counter)
-        self.logger.info("Saving processed payload data to %s.", filename)
-        with open(filename, 'w') as save_file:
-            self.send_counter += 1
-            json.dump(payload, save_file, indent=2, default=self.json_serializer)
 
     def _validate_insert_update_only(self, insert_only, update_only):
         if insert_only and update_only:
@@ -732,7 +751,7 @@ class BaseConnector(object):
 
         if self.settings.get("__save_data__"):
             try:
-                self._save_data(payload)
+                self._save_processed_payload_locally(payload)
             except:
                 self.logger.exception("Error saving data.")
 
@@ -743,6 +762,13 @@ class BaseConnector(object):
             self.sent_records_counter += 1
 
         return result
+
+    def save_test_response_to_file(self):
+        """
+        Performs the api call and save it to a file.
+        :return: response
+        """
+        raise NotImplementedError
 
     def _load_records(self, options):
         """
@@ -780,6 +806,7 @@ class BaseConnector(object):
         """
         outgoing_record = {}
         missing_fields = set()
+
         for field, specs in list(field_mappings.items()):
             source = specs.get('source', None)
             extra_input = specs.get('extra_input', None)

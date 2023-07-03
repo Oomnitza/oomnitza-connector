@@ -8,6 +8,7 @@ from lib.connector import AssetsConnector
 from requests import HTTPError
 from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
+from typing import List, Dict, Tuple, Any
 
 Version = Enum('Version', ['v1', 'v2'])  # TODO: set proper cases
 
@@ -18,12 +19,12 @@ class Connector(AssetsConnector):
 
     Settings = {
         'url':        {'order': 1, 'default': "https://na1.mobileiron.com"},
-        'username':   {'order': 2, 'example': "username@example.com"},
-        'password':   {'order': 3, 'example': "change-me"},
-        'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True},
-        'api_version': {'order': 6, 'example': '1', 'default': '1'},
-        'include_checkin_devices_only': {'order': 7, 'example': 'True', 'default': 'True'},
-        'last_checkin_date_threshold': {'order': 8, 'example': '129600', 'default': '129600'},
+        'username':   {'order': 2, 'example': "username@example.com", 'default': ''},
+        'password':   {'order': 3, 'example': "change-me", 'default': ''},
+        'partitions': {'order': 4, 'example': '["Drivers"]', 'is_json': True, 'default': '["Drivers"]'},
+        'api_version': {'order': 5, 'example': '1', 'default': '1'},
+        'include_checkin_devices_only': {'order': 6, 'example': 'True', 'default': 'True'},
+        'last_checkin_date_threshold': {'order': 7, 'example': '129600', 'default': '129600'},
     }
 
     api_version = None
@@ -37,11 +38,14 @@ class Connector(AssetsConnector):
         self._retry_counter = 0
 
     def get_headers(self):
-        headers = {
-            'Authorization': _basic_auth_str(self.settings['username'], self.settings['password']),
+        if self.settings.get('Authorization'):
+            auth_str = self.settings['Authorization']
+        else:
+            auth_str = _basic_auth_str(self.settings['username'], self.settings['password'])
+        return {
+            'Authorization': auth_str,
             'Accept': 'application/json'
         }
-        return headers
 
     @staticmethod
     def get_primary_cpu_hdd_ram_placeholder():
@@ -156,14 +160,21 @@ class Connector(AssetsConnector):
             else:
                 self.logger.debug("Skipping partition %r", partition)
 
-    def load_spaces_api_v2(self):
+    def yield_spaces_api_v2(self):
+
+        spaces = self.get_spaces_api_v2()
+        for space in spaces:
+            yield space
+
+    def get_spaces_api_v2(self) -> List[str]:
+        """
+        Fetches all spaces in a given domain
+        """
         url = self.settings['url'] + "/api/v2/device_spaces/mine"
 
         response = self.get(url)
         spaces = response.json()['results']
-
-        for space in spaces:
-            yield space['id']
+        return [ space['id'] for space in spaces]
 
     def load_space_fields_api_v2(self, space):
         url = self.settings['url'] + "/api/v2/device_spaces/criteria?adminDeviceSpaceId={space}".format(space=space)
@@ -175,16 +186,20 @@ class Connector(AssetsConnector):
 
     def load_devices_api_v2(self, *a, **kw):
 
-        url_template = self.settings['url'] + "/api/v2/devices?adminDeviceSpaceId={space}&fields={fields}&labelId=-1&limit={limit}&offset={offset}"
+        fields = ""
+        for arg,arg_value in kw.items():
+            if arg == 'fields':
+                fields = arg_value
 
-        for space in self.load_spaces_api_v2():
+        for space in self.yield_spaces_api_v2():
 
             limit = 50
             offset = 0
+            if not fields:
+                fields = ','.join(self.load_space_fields_api_v2(space))
 
-            fields = ','.join(self.load_space_fields_api_v2(space))
             while True:
-                response = self.get(url_template.format(limit=limit, offset=offset, space=space, fields=fields))
+                response = self.get(self.get_v2_url(limit=limit, offset=offset, space=space, fields=fields))
                 response_body = response.json()
                 devices = response_body['results']
 
@@ -195,6 +210,40 @@ class Connector(AssetsConnector):
                     break
 
                 offset += limit
+
+    def fetch_devices(self, url: str, partition_id: str, start: int, total_count: int, rows: int, now: float)-> Tuple[List[Dict], int, int]:
+        response = self.get(
+            "{0}/api/v1/device?dmPartitionId={1}&rows={2}&start={3}&sortFields[0].name=lastCheckin&sortFields[0].order=DESC".format(
+                url, partition_id, rows, start))
+        result = response.json()['result']
+        if total_count == 0:
+            total_count = result['totalCount']
+        devices = [r for r in result['searchResults'] if self.keep_device_in_results(now, r.get('lastCheckin'))]
+
+        self.logger.info("Processing devices %s-%s of %s", start, start + len(result['searchResults']), total_count)
+        return devices, start + len(result['searchResults']), total_count
+
+    def fetch_all_devices_for_partition_shim(self, partition_id: str , start: int, total_count: int, now: float, rows=500) -> Tuple[List[dict], int, int]:
+        devices, start, total_count = self.fetch_devices(self.settings['url'], partition_id, start, total_count, rows, now)
+        return devices, start, total_count
+
+    def load_devices_api_v1_shim(self, partition_id: str, start: int, total_count: int, now: float) -> Tuple[List[dict], int, int]:
+        devices, start, total_count = self.fetch_all_devices_for_partition_shim(partition_id, start, total_count, now)
+        device_results = []
+        for device in devices:
+            result = self.load_primary_cpu_hdd_ram_and_serial_for_windows_device(device)
+            device_results.append(result)
+        return device_results, start, total_count
+
+    def load_devices_api_v2_shim(self, space, fields, limit, offset):
+        response = self.get(self.get_v2_url(limit, offset, space, fields))
+        response_body = response.json()
+
+        return response_body['results'], response_body['hasMore']
+
+    def get_v2_url(self, limit, offset, space, fields) -> str:
+        url_template = self.settings['url'] + "/api/v2/devices?adminDeviceSpaceId={space}&fields={fields}&labelId=-1&limit={limit}&offset={offset}"
+        return url_template.format(limit=limit, offset=offset, space=space, fields=fields)
 
     def _load_records(self, options):
         generator = {
@@ -252,23 +301,122 @@ class Connector(AssetsConnector):
             if start == -1:
                 start = 0
             try:
-                response = self.get(url.format(self.settings['url'], partition_id, rows, start))
-                result = response.json()['result']
-                if total_count == 0:
-                    total_count = result['totalCount']
-
-                self.logger.info("Processing devices %s-%s of %s", start, start+len(result['searchResults']), total_count)
-                # yield result['searchResults']
-                results = [r for r in result['searchResults'] if self.keep_device_in_results(now, r.get('lastCheckin'))]
-                if results:
-                    yield results
+                devices, start, total_count = self.fetch_devices(url, partition_id, start, total_count, rows, now)
+                if devices:
+                    yield devices
                 else:
                     self.logger.info("No more records found after cutoff date.")
                     break  # we have run out of records to process. The rest will be before the cutoff date.
-                start += len(result['searchResults'])
             except:
-                self.logger.warning("Error getting devices for partition. Attempt #%s failed.", self._retry_counter+1)
+                self.logger.warning("Error getting devices for partition. Attempt #%s failed.", self._retry_counter + 1)
                 self._retry_counter += 1
                 sleep_secs = math.pow(2, min(self._retry_counter, 8))
                 self.logger.info("Sleeping for %s seconds.", sleep_secs)
                 time.sleep(sleep_secs)
+
+    @staticmethod
+    def transform_data(input_data) -> List[Dict[str, Dict[str, str]]]:
+        """
+        This function takes the device list and transforms the response based on platform.
+        E.G: Input: [{ "common.SerialNumber": "3456789",
+                       "android.Client_version_code": "1",
+                       "android.admin_activated": "True"} ]
+             Output: [{'common': {'common.SerialNumber': '3456789'},
+                      'android': {'android.Client_version_code': '1', 'android.admin_activated': 'True'}}]
+        """
+        output_data = []
+
+        for data_dict in input_data:
+            output_dict = {}
+            for platform, field_value in data_dict.items():
+                if 'common.' in platform:
+                    output_dict.setdefault('common', {})[platform] = field_value
+                elif 'android.' in platform:
+                    output_dict.setdefault('android', {})[platform] = field_value
+                elif 'ios.' in platform:
+                    output_dict.setdefault('ios', {})[platform] = field_value
+                elif 'windows_phone.' in platform:
+                    output_dict.setdefault('windows_phone', {})[platform] = field_value
+                elif 'user.' in platform:
+                    output_dict.setdefault('user', {})[platform] = field_value
+
+            output_data.append(output_dict)
+        return output_data
+
+    def get_partition_ids(self, partitions: List[Dict[str, str]]) -> List[str]:
+        partition_ids = []
+        for partition in self.fetch_all_partitions():
+            if partitions == "All" or partition['name'] in partitions:
+                partition_ids.append(partition['id'])
+        return partition_ids
+
+    @staticmethod
+    def convert_none_to_empty_string(devices: List[Dict]) -> List[Dict]:
+        for device in devices:
+            for field, value in device.items():
+                if value is None:
+                    device[field] = ""
+        return devices
+
+    def load_shim_records_v1(self, external_settings) -> Tuple[List[Dict[str, Any]], List[str], bool, int, int, float]:
+        """This function initializes parameters for API calls, collects device records for API V2."""
+        partitions = external_settings.get('partitions')
+        partition_ids = external_settings.get('partition_ids')
+        is_partition_collected = external_settings.get('is_partition_collected')
+        start = external_settings.get('start')
+        total_count = external_settings.get('total_count')
+        now = external_settings.get('now')
+
+        if not is_partition_collected:
+            partition_ids = self.get_partition_ids(partitions)
+            is_partition_collected = not is_partition_collected
+
+        self.logger.info(f"{self.__class__.__name__}: Syncing devices")
+
+        devices = []
+        if self.api_version == Version.v1:
+            devices, start, total_count = self.load_devices_api_v1_shim(partition_ids[0], start, total_count, now)
+        devices = self.convert_none_to_empty_string(devices)
+
+        if start == total_count:
+            current_partition = partition_ids.pop(0)
+            self.logger.info(f"All the devices within the partition {current_partition} have been synced!")
+            if partition_ids:
+                total_count = 0
+                start = 0
+        return devices, partition_ids, is_partition_collected, start, total_count, now
+
+    def load_shim_records(self, _settings) -> Tuple[List[Dict[str, Dict[str, str]]], bool, int, int, List[str], bool]:
+        """
+        This function initializes parameters for API calls, collects device records for API V2.
+        """
+
+        fields = _settings.get('fields')
+        limit = _settings.get('limit')
+        offset = _settings.get('offset')
+        is_spaces_collected = _settings.get('is_spaces_collected')
+        spaces = _settings.get('spaces')
+
+        # Collect spaces if not already collected
+        if not is_spaces_collected:
+            spaces = self.get_spaces_api_v2()
+            is_spaces_collected = not is_spaces_collected
+
+        self.logger.info(f"{self.__class__.__name__}: Syncing devices")
+
+        devices = []
+        has_more = False
+        if self.api_version == Version.v2:
+            devices, has_more = self.load_devices_api_v2_shim(space=spaces[0], fields=fields, limit=limit, offset=offset)
+
+        # If there are no more devices in the current space and if spaces is not empty.
+        if not has_more:
+            current_space = spaces.pop(0)
+            self.logger.info(f"All the devices within the space {current_space} have been synced!")
+            if spaces:
+                has_more = not has_more
+                offset = 0 - limit
+
+        transformed_devices = self.transform_data(devices)
+
+        return transformed_devices, has_more, limit, offset, spaces, is_spaces_collected

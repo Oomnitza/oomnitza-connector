@@ -5,11 +5,12 @@ import tornado.web
 from tornado.web import RequestHandler
 
 from requests.exceptions import RequestException
-
 # import the connectors
 from connectors import (
     meraki_network_devices,
-    munki_report
+    munki_report,
+    mobileiron,
+    dell_asset_order_status
 )
 from lib.connector import response_to_object
 from constants import SHIM_PORT
@@ -77,12 +78,52 @@ class CiscoMerakiNetworkAssetLoad(DefaultShimHandler):
             self.return_http_error(req_err.response.status_code, str(req_err))
 
 
-class MunkiReportAssetLoad(DefaultShimHandler):
+class MobileIronAssetLoad(DefaultShimHandler):
+
+    settings = {}
+
+    def initialize(self):
+        """
+        This method initializes the object of the class MobileIronConnector.
+        """
+
+        self.settings = response_to_object(self.request.body)
+        self.settings['Authorization'] = self.request.headers.get('Authorization')
+        self.mobileiron_connector = mobileiron.Connector(SECTION, self.settings)
+
     def post(self, *args, **kwargs):
-        LOG.info(f"{self.__class__.__name__}: Fetching the Munki Report Devices.")
+
+        LOG.info(f"{self.__class__.__name__}: Fetching the MobileIron Devices.")
+
         try:
-            munki_report_connector = munki_report.Connector(SECTION, {})
-            self.write({"error": "Not Implemented yet"})
+            """ 
+            Get device info from MobileIron Connector.
+            """
+            api_version = self.settings['api_version']
+            if api_version == '2':
+                devices, has_more, limit, offset, spaces, is_spaces_collected = self.mobileiron_connector.load_shim_records(self.settings)
+                self.write({"devices": devices, "hasMore": has_more, "limit": limit, "offset": offset, "spaces": spaces, "is_spaces_collected": is_spaces_collected })
+            elif api_version == '1':
+                devices, partition_ids, is_partition_collected, start, total_count, now = self.mobileiron_connector.load_shim_records_v1(self.settings)
+                self.write({"devices": devices, "partition_ids": partition_ids, "is_partition_collected": is_partition_collected,  "start": start, "total_count": total_count, "now": now})
+        except RequestException as req_err:
+            self.return_http_error(req_err.response.status_code, str(req_err))
+
+class DellAssetOrderStatus(DefaultShimHandler):
+
+    settings = {}
+
+    def initialize(self):
+        self.settings = response_to_object(self.request.body)
+        self.settings['Authorization'] = self.request.headers.get('Authorization')
+        self.dell_connector = dell_asset_order_status.Connector(SECTION, self.settings)
+
+    def post(self, *args, **kwargs):
+
+        LOG.info(f"{self.__class__.__name__}: Fetching the Dell Devices with Order Status.")
+        try:
+            devices, break_early = self.dell_connector.load_shim_records(self.settings)
+            self.write({"devices": devices, "break_early": break_early})
         except RequestException as req_err:
             self.return_http_error(req_err.response.status_code, str(req_err))
 
@@ -90,9 +131,9 @@ class MunkiReportAssetLoad(DefaultShimHandler):
 ###############################
 # All User list apis are here #
 ###############################
-class BambooHRUserLoad(DefaultShimHandler):
+class TemplateUserLoad(DefaultShimHandler):
     def post(self, *args, **kwargs):
-        LOG.info(f"{self.__class__.__name__}: Fetching the BambooHR Users.")
+        LOG.info(f"{self.__class__.__name__}: Fetching the <Connector-Name> Users.")
         self.write({"error": "Not Implemented yet"})
 
 
@@ -130,7 +171,8 @@ class ShimService(object):
 
             # Asset Loads
             (r'/api/v1/assets/cisco_meraki_network_devices', CiscoMerakiNetworkAssetLoad),
-            (r'/api/v1/assets/munki_report', MunkiReportAssetLoad),
+            (r'/api/v1/assets/mobileiron_devices', MobileIronAssetLoad),
+            (r'/api/v1/assets/dell_asset_order_status', DellAssetOrderStatus),
 
             # User Loads
 

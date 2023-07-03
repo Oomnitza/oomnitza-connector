@@ -1,10 +1,23 @@
 # Changelog
 
+## [2.3.14]
+
+### Added
+
+- Adding Insight Order Status Asset connector
+- Adding Dell Asset Order Status connector
+
+### Updated
+
+- Updated Tanium with session_token setting to support basic auth or token authorization.
+- Updated the launch options to skip running the Shim-Service with `--skip-shim`. Runs by default.
+- Updated vCenter to allow use of the new api versions from >v7.0U2 to v8.0U1 and legacy apis.
+
 ## [2.3.13]
 
-### Fixed
+### Updated
 
-- Incorrect internal Oomnitza calls
+- Updated Munki Report with db_columns setting to enable the retrieval of extra columns.
 
 ## [2.3.12]
 

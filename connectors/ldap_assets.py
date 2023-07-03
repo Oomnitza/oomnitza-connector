@@ -1,15 +1,6 @@
-import json
-
 from lib.connector import AssetsConnector
-from lib.error import ConfigError
 from lib.ext.ldap import LdapConnection
-
-
-def json_validator(value):
-    try:
-        return json.loads(value)
-    except ValueError:
-        raise ConfigError('setting is incorrect json expected but %r found' % value)
+from utils.data import json_validator
 
 
 class Connector(AssetsConnector):

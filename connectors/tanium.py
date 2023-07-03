@@ -7,8 +7,9 @@ class Connector(AssetsConnector):
         'url':              {'order': 1, 'example': 'https://TANIUM_SERVER', 'default': ''},
         'username':         {'order': 2, 'example': '***', 'default': ''},
         'password':         {'order': 3, 'example': '***', 'default': ''},
-        'domain':           {'order': 4, 'example': '', 'default': ''},
-        'view':             {'order': 5, 'example': '', 'default': ''},
+        'session_token':    {'order': 4, 'example': '', 'default': ''},
+        'domain':           {'order': 5, 'example': '', 'default': ''},
+        'view':             {'order': 6, 'example': '', 'default': ''},
     }
 
     FieldMappings = {
@@ -20,6 +21,7 @@ class Connector(AssetsConnector):
     def __init__(self, *args, **kwargs):
         super(Connector, self).__init__(*args, **kwargs)
         self.settings['url'] = self.settings['url'].rstrip('/')
+        self.session_token = self.settings['session_token']
 
     def authorize(self):
         """authorize in the Tanium"""
@@ -40,7 +42,6 @@ class Connector(AssetsConnector):
         self.session_token = response['data']['session']
 
     def get_headers(self):
-
         if not self.session_token:
             self.authorize()
 

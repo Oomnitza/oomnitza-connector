@@ -6,6 +6,8 @@ from lib.error import ConfigError
 from lib.version import VERSION
 from requests import RequestException
 
+CSRF_HEADER = "X-CSRF-Token"
+
 
 class Connector(BaseConnector):
     Settings = {
@@ -19,8 +21,14 @@ class Connector(BaseConnector):
     FieldMappings = {}
 
     def __init__(self, section, settings):
+        """Initialize the connector."""
+        self._csrf_token = None
         super(Connector, self).__init__(section, settings)
         self.authenticate()
+
+    def _extract_csrf_token(self, response):
+        if CSRF_HEADER in response.headers:
+            self._csrf_token = response.headers[CSRF_HEADER]
 
     def get_connector_name(self):
         """ Return connector name to be used for logging. """
@@ -35,26 +43,37 @@ class Connector(BaseConnector):
 
     def get_headers(self):
         if self.settings['api_token']:
-            return {
+            headers = {
                 'Content-Type': 'application/json; charset=utf-8', 
                 'Authorization2': self.settings['api_token'],
                 # TODO - Pass context id to Oomnitza
                 # ContextLoggingAdapter.HEADER_CONTEXT_ID: self.context_id
             }
-        # these empty headers because of the old implementation of request_token endpoint, body SHOULD NOT be interpreted as JSON here!
-        return {}
+        # these empty headers because of the old implementation of request_token
+        # endpoint, body SHOULD NOT be interpreted as JSON here!
+        else:
+            headers = {}
+        if self._csrf_token:
+            headers.update({CSRF_HEADER: self._csrf_token})
+        return headers
 
     def authenticate(self):
         if not any((
-            self.settings['api_token'],   # given token
-            self.settings.get('user_pem_file'),   # given .pem certificate
-            self.settings['username'] and self.settings['password']   # given pass + username
+            self.settings['api_token'],
+            self.settings.get('user_pem_file'),
+            self.settings['username'] and self.settings['password']
         )):
-            raise ConfigError("Oomnitza section needs either: api_token or username & password or PEM certificate.")
+            raise ConfigError(
+                "Oomnitza section needs either: api_token or username & password "
+                "or PEM certificate."
+            )
 
         try:
             if self.settings['api_token']:
-                self.get("{url}/api/v2/mappings?name=AuthTest".format(**self.settings))
+                response = self.get(
+                    "{url}/api/v2/mappings?name=AuthTest".format(**self.settings)
+                )
+                self._extract_csrf_token(response)
                 return
 
             auth_url = "{url}/api/request_token".format(**self.settings)
@@ -65,6 +84,7 @@ class Connector(BaseConnector):
                 post_as_json=False,
             )
             self.settings['api_token'] = response.json()["token"]
+            self._extract_csrf_token(response)
         except RequestException as exp:
             raise AuthenticationError(str(exp))
 

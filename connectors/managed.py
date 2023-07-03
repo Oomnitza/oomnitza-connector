@@ -41,6 +41,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             'example': False,
             'default': False
         },
+        'is_custom': {
+            'order': 5,
+            'example': False,
+            'default': False
+        },
     }
 
     session_auth_behavior = None
@@ -200,6 +205,24 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         return secret['headers'], secret['params'], ssl_adapter
 
+    def save_test_response_to_file(self):
+        self.logger.info("Getting test response from custom integration")
+        api_call_specification = self.build_call_specs(self.list_behavior)
+
+        auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+        api_call_specification['headers'].update(**auth_headers)
+        api_call_specification['params'].update(**auth_params)
+        api_call_specification['ssl_adapter'] = ssl_adapter
+
+        response = self.perform_api_request(logger=self.logger, **api_call_specification)
+        self.logger.debug("..response: %s", response.text)
+
+        try:
+            self.save_data_locally(response.json(), self.settings['__name__'])
+        except json.decoder.JSONDecodeError:
+            self.logger.exception("Unable to convert response to JSON: %s", response.text)
+        return response.text
+
     def get_list_of_items(self, iam_credentials: dict = None, skip_empty_response: bool = False):
         iteration = 0
         try:
@@ -209,21 +232,25 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 list_response_headers={},
                 list_response_links={}
             )
+
+            # Pull the controls out
+            pagination_dict     = self.list_behavior.get('pagination', {})
+            break_early_control = pagination_dict.get('break_early')
+            add_if_control      = pagination_dict.get('add_if')
+            result_control      = self.list_behavior.get('result')
+
             while iteration < self.MAX_ITERATIONS:
                 api_call_specification = self.build_call_specs(self.list_behavior)
 
                 # NOTE: Check if we have to add the pagination extra things
-                pagination_control = self.list_behavior.get('pagination')
-                if pagination_control:
+                if pagination_dict:
                     # check the break early condition in case we could fetch the first page and this is the only page we have
-                    break_early = bool(self.render_to_native(pagination_control.get('break_early')))
-                    if break_early:
+                    if bool(self.render_to_native(break_early_control)):
                         break
 
-                    add_pagination_control = bool(self.render_to_native(pagination_control['add_if']))
-                    if add_pagination_control:
-                        extra_headers = {_['key']: self.render_to_string(_['value']) for _ in pagination_control.get('headers', [])}
-                        extra_params = {_['key']: self.render_to_string(_['value']) for _ in pagination_control.get('params', [])}
+                    if bool(self.render_to_native(add_if_control)):
+                        extra_headers = {_['key']: self.render_to_string(_['value']) for _ in pagination_dict.get('headers', [])}
+                        extra_params = {_['key']: self.render_to_string(_['value']) for _ in pagination_dict.get('params', [])}
                         api_call_specification['headers'].update(**extra_headers)
                         api_call_specification['params'].update(**extra_params)
 
@@ -255,7 +282,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                     list_response_headers=response.headers,
                     list_response_links=response.links
                 )
-                result = self.render_to_native(self.list_behavior['result'])
+                result = self.render_to_native(result_control)
 
                 if not result:
                     # NOTE: In the case of AWS IAM, we should proceed with all the chunks ignoring empty ones
@@ -283,7 +310,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         if iteration >= self.MAX_ITERATIONS:
             self.logger.exception(f'Failed to fetch the list of items '
-                             f'Connector exceeded processing limit of {self.MAX_ITERATIONS} iterations')
+                                  f'Connector exceeded processing limit of {self.MAX_ITERATIONS} iterations')
             raise self.ManagedConnectorListMaxIterationException(error='Reached max iterations')
 
     def get_oomnitza_auth_for_sync(self):
@@ -300,28 +327,31 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         return access_token
 
     def get_detail_of_item(self, list_response_item):
-        try:
-            self.update_rendering_context(
-                list_response_item=list_response_item,
-            )
-            api_call_specification = self.build_call_specs(self.detail_behavior)
-            auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+        if self.detail_behavior:
+            try:
+                self.update_rendering_context(
+                    list_response_item=list_response_item,
+                )
+                api_call_specification = self.build_call_specs(self.detail_behavior)
+                auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
 
-            api_call_specification['headers'].update(**auth_headers)
-            api_call_specification['params'].update(**auth_params)
-            api_call_specification['ssl_adapter'] = ssl_adapter
+                api_call_specification['headers'].update(**auth_headers)
+                api_call_specification['params'].update(**auth_params)
+                api_call_specification['ssl_adapter'] = ssl_adapter
 
-            response = self.perform_api_request(logger=self.logger, **api_call_specification)
+                response = self.perform_api_request(logger=self.logger, **api_call_specification)
 
-            # We should keep the list_response_item as it contains some useful information most of the time.
-            detail_response_object = response_to_object(response.text)
-            if type(detail_response_object) is dict:
-                detail_response_object['list_response_item'] = list_response_item
+                # We should keep the list_response_item as it contains some useful information most of the time.
+                detail_response_object = response_to_object(response.text)
+                if type(detail_response_object) is dict:
+                    detail_response_object['list_response_item'] = list_response_item
 
-            return detail_response_object
-        except Exception as exc:
-            self.logger.exception('Failed to fetch the details of item')
-            raise self.ManagedConnectorDetailsGetException(error=str(exc))
+                return detail_response_object
+            except Exception as exc:
+                self.logger.exception('Failed to fetch the details of item')
+                raise self.ManagedConnectorDetailsGetException(error=str(exc))
+        else:
+            return list_response_item
 
     def get_local_inputs(self) -> dict:
         if isinstance(self.settings.get("local_inputs"), str):
@@ -337,11 +367,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         # So special IAM adjustments are not required
         for list_response_item in self.get_list_of_items(iam_credentials=iam_credentials, skip_empty_response=skip_empty_response):
             try:
-                if self.detail_behavior:
-                    item_details = self.get_detail_of_item(list_response_item)
-                else:
-                    item_details = list_response_item
-
+                item_details = self.get_detail_of_item(list_response_item)
                 self._add_desktop_software(item_details)
                 self._add_saas_information(item_details)
             except (

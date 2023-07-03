@@ -1,14 +1,15 @@
-import logging
-
 from lib.connector import AssetsConnector, response_to_object
+from utils.data import json_validator
 
 
 class Connector(AssetsConnector):
     MappingName = 'munki_report'
     Settings = {
-        'url':              {'order': 1, 'example': 'https://Munki_Report', 'default': ''},
-        'username':         {'order': 2, 'example': '***', 'default': ''},
-        'password':         {'order': 3, 'example': '***', 'default': ''}
+        'url': {'order': 1, 'example': 'https://Munki_Report', 'default': ''},
+        'username': {'order': 2, 'example': '***', 'default': ''},
+        'password': {'order': 3, 'example': '***', 'default': ''},
+        'db_columns': {'order': 4, 'example': '["machine.serial_number"]', 'default': '[]',
+                       'validator': json_validator},
     }
 
     munki_report_db_columns = [
@@ -28,6 +29,10 @@ class Connector(AssetsConnector):
         super(Connector, self).__init__(*args, **kwargs)
         self.settings['url'] = self.settings['url'].rstrip('/') + '/index.php'
         self.csrf_token = ""
+
+        # Add extra columns from config (without duplicates)
+        extra_columns = self.settings.get('db_columns')
+        self.munki_report_db_columns.extend([c for c in extra_columns if c not in self.munki_report_db_columns])
 
     def login(self):
         """Login to the Munki Report system"""

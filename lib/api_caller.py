@@ -45,10 +45,10 @@ class ExternalAPICaller:
             try:
                 response.raise_for_status()
             except Exception as ex:
-                logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+                logger.error('Encounterd an exception. Reason [%s]', str(ex))
                 raise ex
-            
-        logger.debug('Response code [%s]', response.status_code)                    
+
+        logger.debug('Response code [%s]', response.status_code)
 
         return response
 
@@ -60,7 +60,7 @@ class ConfigurableExternalAPICaller(ExternalAPICaller, Renderer):
         http_specs: dict, 
         raise_error: bool = True
     ) -> dict:
-        
+
         call_spec = dict(
             raise_error=raise_error,
             http_method=http_specs['http_method'],

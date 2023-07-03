@@ -41,6 +41,7 @@ def get_cmd_line_args_parser(for_server=False):
         parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection. Relevant only for the `upload` mode")
         parser.add_argument('--workers', type=int, default=2, help="Number of async IO workers used to pull & push records.")
         parser.add_argument('--ignore-cloud-maintenance', action='store_true', help="Adds special behavior for the managed connectors to ignore the cloud maintenance")
+        parser.add_argument('--skip-shim', action='store_true', help="Runs the connector with the Shim-Service")
 
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector. Relevant only for the `upload` mode")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
@@ -89,7 +90,8 @@ if __name__ == "__main__":
     }
 
     try:
-        deploy_shim_service()
+        if not args.skip_shim:
+            deploy_shim_service()
         mode_handlers[args.mode](args)
     except KeyboardInterrupt:
         LOG.info('Interrupted... Exiting')

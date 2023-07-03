@@ -203,7 +203,7 @@ def init_connector_from_configuration(connector_name, configuration, cmdline_arg
             try:
                 cfg["__workers__"] = cmdline_args.workers
             except:
-                cfg["__workers__"] = 2
+                cfg["__workers__"] = 4
 
             cfg["__name__"] = cfg.get('name') or module_
             cfg["__connector__"] = connector(connector_name, cfg)

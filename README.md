@@ -24,6 +24,8 @@ The local connector can pull data from the following sources:
 * vCenter [https://www.vmware.com](https://www.vmware.com)
 * WorkspaceOne [https://www.workspaceone.com](https://www.workspaceone.com)
 * Munki Report [https://github.com/munkireport/munkireport-php](https://github.com/munkireport/munkireport-php)
+* Insight [https://www.insight.com/en_US/home.html](https://www.insight.com/en_US/home.html)
+* Dell Asset Order Status [https://developer.dell.com/apis/9208/versions/2/apiV2.json/definitions/DellOrder](https://developer.dell.com/apis/9208/versions/2/apiV2.json/definitions/DellOrder)
 * Plain CSV files
 
 ## Before you begin
@@ -124,6 +126,8 @@ ___
       - [vCenter Configuration](#vcenter-configuration)
       - [WorkspaceOne Configuration](#workspaceone-configuration)
       - [Munki Report Configuration](#munkireport-configuration)
+      - [Insight Configuration](#insight-configuration)
+      - [Dell Configuration](#dell-configuration)     
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -446,11 +450,12 @@ An example generated `config.ini` follows.
     url = https://TANIUM_SERVER
     username = ***
     password = ***
+    session_token = 
     domain = 
     view = 
 
     [vcenter]
-    enabled = False
+    enable = False
     url = https://api_host
     username = administrator@vsphere.local
     password = change-me
@@ -463,12 +468,30 @@ An example generated `config.ini` follows.
     region = na
 
     [munki_report]
-    enabled = False
+    enable = False
     url = https://munki_report
     username = administrator
     password = change-me
-    addition_columns = ["change.me"]
+    db_columns = ["extra.column"]
 
+    [insight]
+    enable = False
+    client_id = 123456
+    client_key = 123456789
+    client_secret = *******
+    order_creation_date_from = YYYY-MM-DD
+    order_creation_date_to = YYYY-MM-DD
+    tracking_data = X
+    
+    [dell_asset_order_status]
+    enable = False
+    client_id = 234234
+    client_secret = 34567
+    is_dp_id = False
+    is_po_numbers = True
+    is_order_no_country_code = False
+    values = ["PO123", "PO432"]
+    country_code = ["US", "EU", "IN"]
 
 The `[oomnitza]` section is where you configure the connector with the URL and login credentials for connecting to
 Oomnitza. You can use an existing user’s credentials for username and password, but best practice is to create a
@@ -856,6 +879,7 @@ The connector is meant to be run from the command line and as such as multiple c
                         [--show-mappings] [--testmode] [--save-data] [--ini INI]
                         [--logging-config LOGGING_CONFIG]
                         [--ignore-cloud-maintenance]
+                        [--skip-shim]
                         [{managed,upload,generate-ini,version}]
                         [connectors [connectors ...]]
     
@@ -874,6 +898,7 @@ The connector is meant to be run from the command line and as such as multiple c
       --ignore-cloud-maintenance
                             Adds special behavior for the managed connectors to
                             ignore the cloud maintenance
+      --skip-shim           Skip and don't run the Shim-Service. Shim-Service runs by default.
       --show-mappings       Show the mappings which would be used by the
                             connector. Relevant only for the `upload` mode
       --testmode            Run connectors in test mode.
@@ -1373,16 +1398,20 @@ The default value for this flag is "0" - to not fetch the custom attributes
 #### Tanium Configuration
 `url`: The URL for the Tanium instance
 
-`username`: The username used to authorize. Please note, the account should have the "Asset Report Read" permission
+Choose between user/password or session_token authorization:
 
-`password`: The password used to authorize.
+- `username`: The username used to authorize. Please note, the account should have the "Asset Report Read" permission
+
+- `password`: The password used to authorize.
+
+- `session_token`: The session_token provided by the Tanium As A Service console.
 
 `domain`: The domain of the account, used for authorization. Optional, can be empty.
 
 `view`: The numeric ID of the view used to fetch the assets. Optional, can be empty; if empty, all the available attributes of the assets will be retrieved. 
 **WARNING**: the view usage may limit the set of attributes fetched from Tanium system and not all the attributes visible on the Web UI mapping will be actually available. 
 If these not available attributes will be mapped on UI, null values will be pushed to Oomnitza.
-  
+
 
 ##### Default Field Mappings
     No default mappings
@@ -1395,7 +1424,9 @@ If these not available attributes will be mapped on UI, null values will be push
 
 `password`: The password used to create a session to make vCenter REST API requests. <br>
 
-**Note**: The vCenter connector supports the product version v6.5 - v7.0 U1. 
+`use_legacy_apis`: Defaulted to True to use apis up to and including v7.0 U2. If False, support has been
+ added for new apis after v7.0 U2 (up to version v8.0 U1)
+
 
 ##### Default Field Mappings
     No default mappings
@@ -1421,7 +1452,7 @@ If these not available attributes will be mapped on UI, null values will be push
 
 `password`: The Munki Report password, used to login.
 
-`additional_columns`:  The Munki Report DB column names in a list. Example ["machine.serial_number", "machine.hostname"]
+`db_columns`:  The Munki Report DB column names in a list. Example ["machine.serial_number", "machine.hostname"]
 
 
 ##### Default Field Mappings
@@ -1437,6 +1468,39 @@ If these not available attributes will be mapped on UI, null values will be push
         "munkireport.manifestname"
     ]
 
+#### Insight Configuration
+
+This configuration provides the ability to retrieve the status of orders. You can filter by date range and tracking data. 
+
+`client_id`: The Insight Client ID.
+
+`client_key`: The Insight Client Key.
+
+`client_secret`: The Insight Client Secret.
+
+`order_creation_date_from`: Specify the order creation from date in the format YYYY-MM-DD
+
+`order_creation_date_to`:  Specify the order creation to date in the format YYYY-MM-DD
+
+`tracking_data`:  Include any tracking data for the order (Defaults to "X" if no specific tracking data is available)
+
+#### Dell Configuration
+
+This configuration provides the ability to retrieve Dell order status information for all order types. You need to provide the order numbers, DPIDs, or PO numbers associated with the order you wish to track.
+
+`client_id`: The Dell Client ID.
+
+`client_secret`: The Dell Client Secret.
+
+`is_dp_id`: Set to True to input DPIDs.
+
+`is_po_numbers`:  Set to True to input PO Numbers.
+
+`is_order_no_country_code`: Set to True to input Order Numbers and country code.
+
+`values`:  Enter the PO Numbers, DPIDs, or Order Numbers you want to retrieve using the format ["PO123", "PO432"].
+
+`country_code`:  If you choose to input Order Numbers, include an ISO two-digit country code using the format ["GB", "FR", "IN"]. For a list of approved country codes, see [Dell Order Status Pull_API](https://developer.dell.com/apis/9208/versions/2/apiV2.json) 
 
 ## Advanced usage
 

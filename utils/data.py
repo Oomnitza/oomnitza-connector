@@ -1,5 +1,7 @@
-
+import json
 import logging
+
+from lib.error import ConfigError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -28,3 +30,10 @@ def get_field_value(data, field, default=None):
     except:
         LOGGER.exception("failed to get_field_value()")
         return None
+
+
+def json_validator(value):
+    try:
+        return json.loads(value)
+    except ValueError:
+        raise ConfigError('setting is incorrect json expected but %r found' % value)
