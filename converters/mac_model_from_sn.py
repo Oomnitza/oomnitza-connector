@@ -4,14 +4,17 @@ import requests
 logger = logging.getLogger("converters/mac_model_from_sn")  # pylint:disable=invalid-name
 
 
-def converter(field, record, value, params):
+def converter(record, value):
     """
     Converts a Apple SN into a nice Model
 
     :param value: the casper model field. hardware.model. This will be used if the serial_number fails lookup.
     :return: nice model name
     """
-    serial_number = str(record['general']['serial_number']).strip()
+    try:
+        serial_number = str(record['general']['serial_number']).strip()
+    except KeyError:
+        serial_number = str(record.get('serial'))
     # Don't even attempt to lookup empty serial numbers
     if not serial_number:
         return value

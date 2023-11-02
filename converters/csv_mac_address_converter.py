@@ -1,15 +1,15 @@
+
 import logging
-import re
-logger = logging.getLogger("converters/mac_address")
+logger = logging.getLogger("converters/capitalize")
 
 
-def converter(mac_address, **kwargs):
+def converter(field, record, value, params):
     """
-    Cnovert to colon based MAC address
-    :param mac_address: field value
+    Capitalize the first letter of field value.
+    :param value: field value
     :return: string with capitalized first letter
     """
-
+    mac_address = value
     if isinstance(mac_address, str):
         mac_address = mac_address.replace('-', ':').upper()
         if "0X" in mac_address: # DDS MAC Address format
