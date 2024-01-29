@@ -25,6 +25,7 @@ class Connector(AssetsConnector):
         'api_version': {'order': 5, 'example': '1', 'default': '1'},
         'include_checkin_devices_only': {'order': 6, 'example': 'True', 'default': 'True'},
         'last_checkin_date_threshold': {'order': 7, 'example': '129600', 'default': '129600'},
+        'Authorization': {'order': 8, 'default': ''},
     }
 
     api_version = None

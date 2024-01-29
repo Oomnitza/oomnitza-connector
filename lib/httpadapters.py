@@ -14,7 +14,7 @@ from constants import MTLSType
 retries = Retry(
     total=10,
     backoff_factor=0.5,
-    method_whitelist=False,
+    allowed_methods=False,
     status_forcelist=[500, 502, 503, 504]
 )
 

@@ -3,6 +3,7 @@ import json
 import traceback
 from typing import Optional
 
+from lib import TrueValues
 from lib.api_caller import ConfigurableExternalAPICaller
 from lib.aws_iam import AWSIAM
 from lib.connector import BaseConnector, response_to_object
@@ -61,7 +62,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
     MAX_ITERATIONS = 1000
 
     def __init__(self, section, settings):
-        self.inputs_from_cloud = settings.pop('inputs', {})
+        self.inputs_from_cloud = settings.pop('inputs', {}) or {}
         self.list_behavior = settings.pop('list_behavior', {})
         self.detail_behavior = settings.pop('detail_behavior', {})
         self.software_behavior = settings.pop('software_behavior', {})
@@ -155,7 +156,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         """
         api_call_specification = self.build_call_specs(self.session_auth_behavior)
 
-        response = self.perform_api_request(logger=self.logger, **api_call_specification)
+        response = self.perform_api_request(
+            logger=self.logger,
+            apply_ssrf_protection=False,
+            **api_call_specification,
+        )
         response_headers = response.headers
 
         response = response_to_object(response.text)
@@ -447,7 +452,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 error=traceback.format_exc(),
                 multi_str_input_value=self.get_multi_str_input_value(),
                 is_fatal=True,
-                test_run=bool(self.settings.get('test_run'))
+                test_run=self.settings.get('test_run', False) in TrueValues
             )
             raise
         except self.ManagedConnectorListGetInMiddleException as e:

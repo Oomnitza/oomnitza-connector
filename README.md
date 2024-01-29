@@ -1,5 +1,5 @@
 #### * Python2 Deprecation Notice:
-Since version **2.1.0** the connector is migrated to the python3.6.x (or above) codebase. 
+Since version **2.1.0** the connector is migrated to the python3.8 codebase. 
 
 The further maintenance, support and development of the python2 based version is NOT planned.
 
@@ -160,7 +160,7 @@ Depending on the number of integrations and volume of data,
 the Connector can be configured to use additional workers.
 
 ## Runtime Environment Setup
-You will need to install Python 3.6.X (or above) as well as the packages which the connector
+You will need to install Python 3.8 as well as the packages which the connector
  relies upon. Some of the python packages may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
@@ -1515,7 +1515,7 @@ It is possible to create a completely custom complex converter that will be used
     
     mapping.MY_AWESOME_FIELD =  {"source": "name", "converter": "my_custom_converter"}
  
- next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 3.6.X (or above) function,
+ next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 3.8 function,
  that has to return some value - this value is a result of the converter. In the converter function a "record" object is available, it is the whole record extracted from external system as Python [dict](https://docs.python.org/2/library/stdtypes.html#dict) object.
  Example:
 

@@ -2,7 +2,7 @@ import importlib
 from logging import Logger
 from typing import Any, Optional, Dict
 
-from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment, environmentfilter
+from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment, pass_environment
 from jinja2.exceptions import SecurityError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
@@ -21,7 +21,7 @@ class _RawValue:
         return self._value
 
 
-@environmentfilter
+@pass_environment
 def as_is(env, value):
     """
     Custom filter which allow to bypass execution of passed value in native

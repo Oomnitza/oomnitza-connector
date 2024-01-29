@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.0]
+
+### Changed
+
+- Starting from version 2.4.0 the connector project is migrated to the python 3.8.x. There is NO
+ fallback support for the python2 or earlier version of python3
+- Removed PyChef library dependency. Replaced with custom solution.
+
 ## [2.3.14]
 
 ### Added

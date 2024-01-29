@@ -1,9 +1,13 @@
 import logging
 from typing import Optional
 
+from oomnitza_ssrf_protection.oom_sync.ssrf_protection import SyncSecuritySSRFProtection
+
+from constants import SHIM_PORT
 from lib.httpadapters import SSLAdapter
 from lib.renderer import Renderer
 from requests import Response
+
 
 class ExternalAPICaller:
 
@@ -17,7 +21,16 @@ class ExternalAPICaller:
         body: Optional[str],
         raise_error: bool,
         ssl_adapter: SSLAdapter = None,
+        apply_ssrf_protection: Optional[bool] = True,
     ) -> Response:
+
+        if apply_ssrf_protection:
+            SyncSecuritySSRFProtection(
+                allowed_urls=[
+                    f"http://127.0.0.1:{SHIM_PORT}",
+                    f"http://localhost:{SHIM_PORT}",
+                ]
+            ).check_url(url)
 
         # preset the specific user agent
         headers['User-Agent'] = 'Oomnitza Connector'

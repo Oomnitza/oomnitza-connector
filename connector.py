@@ -13,6 +13,7 @@ from shim_service.shim_service import ShimService
 from constants import (MODE_CLIENT_INITIATED_UPLOAD, MODE_CLOUD_INITIATED_UPLOAD,
                        MODE_GENERATE_INI_TEMPLATE, MODE_VERSION)
 from lib import config, version
+from lib.sentry import SentryConfiguration, init_sentry
 from modes.client_initiated import client_initiated_upload
 from modes.cloud_initiated import cloud_initiated_upload
 from utils.relative_path import relative_app_path
@@ -76,9 +77,15 @@ def deploy_shim_service():
     shim_thread.start()
     LOG.info(f"Shim-Service pid: {shim_thread.name}")
 
+
 if __name__ == "__main__":
 
     args = parse_command_line_args()
+
+    try:
+        init_sentry(SentryConfiguration(args.ini))
+    except IOError:
+        LOG.error("Could not open config file.")
 
     LOG.info("Connector version: %s", version.VERSION)
 

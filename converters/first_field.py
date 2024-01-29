@@ -25,7 +25,7 @@ def converter(field, record, value, params):
             if val:
                 return val
         return None
-    except:
-        logger.error("Error running first_field() converter on %r.", field)
+    except Exception:
+        logger.error(f"Error running first_field() converter on fields {fields}.")
         return None
 

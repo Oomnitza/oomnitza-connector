@@ -1,10 +1,12 @@
+import datetime
 import json
 import logging
+import os.path
 import re
 
-import chef
+from urllib.parse import urlparse, urlencode, urljoin
 
-from lib import TrueValues
+from lib import chef
 from lib.connector import AssetsConnector
 from utils.data import get_field_value
 
@@ -13,6 +15,7 @@ logger = logging.getLogger("connectors/chef")  # pylint:disable=invalid-name
 
 class AuditFactory(object):
     """Factory class responsible for creating audits based on the node platform."""
+
     @staticmethod
     def create(node):
         platform = get_field_value(node, 'automatic.platform')
@@ -148,6 +151,7 @@ class BaseAudit(object):
 
 class MacAudit(BaseAudit):
     """Contains attribute overrides for 'mac_os_x' platform."""
+
     @classmethod
     def serial_number(cls, node):
         return get_field_value(node, 'automatic.hardware.serial_number')
@@ -172,6 +176,7 @@ class MacAudit(BaseAudit):
 
 class WindowsAudit(BaseAudit):
     """Contains attribute overrides for 'windows' platform."""
+
     @classmethod
     def model(cls, node):
         return get_field_value(node, 'automatic.kernel.cs_info.model')
@@ -261,9 +266,9 @@ class AuditUtil(object):
 class Connector(AssetsConnector):
     MappingName = 'Chef'
     Settings = {
-        'url':                 {'order': 1, 'example': 'https://example.com/organizations/org'},
-        'client':              {'order': 2, 'example': 'user'},
-        'key_file':            {'order': 3, 'example': '/path/to/user.pem'},
+        'url': {'order': 1, 'example': 'https://example.com/organizations/org'},
+        'client': {'order': 2, 'example': 'user'},
+        'key_file': {'order': 3, 'example': '/path/to/user.pem'},
         'attribute_extension': {'order': 5, 'default': ''},
     }
     DefaultConverters = {
@@ -280,22 +285,26 @@ class Connector(AssetsConnector):
         # enable attribute extensions
         BaseAudit.set_extensions(self.settings['attribute_extension'])
 
-    def authenticate(self):
-        """
-        Connect to the chef server and verify communication.
-        """
-        if self.api:
-            return
+    def get_auth_headers(self, url, http_method: str = 'GET', body: str = None):
+        parsed_url = urlparse(url)
+        headers = chef.sign_request(
+            key_path=self.settings['key_file'],
+            http_method=http_method,
+            path=parsed_url.path,
+            body=body,
+            timestamp=datetime.datetime.utcnow(),
+            user_id=self.settings['client'],
+        )
+        headers['x-chef-version'] = '0.10.8'
+        return headers
 
-        server = self.settings['url']
-        key_file = self.settings['key_file']
-        client = self.settings['client']
-        verify_ssl = self.settings.get('verify_ssl', True) in TrueValues
+    def search(self, resource, **params):
+        base_url = urljoin(self.settings['url'], os.path.join('search', resource))
+        url = f"{base_url}?{urlencode(params)}"
+        response = self.get(url, headers=self.get_auth_headers(url))
+        return response.json()['rows']
 
-        self.api = chef.ChefAPI(server, key_file, client, ssl_verify=verify_ssl)
-        chef.Role.list(api=self.api)  # will raise error if authentication failure
-
-    def query(self, *args):
+    def query(self):
         """
         Queries Chef API for all Nodes
 
@@ -332,7 +341,7 @@ class Connector(AssetsConnector):
         size = 1000
         start = 0
         while start is not None:
-            response = chef.Search('node', q, rows=size, start=start, api=self.api)
+            response = self.search('node', q=q, rows=size, start=start)
             count = 0
             for node in response:
                 count += 1

@@ -28,7 +28,7 @@ def converter(field, record, value, params):
             else:
                 parts.append(record.get(value, '').strip())
         return "".join(parts)
-    except:
-        logger.error("Error running concat() converter on %r.", field)
+    except Exception:
+        logger.error("Error running concat() converter.")
         return None
 

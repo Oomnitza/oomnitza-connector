@@ -23,7 +23,12 @@ from lib.strongbox import Strongbox, StrongboxBackend
 from lib.version import VERSION
 from requests.adapters import HTTPAdapter
 from requests.exceptions import RequestException
+from sentry_sdk import start_transaction
 from utils.data import get_field_value
+import gevent
+from gevent.pool import Pool
+from requests.exceptions import RequestException
+import os.path
 
 SAVED_DATA_PATH = "./save_data"
 
@@ -43,36 +48,48 @@ def response_to_object(response_text):
 
 
 def run_connector(connector_cfg, options):
-    LOG = logging.getLogger(connector_cfg['__name__'])
+    connector_name = connector_cfg['__name__']
+    LOG = logging.getLogger()
 
     try:
-        connector_instance = connector_cfg["__connector__"]
+        oom_connector = BaseConnector.OomnitzaConnector
+        use_bulk_connector = oom_connector.settings['connector_bulk_mode'] in TrueValues
+    except:
+        use_bulk_connector = False
 
+    with start_transaction(op="connector", name=connector_name):
         try:
-            connector_instance.authenticate()
-        except AuthenticationError as exp:
-            LOG.error("Authentication failure: %s", str(exp))
-            return
-        except requests.HTTPError:
-            LOG.exception("Error connecting to %s service.", connector_cfg['__name__'])
-            return
+            connector_instance = connector_cfg["__connector__"]
 
-        try:
-            connector_instance.perform_sync(options)
-        except ConfigError as exp:
-            LOG.error(exp)
-        except requests.HTTPError:
-            LOG.exception("Error syncing data for %s service.", connector_cfg['__name__'])
-    except DynamicException as exp:
-        LOG.error("Error running filter for %s: %s", connector_cfg['__name__'], str(exp))
-    except:  # pylint:disable=broad-except
-        LOG.exception("Unhandled error in run_connector for %s", connector_cfg['__name__'])
+            try:
+                connector_instance.authenticate()
+            except AuthenticationError as exp:
+                LOG.error("Authentication failure: %s", str(exp))
+                return
+            except requests.HTTPError:
+                LOG.exception("Error connecting to %s service.", connector_name)
+                return
+
+            try:
+                if use_bulk_connector:
+                    connector_instance.perform_sync_bulk(options)
+                    LOG.info("Connector Mode: Bulk")
+                else:
+                    connector_instance.perform_sync(options)
+                    LOG.info("Connector Mode: Single")
+            except ConfigError as exp:
+                LOG.error(exp)
+            except requests.HTTPError:
+                LOG.exception("Error syncing data for %s service.", connector_name)
+        except DynamicException as exp:
+            LOG.error("Error running filter for %s: %s", connector_name, str(exp))
+        except:  # pylint:disable=broad-except
+            LOG.exception("Unhandled error in run_connector for %s", connector_name)
 
 bad_keywords: List[str] = [
     'not', 'self', 'False', 'None', 'True', 'false', 'true',
 ]
 keyword_replace: Dict[str, str] = {kw: f'_{kw.upper()}_' for kw in bad_keywords}
-
 
 def sanitize_jinja_call_args(data: Dict[str, Any]) -> Dict[str, Any]:
     """Sanitize the data passed to jinja render."""
@@ -104,7 +121,6 @@ def escape_illegal_keys(incoming_record: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class BaseConnector(object):
-
     class ManagedConnectorProcessingException(Exception):
         """
         Special exception used to be raised in certain cases hen in the middle of the portion processing
@@ -183,20 +199,23 @@ class BaseConnector(object):
     Loggers = {}
 
     CommonSettings = {
-        'verify_ssl':     {'order': 0, 'default': "True"},
-        'cacert_file':    {'order': 1, 'default': ""},
-        'cacert_dir':     {'order': 2, 'default': ""},
-        'ssl_protocol':   {'order': 3, 'default': ""},
+        'verify_ssl': {'order': 0, 'default': "True"},
+        'cacert_file': {'order': 1, 'default': ""},
+        'cacert_dir': {'order': 2, 'default': ""},
+        'ssl_protocol': {'order': 3, 'default': ""},
         'use_server_map': {'order': 4, 'default': "True"},
         'only_if_filled': {'order': 5, 'default': ""},
         'dont_overwrite': {'order': 6, 'default': ""},
-        'insert_only':    {'order': 7, 'default': "False"},
-        'update_only':    {'order': 8, 'default': "False"},
-        'sync_field':     {'order': 9},
-        'vault_keys':     {'order': 10, 'default': ""},
-        'vault_backend':  {'order': 11, 'default': StrongboxBackend.KEYRING},
-        'vault_alias':    {'order': 12, 'default': ""},
-        'user_pem_file':  {'order': 13, 'default': ""}
+        'insert_only': {'order': 7, 'default': "False"},
+        'update_only': {'order': 8, 'default': "False"},
+        'sync_field': {'order': 9},
+        'vault_keys': {'order': 10, 'default': ""},
+        'vault_backend': {'order': 11, 'default': StrongboxBackend.KEYRING},
+        'vault_alias': {'order': 12, 'default': ""},
+        'user_pem_file': {'order': 13, 'default': ""},
+        'connector_bulk_mode': {'order': 14, 'default': "False"},
+        'test_run': {'order': 15, 'default': "False"},
+        'is_custom': {'order': 16, 'default': "False"}
     }
 
     def get_connector_name(self):
@@ -204,14 +223,14 @@ class BaseConnector(object):
         return self.connector_name
 
     def is_oomnitza_connector(self):
-        return BaseConnector.OomnitzaConnector == self        
+        return BaseConnector.OomnitzaConnector == self
 
     @property
     def logger(self):
         """
         Return context based logger for a given connector name
 
-        We cannot make the logger assignment in 
+        We cannot make the logger assignment in
         the __init__ method due to serialization issues
         """
         name = self.get_connector_name()
@@ -227,6 +246,10 @@ class BaseConnector(object):
         return str(uuid4())
 
     def __init__(self, section, settings):
+        self.payload_buffer = []
+        self.test_run_batch_size = 10
+        self.batch_size = 100
+        self.batch_send_size = 100
         self.processed_records_counter = 0.
         self.sent_records_counter = 0.
         self.section = section
@@ -240,10 +263,10 @@ class BaseConnector(object):
         self._cached_credential_details = None
 
         self.context_id = ContextLoggingAdapter.generate_unique_context_id()
-        
+
         connector_name = self.MappingName.lower().replace('-', '_')
         self.connector_name = f"connectors/{connector_name}"
-        
+
         for key, value in list(settings.items()):
             if key.startswith('mapping.'):
                 # it is a field mapping from the ini
@@ -455,17 +478,17 @@ class BaseConnector(object):
             self.logger.debug("Issuing GET %s", url)
         else:
             self.logger.info("Issuing GET %s", url)
-                    
+
         response = session.get(url, headers=headers, auth=auth,
                                verify=self.get_verification())
 
         try:
             response.raise_for_status()
         except Exception as ex:
-            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))
             raise ex
-            
-        self.logger.debug('Response code [%s]', response.status_code)                    
+
+        self.logger.debug('Response code [%s]', response.status_code)
         return response
 
     def post(
@@ -489,26 +512,26 @@ class BaseConnector(object):
         session = self._get_session()
         headers = headers or self.get_headers()
         auth = auth or self.get_auth()
-        
+
         if post_as_json:
             data = json.dumps(data, default=self.json_serializer)
-            
+
         if self.is_oomnitza_connector():
             # Reduce logging verbosity
             self.logger.debug("Issuing POST %s", url)
-        else:            
+        else:
             self.logger.info("Issuing POST %s", url)
-            
+
         response = session.post(url, data=data, headers=headers, auth=auth,
                                 verify=self.get_verification())
-        
+
         try:
             response.raise_for_status()
         except Exception as ex:
-            self.logger.error('Encounterd an exception. Reason [%s]', str(ex))                    
+            self.logger.error('Encountered an exception. Reason [%s]', str(ex))
             raise ex
-            
-        self.logger.debug('Response code [%s]', response.status_code)                    
+
+        self.logger.debug('Response code [%s]', response.status_code)
         return response
 
     def get_verification(self):
@@ -538,6 +561,29 @@ class BaseConnector(object):
     def stop_sync(self):
         self.keep_going = False
 
+    def sender_bulk(self, rec, explicit_error):
+        """
+        This is data sender that should be executed by greenlet to make network IO operations non-blocking.
+        """
+        if explicit_error:
+            self.send_to_oomnitza_bulk(rec, error=explicit_error)
+            return
+
+        if not (self.__filter__ is None or self.__filter__(rec)):
+            self.logger.info("Skipping record because it did not pass the filter.")
+            return
+
+        try:
+            converted_record = self.convert_record(rec)
+        except self.ManagedConnectorRecordConversionException as e:
+            # we have failed to convert the record - issue with the mapping?
+            self.send_to_oomnitza_bulk(rec, error=str(e))
+        else:
+            if not converted_record:
+                self.logger.info("Skipping record because it has not been converted properly")
+                return
+            self.send_to_oomnitza_bulk(converted_record)
+
     def sender(self, rec, explicit_error):
         """
         This is data sender that should be executed by greenlet to make network IO operations non-blocking.
@@ -547,7 +593,7 @@ class BaseConnector(object):
             return
 
         if not (self.__filter__ is None or self.__filter__(rec)):
-            self.logger.info("Skipping record %r because it did not pass the filter.", rec)
+            self.logger.info("Skipping record because it did not pass the filter")
             return
 
         try:
@@ -557,7 +603,7 @@ class BaseConnector(object):
             self.send_to_oomnitza(rec, error=str(e))
         else:
             if not converted_record:
-                self.logger.info("Skipping record %r because it has not been converted properly", rec)
+                self.logger.info("Skipping record because it has not been converted properly")
                 return
             self.send_to_oomnitza(converted_record)
 
@@ -616,6 +662,92 @@ class BaseConnector(object):
             self.logger.info("Saving payload data to %s.", filename)
             json.dump(data, save_file, indent=2, default=self.json_serializer)
 
+    def perform_sync_bulk(self, options):
+        """
+        This method controls the sync process. Called from the command line script to do the work.
+        :param options: right now, always {}
+        :return: boolean success
+        """
+        if not self.is_authorized():
+            return
+
+        limit_records = float(options.get('record_count', 'inf'))
+
+        save_data = self.settings.get("__save_data__", False) in TrueValues
+        is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_custom = self.settings.get('is_custom', False) in TrueValues
+
+        if is_custom and is_test_run:
+            self.save_test_response_to_file()
+            return True
+
+        try:
+            connection_pool = self.create_connection_pool()
+            tasks = []
+            records = list(self._load_records(options))  # Convert records to a list
+            # If this is a test run, trim the batch to be smaller eg. 10
+            if is_test_run:
+                records = records[:self.test_run_batch_size]
+
+            total_records = len(records)
+
+            for index in range(0, total_records, self.batch_size):
+                batch = records[index:min(index + self.batch_size, total_records)]  # Get a batch of records
+                self.batch_send_size = len(batch)
+                explicit_error = None
+                batch_records = []
+
+                for record in batch:
+                    if isinstance(record, tuple) and len(record) == 2:
+                        record, explicit_error = record
+
+                    if save_data:
+                        self.save_data_locally(record, index)
+
+                    if not isinstance(record, list):
+                        record = [record]
+
+                    batch_records.extend(record)
+
+                if self.processed_records_counter < limit_records:
+                    if not self.keep_going:
+                        break
+
+                    if connection_pool:
+                        for record in batch_records:
+                            tasks.append(gevent.spawn(self.sender_bulk, record, explicit_error))
+                    else:
+                        for record in batch_records:
+                            self.sender_bulk(record, explicit_error)
+
+                    # Increase records counter
+                    self.processed_records_counter += len(batch_records)
+                    if not self.processed_records_counter % 10:
+                        msg = (
+                            f"Processed {self.processed_records_counter} record(s) from the source. "
+                            f"Sent {self.sent_records_counter} record(s) to the destination."
+                        )
+                        self.logger.info(msg)
+
+                    if is_test_run and self.processed_records_counter == 10:
+                        self.stop_sync()
+
+            if connection_pool:
+                gevent.joinall(tasks, timeout=30)
+
+            # At the end explicitly finalize the portion
+            self.finalize_processed_portion()
+
+            if not (self.is_media_export and not self.processed_records_counter):
+                msg = (
+                    f"Finished! Processed {self.processed_records_counter} record(s). "
+                    f"{self.sent_records_counter} record(s) have been sent to the destination"
+                )
+                self.logger.info(msg)
+
+        except RequestException as exp:
+            raise ConfigError("Error loading records from %s: %s" % (self.MappingName, str(exp)))
+
     def perform_sync(self, options):
         """
         This method controls the sync process. Called from the command line script to do the work.
@@ -627,9 +759,9 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
-        save_data = self.settings.get("__save_data__", False)
-        is_test_run = bool(self.settings.get('test_run', False))
-        is_custom = bool(self.settings.get('is_custom', False))
+        save_data = self.settings.get("__save_data__", False) in TrueValues
+        is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_custom = self.settings.get('is_custom', False) in TrueValues
 
         if is_custom and is_test_run:
             self.save_test_response_to_file()
@@ -637,12 +769,12 @@ class BaseConnector(object):
 
         try:
             connection_pool = self.create_connection_pool()
+            tasks = []
+
             for index, record in enumerate(self._load_records(options)):
 
                 explicit_error = None
                 if isinstance(record, tuple) and len(record) == 2:
-                    # the first item here is the actual record and the second one is the explicit error
-                    # we want to push to the cloud
                     record, explicit_error = record
 
                 if not self.keep_going:
@@ -655,13 +787,12 @@ class BaseConnector(object):
                     record = [record]
 
                 for rec in record:
-
                     if self.processed_records_counter < limit_records:
                         if not self.keep_going:
                             break
 
                         if connection_pool:
-                            connection_pool.spawn(self.sender, *(rec, explicit_error))
+                            tasks.append(gevent.spawn(self.sender, rec, explicit_error))
                         else:
                             self.sender(rec, explicit_error)
 
@@ -674,20 +805,16 @@ class BaseConnector(object):
                             )
                             self.logger.info(msg)
 
-                        # only 10 records for test connector run
                         if is_test_run and self.processed_records_counter == 10:
                             self.stop_sync()
 
             if connection_pool:
-                connection_pool.join(timeout=30)  # set non-empty timeout to guarantee context switching in case of threading
+                gevent.joinall(tasks, timeout=30)
 
             # at the end explicitly finalize the portion
             self.finalize_processed_portion()
 
             if not (self.is_media_export and not self.processed_records_counter):
-                # it is known that the media_export connectors might have no items to process 
-                # most of the time, so lets not spam the messages to the stdout and 
-                # log only when we have at least one file processed
                 msg = (
                     f"Finished! Processed {self.processed_records_counter} record(s). "
                     f"{self.sent_records_counter} record(s) have been sent to the destination"
@@ -723,7 +850,7 @@ class BaseConnector(object):
             "insert_only": insert_only,
             "update_only": update_only,
             "error": error,
-            "test_run": bool(self.settings.get('test_run')),
+            "test_run": self.settings.get('test_run', False) in TrueValues,
             "multi_str_input_value": self.get_multi_str_input_value()
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
@@ -737,6 +864,36 @@ class BaseConnector(object):
             payload['error_type'] = FATAL_ERROR_FLAG
 
         return payload
+
+    def send_to_oomnitza_bulk(self, data, error=None, is_fatal=False):
+        """
+        Determine which method on the Oomnitza connector to call based on type of data.
+
+        :param data: the data to send (either single object or list)
+        :param error: optional error message as the clear mark we must not process this item, but immediately accept this and store as the error
+        :param is_fatal: a flag indicating the type of error and that the connector has stopped
+        :return: the results of the Oomnitza method call
+        """
+
+        self.payload_buffer.append(data)  # Add payload to the buffer
+        if len(self.payload_buffer) >= self.batch_send_size:
+            payload = self._collect_payload(self.payload_buffer, error, is_fatal)
+
+            if self.settings.get("__save_data__"):
+                try:
+                    self._save_processed_payload_locally(payload)
+                except:
+                    self.logger.exception("Error saving data.")
+
+            if self.settings['__testmode__']:
+                result = self.OomnitzaConnector.test_upload(payload)
+            else:
+                result = self.OomnitzaConnector.upload(payload)
+                self.sent_records_counter += len(self.payload_buffer)
+                self.payload_buffer.clear()
+        else:
+            result = None  # No upload if buffer size < batch_size
+        return result
 
     def send_to_oomnitza(self, data, error=None, is_fatal=False):
         """
@@ -879,12 +1036,12 @@ class BaseConnector(object):
         Implement the value retrieval support for the managed connectors using the Jinja2 templating engine
         """
         if any(
-            (
-                self.jinja_native_env.block_start_string in field,
-                self.jinja_native_env.block_end_string in field,
-                self.jinja_native_env.variable_start_string in field,
-                self.jinja_native_env.variable_end_string in field
-            )
+                (
+                        self.jinja_native_env.block_start_string in field,
+                        self.jinja_native_env.block_end_string in field,
+                        self.jinja_native_env.variable_start_string in field,
+                        self.jinja_native_env.variable_end_string in field
+                )
         ):
             # if the field definition contains the Jinja env control symbols - then do nothing
             field_template = field

@@ -60,4 +60,4 @@ def cloud_initiated_upload(cmdline_args):
             Thread(target=run_the_managed_sync, args=(cloud_config, cmdline_args)).start()
 
         # sleep between checks
-        sleep(20)
+        sleep(10)

@@ -103,8 +103,11 @@ class Connector(AssetsConnector):
 
                     if "SerialNumbers" in delivery:
                         for serial_number_dict in delivery['SerialNumbers']:
-                            serial_number = serial_number_dict['SerialNumber'].strip()
-                            final_dict['SerialNumber'] = serial_number
+                            if isinstance(serial_number_dict['SerialNumber'], int):
+                                serial_number = serial_number_dict['SerialNumber']
+                            else:
+                                serial_number = serial_number_dict['SerialNumber'].strip()
+                                final_dict['SerialNumber'] = serial_number
 
                             self.attach_order_tracking(order_tracking_info, serial_number, final_dict)
                             if 'BillingInformation' in delivery:

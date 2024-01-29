@@ -14,6 +14,6 @@ def converter(field, record, value, params):
         return value
     try:
         return value.capitalize()
-    except:
-        logger.error("Error running capitalize() converter on %r.", value)
+    except Exception:
+        logger.error("Error running capitalize() converter.")
         return value

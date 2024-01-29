@@ -204,7 +204,7 @@ class LdapConnection(object):
             raise AuthenticationError("Cannot connect to the LDAP server with given credentials: " + exp.args[0]['info'])
 
     def load_data(self, options):
-        save_data = self.settings.get("__save_data__", False)
+        save_data = self.settings.get("__save_data__", False) in TrueValues
         if save_data:
             options['full_record'] = True
 
