@@ -1,9 +1,7 @@
-#### * Python2 Deprecation Notice:
-Since version **2.1.0** the connector is migrated to the python3.8 codebase. 
+#### * Experimental/Beta version of Oomnitza Connector:
+This is a Beta version of the Oomnitza Connector 
 
-The further maintenance, support and development of the python2 based version is NOT planned.
-
-Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
+It has been updated and tested with Python version 3.11.7.
 
 # Local connector
 Oomnitza’s local connector, built using Python, is a single application that pulls data from multiple vendor applications and pushes data into your Oomnitza instance. 
@@ -547,7 +545,7 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 ## Storage for Connector secrets
 
-To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
+To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
 
 There are three options:
 
@@ -557,17 +555,17 @@ There are three options:
 
 KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
 
-The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
+The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
  additional layer of security. In this case, all secrets will be stored in the external encrypted system
 
 ### Common recommendations
 
 Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
-Use a technical role with restricted permissions to run the Connector.
+Use a technical role with restricted permissions to run the Connector.
 
 ### Deployment and receiving secrets
 
-To add secrets use the command line utility which enables an easy way to
+To add secrets use the command line utility which enables an easy way to
    place secrets to the system keyring service.
 
 ```sh
@@ -582,7 +580,7 @@ optional arguments:
   --value VALUE         Secret value. Will be requested.
 ```
 
-To prevent password disclosure you will be asked to provide your secret value
+To prevent password disclosure you will be asked to provide your secret value
 in the console.
 
 You can add a few secrets to one type of Connector using the different `"key"`
@@ -617,7 +615,7 @@ Ubuntu Linux: [SecretStorage](https://github.com/mitya57/secretstorage) (require
 
 Windows: Windows Credential Manager (by default).
 
-OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
+OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
 
 _OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
 
@@ -643,11 +641,11 @@ Your secret: your-secret
 
 To use the Vault KMS:
 
-1. Install, initialize and unseal the Vault KMS (use documentation).
+1. Install, initialize and unseal the Vault KMS (use documentation).
 
-2. Mount Key/Value Secret Backend.
+2. Mount Key/Value Secret Backend.
 
-3. Write secrets to Key/Value Secret Backend. For example:
+3. Write secrets to Key/Value Secret Backend. For example:
 
 ```sh
 $ vault write secret/zendesk \
@@ -666,7 +664,7 @@ path "secret/zendesk/*" {
 }
 ```
 
-5. To add this policy to the Vault KMS system policies list use the following
+5. To add this policy to the Vault KMS system policies list use the following
    command or API:
 
 ```sh
@@ -680,7 +678,7 @@ vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
 Token: 6c1247-413f-4816-5f=a72-2ertc1d2165e
 ```
 
-7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
+7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
 
 ```ini
 [zendesk]
@@ -690,7 +688,7 @@ vault_backend = vault
 vault_keys = api_token username password
 ```
 
-8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
+8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
    be added to system keyring via vault cli.
 
 Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
@@ -790,7 +788,7 @@ In order to use CyberArk as secret storage:
 
 ##### Connector configuration
 
-- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
+- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
   be added to system keyring via cli.
 
 Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
@@ -841,7 +839,7 @@ The available arguments for the connector server are serving for the same purpos
 
 `--port` is used to specify the server's port. Default is 8000
 
-The url pointing to the connector server instance should ends with the name of the connector:
+The url pointing to the connector server instance should end with the name of the connector:
 
 Examples:
 
@@ -1039,10 +1037,10 @@ The `config.ini` file for an extended integration with an **ID** of 34 that uses
 #### Setting the export file connector
 
 "Export file" connector is the subset of the `managed` connectors. The main difference between the "export file" connector and all the other connectors is that 
-it works in an `reverse` mode - it fetches the data from Oomnitza, not brings data to it. The result of sync of the "export file" connector is the .CSV file with the
+it works in a `reverse` mode - it fetches the data from Oomnitza, not sends the data to Oomnitza. The result of sync of the "export file" connector is the .CSV file with the
 data from Oomnitza (assets or users).
 
-The configuration for the `managed` connector is the same as as for the regular `managed` connectors except for 2 differences
+The configuration for the `managed_reports` connector is the same as for the regular `managed` connectors except for 2 differences
 
 1) The section name of the "export file" connector is named with the `managed_reports`, not `managed`
 2) The section `managed_reports` does not need the `saas_authorization` to be set because there is no SaaS to deal with, we deal only with Oomnitza

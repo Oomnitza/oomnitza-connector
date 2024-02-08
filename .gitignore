@@ -1,5 +1,7 @@
 *.log
 *.py[cod]
 *.sqlite
-src/
 .idea/
+config.ini
+*.csv
+state.db

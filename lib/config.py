@@ -214,7 +214,9 @@ def init_connector_from_configuration(connector_name, configuration, cmdline_arg
         except AuthenticationError as exp:
             raise ConfigError("Authentication failure: %s" % str(exp))
         except KeyError as exp:
-            raise ConfigError("Unknown ini setting: %r" % str(exp))
+            import traceback
+            # raise ConfigError("Unknown ini setting: %r" % str(exp))
+            raise exp
         except KeyboardInterrupt:
             raise
         except:
@@ -237,11 +239,13 @@ def parse_config_for_client_initiated(args):
             raise ConfigError("Error: unable to open ini file: %r" % args.ini)
 
         config.read(args.ini)
+        LOG.info(f"This is the config section names: {config.sections()}")
         for section in config.sections():
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
             elif section == 'oomnitza' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
+                LOG.info(f"This is the config section args {config.items(section)}")
                 if not connectors and section != 'oomnitza':
                     raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
 
@@ -278,6 +282,7 @@ def parse_base_config_for_cloud_initiated(args):
             # generate_ini_file(args)
             raise ConfigError("Error: unable to open ini file: %r" % args.ini)
 
+        LOG.info(f"whats going on here? {config.read(args.ini)}")
         config.read(args.ini)
         for section in config.sections():
             if section == 'converters':
@@ -396,7 +401,8 @@ def setup_logging(args):
             cfg_json = json.load(config)
             try:
                 logging.config.dictConfig(cfg_json)
-                LOG.info("Loaded logging configuration from file [%s] [%s]", config_file, cfg_json)            
+                LOG.info(f"Loaded logging configuration from file {config_file}")
+                LOG.debug(f"Current logging configuration {cfg_json}")
             except Exception as exc:
                 LOG.error("Unable to configure logging using configuration [%s]", cfg_json)
 

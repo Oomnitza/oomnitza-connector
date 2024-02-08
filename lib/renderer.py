@@ -2,7 +2,7 @@ import importlib
 from logging import Logger
 from typing import Any, Optional, Dict
 
-from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment, pass_environment
+from jinja2 import UndefinedError, Undefined, TemplateSyntaxError, Environment
 from jinja2.exceptions import SecurityError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
@@ -19,20 +19,6 @@ class _RawValue:
 
     def render(self):
         return self._value
-
-
-@pass_environment
-def as_is(env, value):
-    """
-    Custom filter which allow to bypass execution of passed value in native
-    python code.
-
-    >>> r.render_to_native("{{ '312-800-9919' }}")
-    -10407
-    >>> r.render_to_native("{{ '312-800-9919'|as_is }}")
-    '312-800-9919'
-    """
-    return _RawValue(value)
 
 
 class ImportSupportJinjaEnvMixin:
@@ -160,9 +146,6 @@ class Renderer:
 
         self.jinja_string_env = StringEnvironmentWithImportSupport()
         self.jinja_native_env = SafeNativeEnvironmentWithImportSupport()
-        self.jinja_native_env.filters.update({
-            "as_is": as_is,
-        })
         super().__init__(*args, **kwargs)
 
     def update_rendering_context(self, **kwargs):

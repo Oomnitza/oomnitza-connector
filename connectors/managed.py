@@ -67,11 +67,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         self.detail_behavior = settings.pop('detail_behavior', {})
         self.software_behavior = settings.pop('software_behavior', {})
         self.saas_behavior = settings.pop('saas_behavior', {})
-        self.RecordType = settings.pop('type')
-        self.MappingName = settings.pop('name')
-        self.ConnectorID = settings.pop('id')
-        update_only = settings.pop('update_only')
-        insert_only = settings.pop('insert_only')
+        self.RecordType = settings.pop('type', '')
+        self.MappingName = settings.pop('name', '')
+        self.ConnectorID = settings.pop('id', '')
+        update_only = settings.pop('update_only', False)
+        insert_only = settings.pop('insert_only', False)
 
         super().__init__(section, settings)
 

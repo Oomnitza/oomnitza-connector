@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0.beta]
+
+### Changed
+
+- Experimental change to upgrade Connector to Python 3.11.7
+- This is a Beta change, the official version is Python 3.8
+
 ## [2.4.0]
 
 ### Changed
