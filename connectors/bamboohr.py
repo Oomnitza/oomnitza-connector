@@ -1,6 +1,13 @@
 from lib.connector import UserConnector
 from requests.auth import _basic_auth_str
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(UserConnector):
     MappingName = 'BambooHR'
@@ -33,9 +40,19 @@ class Connector(UserConnector):
         }
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         url = self.url_template.format("v1/employees/directory")
         response = self.get(url)
         employees = response.json()['employees']
 
         for employee in employees:
             yield employee
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

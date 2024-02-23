@@ -11,76 +11,64 @@ EnabledConnectors = {
         'label': 'chef',
         'order': 3
     },
-    'chromebooks': {
-        'label': 'chromebooks',
-        'order': 4
-    },
     'csv_assets': {
         'label': 'csv_assets',
-        'order': 5
+        'order': 4
     },
     'csv_users': {
         'label': 'csv_users',
-        'order': 6
+        'order': 5
     },
     'jasper': {
         'label': 'jasper',
-        'order': 7
-    },
-    'kace': {
-        'label': 'kace',
-        'order': 8
+        'order': 6
     },
     'ldap': {
         'label': 'ldap',
-        'order': 9
+        'order': 7
     },
     'ldap_assets': {
         'label': 'ldap_assets',
-        'order': 10
+        'order': 8
     },
     'mobileiron': {
         'label': 'mobileiron',
-        'order': 11
+        'order': 9
     },
     'netbox': {
         'label': 'netbox',
-        'order': 12
+        'order': 10
     },
     'open_audit': {
         'label': 'open_audit',
-        'order': 13
+        'order': 11
     },
     'sccm': {
         'label': 'sccm',
-        'order': 14
-    },
-    'simplemdm': {
-        'label': 'simplemdm',
-        'order': 15
+        'order': 12
     },
     'tanium': {
         'label': 'tanium',
-        'order': 16
+        'order': 13
     },
     'vcenter': {
         'label': 'vcenter',
-        'order': 17
+        'order': 14
     },
     'workspaceone_devicesoftware': {
         'label': 'workspaceone_devicesoftware',
-        'order': 18
+        'order': 15
     },
     'munki_report': {
         'label': 'munki_report',
-        'order': 19
+        'order': 16
     },
     'insight': {
         'label': 'insight',
-        'order': 20
+        'order': 17
     },
     'dell_asset_order_status': {
         'label': 'dell_asset_order_status',
-        'order': 21
+        'order': 18
     }
 }

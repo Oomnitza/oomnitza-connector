@@ -1,12 +1,9 @@
 import logging
 from typing import Optional
 
-from oomnitza_ssrf_protection.oom_sync.ssrf_protection import SyncSecuritySSRFProtection
-
-from constants import SHIM_PORT
 from lib.httpadapters import SSLAdapter
 from lib.renderer import Renderer
-from requests import Response
+from requests import Response, HTTPError
 
 
 class ExternalAPICaller:
@@ -21,16 +18,7 @@ class ExternalAPICaller:
         body: Optional[str],
         raise_error: bool,
         ssl_adapter: SSLAdapter = None,
-        apply_ssrf_protection: Optional[bool] = True,
     ) -> Response:
-
-        if apply_ssrf_protection:
-            SyncSecuritySSRFProtection(
-                allowed_urls=[
-                    f"http://127.0.0.1:{SHIM_PORT}",
-                    f"http://localhost:{SHIM_PORT}",
-                ]
-            ).check_url(url)
 
         # preset the specific user agent
         headers['User-Agent'] = 'Oomnitza Connector'
@@ -58,7 +46,12 @@ class ExternalAPICaller:
             try:
                 response.raise_for_status()
             except Exception as ex:
-                logger.error('Encounterd an exception. Reason [%s]', str(ex))
+                if isinstance(ex, HTTPError) and ex.response.status_code == 403:
+                    permission_error = f'The Integration User must have appropriate permissions. Reason: {str(ex)}'
+                    ex.args = (permission_error,) + ex.args[1:]
+                    logger.error('Encountered an exception. %s', permission_error)
+                else:
+                    logger.error('Encountered an exception. Reason [%s]', str(ex))
                 raise ex
 
         logger.debug('Response code [%s]', response.status_code)

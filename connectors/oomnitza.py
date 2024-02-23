@@ -32,7 +32,7 @@ class Connector(BaseConnector):
 
     def get_connector_name(self):
         """ Return connector name to be used for logging. """
-        return "connectors/oomnitza"        
+        return "connectors/oomnitza"
 
     def get_field_mappings(self, extra_mappings):
         """ Override base to always return an empty mapping set.
@@ -253,6 +253,8 @@ class Connector(BaseConnector):
             'headers': response_json.get('headers', {}),
             'params': response_json.get('params', {}),
             'certificates': response_json.get('certificates', {}),
+            'url_attributes': response_json.get('url_attributes', {}),
+            'body_attributes': response_json.get('body_attributes', {}),
         }
 
     def get_token_by_token_id(

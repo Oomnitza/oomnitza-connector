@@ -4,6 +4,13 @@ from lib.connector import UserConnector
 
 AUTH_RESOURCE = "https://graph.windows.net"
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(UserConnector):
     MappingName = 'Azureusers'
@@ -20,6 +27,8 @@ class Connector(UserConnector):
     }
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
 
         tenant_id = self.settings['tenant_id']
         client_id = self.settings['client_id']
@@ -42,3 +51,10 @@ class Connector(UserConnector):
                                         
         for user in graphrbac_client.users.list():
             yield user.__dict__
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

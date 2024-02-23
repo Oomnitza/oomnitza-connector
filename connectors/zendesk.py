@@ -1,6 +1,13 @@
 from lib.connector import UserConnector
 from requests.auth import _basic_auth_str
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(UserConnector):
     MappingName = 'Zendesk'
@@ -33,6 +40,9 @@ class Connector(UserConnector):
         }
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         organization_map = self._load_organizations_if_needed()
         url = self.url_template.format("v2/users.json")
         while url:
@@ -85,3 +95,10 @@ class Connector(UserConnector):
 
         self.logger.info("Loaded %s organizations.", len(organization_map))
         return organization_map
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

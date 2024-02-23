@@ -1,11 +1,36 @@
 # Changelog
 
+## [2.4.1]
+
+### Updated
+
+- Added Deprecated warnings to a list of connector files that will be removed in a future release.
+  1. Airwatch
+  2. Azure Users
+  3. BambooHR
+  4. Casper (Jamf)
+  5. ChromeBooks
+  6. Google Mobile Devices
+  7. Meraki Network Devices
+  8. Okta
+  9. OneLogin
+  10. SimpleMDM
+  11. Workday
+  12. Zendesk
+- Fixed VCenter deprecated Retry() Param from deprecated param.
+- Refactor on Managed.py
+- Updated Insight to use pagination on date range.
+
+### Changed
+
+- Fixed issue where some connectors could not reach internal Private IPs within an on-prem instance.
+
 ## [2.4.0]
 
 ### Changed
 
 - Starting from version 2.4.0 the connector project is migrated to the python 3.8.x. There is NO
- fallback support for the python2 or earlier version of python3
+  fallback support for the python2 or earlier version of python3
 - Removed PyChef library dependency. Replaced with custom solution.
 
 ## [2.3.14]

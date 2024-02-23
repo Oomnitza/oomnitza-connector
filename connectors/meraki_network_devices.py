@@ -1,5 +1,12 @@
 from lib.connector import AssetsConnector
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(AssetsConnector):
     """
@@ -68,6 +75,9 @@ class Connector(AssetsConnector):
         return network_ids
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         org_id = self.settings.get('org_id', '')
         if org_id:
             for organization_network_device in self.yield_devices_from_network(org_id):
@@ -102,3 +112,10 @@ class Connector(AssetsConnector):
                 network_ids.remove(current_network_id)
 
         return chunked_devices, starting_after, network_ids, is_inventory_collected
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

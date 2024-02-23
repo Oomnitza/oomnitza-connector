@@ -158,7 +158,6 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         response = self.perform_api_request(
             logger=self.logger,
-            apply_ssrf_protection=False,
             **api_call_specification,
         )
         response_headers = response.headers
@@ -188,33 +187,48 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             "params": auth_params
         }
 
-    def attach_saas_authorization(self, api_call_specification) -> (dict, dict, Optional[SSLAdapter]):
+    def attach_saas_authorization(self, api_call_specification, iam_credentials: Optional[dict] = None) -> (dict, dict, Optional[SSLAdapter]):
         """
         There can be two options here:
             - there is credential_id string to be used in case of cloud connector setup
             - there is a JSON containing the ready-to-use headers and params in case of on-premise connector setup
         """
-        ssl_adapter = None
+        if iam_credentials:
+            iam_call_specification = copy.deepcopy(api_call_specification)
+            iam_call_specification.update(**iam_credentials)
 
-        credential_id = self.settings['saas_authorization'].get('credential_id')
-        if credential_id:
-            secret = self.OomnitzaConnector.get_secret_by_credential_id(credential_id, **api_call_specification)
-            if secret['certificates']:
-                ssl_adapter = init_mtls_ssl_adapter(secret['certificates'])
-
+            secret = self.OomnitzaConnector.get_aws_session_secret(**iam_call_specification)
+            # NOTE: There are no required mTLS Certs for AWS API. So skip it
+            ssl_adapter = None
         else:
-            if self.session_auth_behavior:
-                secret = self.generate_session_based_secret()
-            else:
-                secret = self.settings['saas_authorization']
+            ssl_adapter = None
 
-        return secret['headers'], secret['params'], ssl_adapter
+            credential_id = self.settings['saas_authorization'].get('credential_id')
+            if credential_id:
+                secret = self.OomnitzaConnector.get_secret_by_credential_id(credential_id, **api_call_specification)
+                if secret['certificates']:
+                    ssl_adapter = init_mtls_ssl_adapter(secret['certificates'])
+
+            else:
+                if self.session_auth_behavior:
+                    secret = self.generate_session_based_secret()
+                else:
+                    secret = self.settings['saas_authorization']
+
+        return secret['headers'], secret['params'], ssl_adapter,\
+            secret.get('url_attributes', {}), secret.get('body_attributes', {})
 
     def save_test_response_to_file(self):
         self.logger.info("Getting test response from custom integration")
         api_call_specification = self.build_call_specs(self.list_behavior)
 
-        auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+        auth_headers, auth_params, ssl_adapter, url_attributes, body_attributes = self.attach_saas_authorization(api_call_specification)
+
+        if url_attributes or body_attributes:
+            self.update_rendering_context(**url_attributes)
+            self.update_rendering_context(**body_attributes)
+            api_call_specification = self.build_call_specs(self.list_behavior)
+
         api_call_specification['headers'].update(**auth_headers)
         api_call_specification['params'].update(**auth_params)
         api_call_specification['ssl_adapter'] = ssl_adapter
@@ -227,6 +241,13 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         except json.decoder.JSONDecodeError:
             self.logger.exception("Unable to convert response to JSON: %s", response.text)
         return response.text
+
+    def render_add_if_controls(self, api_specification, pagination_controls):
+        extra_headers = {_['key']: self.render_to_string(_['value']) for _ in pagination_controls.get('headers', [])}
+        extra_params = {_['key']: self.render_to_string(_['value']) for _ in pagination_controls.get('params', [])}
+        api_specification['headers'].update(**extra_headers)
+        api_specification['params'].update(**extra_params)
+        return api_specification
 
     def get_list_of_items(self, iam_credentials: dict = None, skip_empty_response: bool = False):
         iteration = 0
@@ -254,22 +275,18 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                         break
 
                     if bool(self.render_to_native(add_if_control)):
-                        extra_headers = {_['key']: self.render_to_string(_['value']) for _ in pagination_dict.get('headers', [])}
-                        extra_params = {_['key']: self.render_to_string(_['value']) for _ in pagination_dict.get('params', [])}
-                        api_call_specification['headers'].update(**extra_headers)
-                        api_call_specification['params'].update(**extra_params)
+                        self.render_add_if_controls(api_call_specification, pagination_dict)
 
-                if iam_credentials:
-                    iam_call_specification = copy.deepcopy(api_call_specification)
-                    iam_call_specification.update(**iam_credentials)
+                auth_headers, auth_params, ssl_adapter, url_attributes, body_attributes = self.attach_saas_authorization(
+                    api_call_specification,
+                    iam_credentials=iam_credentials
+                )
 
-                    iam_session_secret = self.OomnitzaConnector.get_aws_session_secret(**iam_call_specification)
-                    auth_headers = iam_session_secret['headers']
-                    auth_params = iam_session_secret['params']
-                    # NOTE: There are no required mTLS Certs for AWS API. So skip it
-                    ssl_adapter = None
-                else:
-                    auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+                if url_attributes or body_attributes:
+                    self.update_rendering_context(**url_attributes)
+                    self.update_rendering_context(**body_attributes)
+                    api_call_specification = self.build_call_specs(self.list_behavior)
+                    api_call_specification = self.render_add_if_controls(api_call_specification, pagination_dict)
 
                 api_call_specification['headers'].update(**auth_headers)
                 api_call_specification['params'].update(**auth_params)
@@ -296,8 +313,9 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                     else:
                         break
 
-                for entity in result:
-                    yield entity
+                # We fetch the request amount.
+                updated_results = [self._do_details_and_software_calls(item, iam_credentials=iam_credentials) for item in result]
+                yield updated_results
 
                 iteration += 1
                 self.update_rendering_context(
@@ -331,23 +349,16 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         return access_token
 
-    def get_detail_of_item(self, list_response_item):
+    def get_detail_of_item(self, list_response_item, iam_credentials: Optional[dict] = None):
         if self.detail_behavior:
             try:
                 self.update_rendering_context(
                     list_response_item=list_response_item,
                 )
-                api_call_specification = self.build_call_specs(self.detail_behavior)
-                auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
 
-                api_call_specification['headers'].update(**auth_headers)
-                api_call_specification['params'].update(**auth_params)
-                api_call_specification['ssl_adapter'] = ssl_adapter
-
-                response = self.perform_api_request(logger=self.logger, **api_call_specification)
+                detail_response_object = self._call_endpoint_for_sub_behavior(self.detail_behavior)
 
                 # We should keep the list_response_item as it contains some useful information most of the time.
-                detail_response_object = response_to_object(response.text)
                 if type(detail_response_object) is dict:
                     detail_response_object['list_response_item'] = list_response_item
 
@@ -367,22 +378,25 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             raise ConfigError(f'Managed connector #{self.ConnectorID}: local inputs have invalid format. Exiting')
         return inputs_from_local
 
-    def _load_list(self, iam_credentials: dict = None, skip_empty_response: bool = False):
-        # NOTE: There are no Details and Software Behaviours for AWS Connectors
-        # So special IAM adjustments are not required
-        for list_response_item in self.get_list_of_items(iam_credentials=iam_credentials, skip_empty_response=skip_empty_response):
-            try:
-                item_details = self.get_detail_of_item(list_response_item)
-                self._add_desktop_software(item_details)
-                self._add_saas_information(item_details)
-            except (
+    def _do_details_and_software_calls(self, list_response_item, iam_credentials: Optional[dict] = None):
+        try:
+            item_details = self.get_detail_of_item(list_response_item, iam_credentials=iam_credentials)
+            self._add_desktop_software(item_details, iam_credentials=iam_credentials)
+            self._add_saas_information(item_details)
+        except (
                 self.ManagedConnectorSoftwareGetException,
                 self.ManagedConnectorDetailsGetException,
                 self.ManagedConnectorSaaSGetException
-            ) as e:
-                yield list_response_item, str(e)
-            else:
-                yield item_details
+        ) as e:
+            return list_response_item, str(e)
+        else:
+            return item_details
+
+    def _load_list(self, iam_credentials: dict = None, skip_empty_response: bool = False):
+        # NOTE: There are no Details and Software Behaviours for AWS Connectors
+        # So special IAM adjustments are not required
+
+        yield from self.get_list_of_items(iam_credentials=iam_credentials, skip_empty_response=skip_empty_response)
 
     def _load_iam_list(self):
         iteration = 0
@@ -394,14 +408,17 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
             # NOTE: AWS Credentials have a short life-time, so we can't pre-generate them
             for iam_credentials in iam.get_iam_credentials():
-                iam_response = list(self._load_list(iam_credentials=iam_credentials, skip_empty_response=True))
-                yield iam_response
+                for page in self._load_list(iam_credentials=iam_credentials, skip_empty_response=True):
+                    yield page
 
-                iteration += 1
-                iam_records += len(iam_response)
+                    iteration += 1
+                    iam_records += len(page)
 
         except Exception as exc:
-            self.logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
+            if isinstance(exc, HTTPError) and exc.response.status_code == 403:
+                self.logger.exception('Encountered a 403 Forbidden error while fetching AWS IAM data, the Integration User must have appropriate permissions: %s', str(exc))
+            else:
+                self.logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
             if iteration == 0:
                 raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
             else:
@@ -475,25 +492,33 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             self.finalize_processed_portion()
             raise
 
-    def _add_desktop_software(self, item_details):
+    def _add_desktop_software(self, item_details, iam_credentials: Optional[dict] = None):
         try:
             if self.software_behavior is not None and self.software_behavior.get('enabled'):
                 self.update_rendering_context(detail_response=item_details)
-                software_response = self._get_software_response(item_details)
+                software_response = self._get_software_response(item_details, iam_credentials=iam_credentials)
                 list_of_software = self._build_list_of_software(software_response)
                 self._add_list_of_software(item_details, list_of_software)
         except Exception as exc:
             self.logger.exception('Failed to fetch the software info')
             raise self.ManagedConnectorSoftwareGetException(error=str(exc))
 
-    def _get_software_response(self, default_response):
+    def _get_software_response(self, default_response, iam_credentials: Optional[dict] = None):
         valid_api_spec = self.software_behavior.get('url') and self.software_behavior.get('http_method')
-        response = self._call_endpoint_for_software() if valid_api_spec else default_response
+        response = self._call_endpoint_for_sub_behavior(self.software_behavior, iam_credentials=iam_credentials) if valid_api_spec else default_response
         return response
 
-    def _call_endpoint_for_software(self):
-        api_call_specification = self.build_call_specs(self.software_behavior)
-        auth_headers, auth_params, ssl_adapter = self.attach_saas_authorization(api_call_specification)
+    def _call_endpoint_for_sub_behavior(self, behavior, iam_credentials: Optional[dict] = None):
+        api_call_specification = self.build_call_specs(behavior)
+        auth_headers, auth_params, ssl_adapter, url_attributes, body_attributes = self.attach_saas_authorization(
+            api_call_specification,
+            iam_credentials=iam_credentials
+        )
+
+        if url_attributes or body_attributes:
+            self.update_rendering_context(**url_attributes)
+            self.update_rendering_context(**body_attributes)
+            api_call_specification = self.build_call_specs(behavior)
 
         api_call_specification['headers'].update(**auth_headers)
         api_call_specification['params'].update(**auth_params)

@@ -5,6 +5,13 @@ from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
 
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 class Connector(AssetsConnector):
     MappingName = 'AirWatch'
     Settings = {
@@ -111,6 +118,7 @@ class Connector(AssetsConnector):
         return processed_devices
 
     def _load_records(self, options):
+        self.logger.warning(f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
 
         if self.settings.get('dep_uuid'):
             # if the dep_uuid is given, we have to retrieve the different subset of devices from the separate API
@@ -139,3 +147,10 @@ class Connector(AssetsConnector):
         except (HTTPError, RetryError):
             self.logger.exception("Error trying to load network details for device: %s", device_id)
             return {}
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

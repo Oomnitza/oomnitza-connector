@@ -28,6 +28,13 @@ SyncTypes = {
     ),
 }
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(AssetsConnector):
     MappingName = 'Casper'
@@ -145,6 +152,8 @@ class Connector(AssetsConnector):
         return self.settings['username'], self.settings['password']
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
 
         pool_size = self.settings['__workers__']
 
@@ -214,3 +223,10 @@ class Connector(AssetsConnector):
                     gevent.spawn(self.sender, *(self.OomnitzaConnector, device, None)).start()
         except:
             self.logger.exception('Casper server handler failed')
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

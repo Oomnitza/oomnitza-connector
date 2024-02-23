@@ -7,6 +7,13 @@ from requests.auth import _basic_auth_str
 from lib.connector import UserConnector
 from lib.error import ConfigError, AuthenticationError
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(UserConnector):
     MappingName = 'OneLogin'
@@ -226,6 +233,8 @@ class Connector(UserConnector):
                 return
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
 
         # region Deprecated functionality?
         if 'datafile' in options:
@@ -269,3 +278,10 @@ class Connector(UserConnector):
         if field not in standard_fields and not field.startswith(custom_prefix):
             field = "{}{}".format(custom_prefix, field)
         return super(Connector, self).get_field_value(field, data, default)
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

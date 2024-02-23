@@ -91,6 +91,7 @@ bad_keywords: List[str] = [
 ]
 keyword_replace: Dict[str, str] = {kw: f'_{kw.upper()}_' for kw in bad_keywords}
 
+
 def sanitize_jinja_call_args(data: Dict[str, Any]) -> Dict[str, Any]:
     """Sanitize the data passed to jinja render."""
     return {keyword_replace.get(k, k): v for k, v in data.items()}

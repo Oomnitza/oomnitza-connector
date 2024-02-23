@@ -99,7 +99,7 @@ class Connector(AssetsConnector):
             retry_strategy = Retry(
                 total=5,
                 status_forcelist=[429, 500],
-                method_whitelist=["GET"]
+                allowed_methods=["GET"]
             )
             adapter = HTTPAdapter(max_retries=retry_strategy)
             http = requests.Session()

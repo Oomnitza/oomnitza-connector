@@ -18,7 +18,7 @@ class Connector(AssetsConnector):
         'client_key': {'order': 2, 'example': '', 'default': ""},
         'client_secret': {'order': 3, 'example': '******', 'default': ""},
         'order_creation_date_from': {'order': 4, 'example': 'YYYY-MM-DD', 'default': ""},
-        'order_creation_date_to': {'order': 5, 'example': 'YYYY-MM-DD', 'default': ""},
+        'order_creation_date_to': {'order': 5, 'example': 'YYYY-MM-DD', 'default': arrow.now().format('YYYY-MM-DD')},
         'tracking_data': {'order': 6, 'example': 'X', 'default': ""}
     }
 
@@ -33,7 +33,7 @@ class Connector(AssetsConnector):
 
         self.client_id = self.settings.get('client_id', '')
         self.order_date_from = self.settings.get('order_creation_date_from', '')
-        self.order_date_to = self.settings.get('order_creation_date_to', '')
+        self.order_date_to = self.settings.get('order_creation_date_to', arrow.now().format('YYYY-MM-DD'))
         self.tracking_data = self.settings.get('tracking_data', '')
 
     def get_headers(self):
@@ -48,35 +48,54 @@ class Connector(AssetsConnector):
         base64_token = base64.b64encode(token.encode()).decode()
         token_url = 'https://insight-prod.apigee.net/oauth/client_credential/accesstoken?grant_type=client_credentials'
         basic_auth_headers = {
-            'Authorization': 'Basic {0}'.format(base64_token),
+            'Authorization': f'Basic {base64_token}',
             'Content-Type': 'application/x-www-form-urlencoded'
         }
 
-        json_response = self.post(token_url, data={},
-                                  headers=basic_auth_headers, post_as_json=False)
+        json_response = self.post(token_url, data={}, headers=basic_auth_headers, post_as_json=False)
         dict_response = response_to_object(json_response.text)
 
         self.access_token = dict_response.get('access_token', '')
         # expires in 1hr according to docs
         self.insight_expires_in = round(arrow.utcnow().float_timestamp) + int(dict_response.get('expires_in', 3599))
 
+    @staticmethod
+    def generate_dates_range(start: str, end: str, interval: int):
+        start = arrow.get(start)
+        end = arrow.get(end)
+
+        dates_range = []
+        date_from, date_to = start, start
+        while date_to < end:
+            date_to = date_from.shift(days=interval)
+            if date_to > end:
+                date_to = end
+            dates_range.append((date_from.format("YYYY-MM-DD"), date_to.format("YYYY-MM-DD")))
+            date_from = date_to
+
+        return dates_range
 
     def get_orders(self):
-        # The call must have a body to return a 200 response
-        body_data = {"MT_Status2Request": {
-          "StatusRequest": [
-            {
-              "ClientID": self.client_id,
-              "TrackingData": self.tracking_data,
-              "OrderCreationDateFrom": self.order_date_from,
-              "OrderCreationDateTo": self.order_date_to
-            }
-          ]
-        }}
+        # The Insight API allows a maximum range of 180 days, so we need to paginate on the main date range.
+        # The Insight API is also very slow, so we chose an interval of 60 days therefore we're sure to get a response.
+        dates_range = self.generate_dates_range(self.order_date_from, self.order_date_to, 60)
 
-        # The GET method does not allow for data so POST is being used here
-        response = response_to_object(self.post(self.get_sales_order_status_api, data=body_data).text)
-        return response
+        for date_from, date_to in dates_range:
+            # The call must have a body to return a 200 response
+            body_data = {"MT_Status2Request": {
+                "StatusRequest": [
+                    {
+                        "ClientID": self.client_id,
+                        "TrackingData": self.tracking_data,
+                        "OrderCreationDateFrom": date_from,
+                        "OrderCreationDateTo": date_to
+                    }
+                ]
+            }}
+
+            # The GET method does not allow for data so POST is being used here
+            response = response_to_object(self.post(self.get_sales_order_status_api, data=body_data).text)
+            yield response
 
     @staticmethod
     def attach_order_headers(order_header: List[Dict[str, Any]], final_dict: Dict[str, Any]):
@@ -122,7 +141,6 @@ class Connector(AssetsConnector):
 
     def create_insight_response_dict(self, response):
         for orders in response["StatusOrderResponse"]:
-
             for order in orders['Order']:
                 order_header = order.get('OrderHeader', [])
                 order_tracking_info = order.get('Tracking', [])
@@ -130,7 +148,8 @@ class Connector(AssetsConnector):
                 output_dict = {}
 
                 self.attach_order_headers(order_header, output_dict)
-                for result in self.attach_order_line_items_and_tracking(order, order_tracking_info, output_dict, ignore_keys):
+                items = self.attach_order_line_items_and_tracking(order, order_tracking_info, output_dict, ignore_keys)
+                for result in items:
                     yield result
 
     def _load_records(self, *a, **kw):
@@ -138,6 +157,6 @@ class Connector(AssetsConnector):
             self.logger.warning("Missing Client Key or Client Secret. Can not run. Exiting.")
             return
 
-        insight_payload = self.get_orders()
-        for ready_order_info in self.create_insight_response_dict(insight_payload):
-            yield ready_order_info
+        for payload in self.get_orders():
+            for ready_order_info in self.create_insight_response_dict(payload):
+                yield ready_order_info

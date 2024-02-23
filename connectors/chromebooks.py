@@ -8,6 +8,13 @@ CHROMEDEVICES_API_SCOPE = (
     'https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly',
 )
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(AssetsConnector):
     MappingName = 'Chromebooks'
@@ -41,6 +48,9 @@ class Connector(AssetsConnector):
         return sa_credentials
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         credentials = self.get_sa_credentials()
         if not credentials:
             self.logger.error("Set the email of the G Suite administrator and service account's json key")
@@ -60,3 +70,10 @@ class Connector(AssetsConnector):
                 yield device_record
 
             request = chromeosdevices.list_next(request, records)
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

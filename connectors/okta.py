@@ -1,6 +1,13 @@
 from lib import TrueValues
 from lib.connector import UserConnector
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(UserConnector):
     MappingName = 'Okta'
@@ -63,9 +70,19 @@ class Connector(UserConnector):
             page = response.links.get('next', {}).get('url', None)
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         for user in self.not_deprovisioned_users_generator(options):
             yield user
 
         if self.settings.get('deprovisioned') in TrueValues:
             for user in self.deprovisioned_users_generator(options):
                 yield user
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

@@ -7,6 +7,12 @@ from requests.auth import _basic_auth_str
 COMPUTERS = 'computers'
 MOBILE_DEVICES = 'mobiledevices'
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
 
 
 class Connector(AssetsConnector):
@@ -153,6 +159,9 @@ class Connector(AssetsConnector):
         return device_info
 
     def _load_records(self, options):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
+
         pool_size = self.settings['__workers__']
 
         connection_pool = Pool(size=pool_size)
@@ -163,3 +172,10 @@ class Connector(AssetsConnector):
             maxsize=pool_size
         ):
             yield device_info
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
