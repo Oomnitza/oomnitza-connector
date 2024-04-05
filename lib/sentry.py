@@ -7,8 +7,9 @@ from lib.config import SpecialConfigParser
 class SentryConfiguration:
     dsn = ''
     rate = 0.0
+    profiles_rate = 0.0
     environment = ''
-    instance = ''
+    subdomain = ''
 
     def __init__(self, ini_file_path: str):
         config_file = SpecialConfigParser()
@@ -18,6 +19,8 @@ class SentryConfiguration:
             self.dsn = config_file.get('oomnitza', 'SENTRY_DSN_CONNECTOR').strip()
         if config_file.has_option('oomnitza', 'SENTRY_RATE_CONNECTOR'):
             self.rate = config_file.getfloat('oomnitza', 'SENTRY_RATE_CONNECTOR')
+        if config_file.has_option('oomnitza', 'PROFILES_RATE_CONNECTOR'):
+            self.profiles_rate = config_file.getfloat('oomnitza', 'PROFILES_RATE_CONNECTOR')
         if config_file.has_option('oomnitza', 'IS_DEVELOPMENT'):
             self.environment = (
                 "development"
@@ -25,7 +28,7 @@ class SentryConfiguration:
                 else "production"
             )
         if config_file.has_option('oomnitza', 'SUBDOMAIN'):
-            self.instance = config_file.get('oomnitza', 'SUBDOMAIN').strip()
+            self.subdomain = config_file.get('oomnitza', 'SUBDOMAIN').strip()
 
 
 def init_sentry(config: SentryConfiguration):
@@ -35,12 +38,13 @@ def init_sentry(config: SentryConfiguration):
             config.dsn,
             config.rate * 100,
             config.environment,
-            config.instance
+            config.subdomain
         )
         sentry_sdk.init(
             dsn=config.dsn,
             sample_rate=config.rate,
             traces_sample_rate=config.rate,
+            profiles_sample_rate=config.profiles_rate,
             environment=config.environment,
+            server_name=config.subdomain
         )
-        sentry_sdk.set_tag('instance', config.instance)

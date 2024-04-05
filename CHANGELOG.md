@@ -1,37 +1,43 @@
 # Changelog
 
-## [2.4.1]
+## [2.4.2]
 
 ### Updated
 
-- Added Deprecated warnings to a list of connector files that will be removed in a future release.
-  1. Airwatch
-  2. Azure Users
-  3. BambooHR
-  4. Casper (Jamf)
-  5. ChromeBooks
-  6. Google Mobile Devices
-  7. Meraki Network Devices
-  8. Okta
-  9. OneLogin
-  10. SimpleMDM
-  11. Workday
-  12. Zendesk
-- Fixed VCenter deprecated Retry() Param from deprecated param.
-- Refactor on Managed.py
-- Updated Insight to use pagination on date range.
+- WorkspaceOne Device Software Connector
+  - Added filter option to ignore **_com.apple._*** software bundles.
+  - Added filter option to default software with no version to a version of _**0.0**_
+  - Added functionality to sync either managed or installed software. Or to sync all.
 
-### Changed
+### Fixed
 
-- Fixed issue where some connectors could not reach internal Private IPs within an on-prem instance.
+- Fixed issue where the `verify_ssl` flag was being ignored as part of a request session resulting in SSL errors
+
+## [2.4.1]
+
+### Removed
+
+- Removed the following deprecated assets basic connectors:
+  - Airwatch
+  - Chromebooks
+  - Google Mobile Devices
+  - Jamf (Casper)
+  - Jamf Mobile
+  - MerakiSM
+  - SimpleMDM
+- Removed the following deprecated users basic connectors:
+  - Azure Users
+  - BambooHR
+  - Okta
+  - OneLogin
+  - Zendesk
 
 ## [2.4.0]
 
 ### Changed
 
 - Starting from version 2.4.0 the connector project is migrated to the python 3.8.x. There is NO
-  fallback support for the python2 or earlier version of python3
-- Removed PyChef library dependency. Replaced with custom solution.
+ fallback support for the python2 or earlier version of python3
 
 ## [2.3.14]
 

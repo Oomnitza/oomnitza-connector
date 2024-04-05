@@ -4,13 +4,13 @@ import json
 import xmltodict
 import logging
 import os
+import os.path
+import gevent
+import requests
+
+from constants import FATAL_ERROR_FLAG, ConfigFieldType
 from datetime import date, datetime
 from distutils.util import strtobool
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from uuid import uuid4
-
-import requests
-from constants import FATAL_ERROR_FLAG, ConfigFieldType
 from gevent.pool import Pool
 from lib import TrueValues
 from lib.converters import Converter
@@ -21,17 +21,19 @@ from lib.logger import ContextLoggingAdapter
 from lib.renderer import _RawValue
 from lib.strongbox import Strongbox, StrongboxBackend
 from lib.version import VERSION
+from requests.exceptions import RequestException
 from requests.adapters import HTTPAdapter
-from requests.exceptions import RequestException
 from sentry_sdk import start_transaction
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from utils.data import get_field_value
-import gevent
-from gevent.pool import Pool
-from requests.exceptions import RequestException
-import os.path
+from urllib3.exceptions import InsecureRequestWarning
+from uuid import uuid4
 
 SAVED_DATA_PATH = "./save_data"
 
+
+# Suppress Warning when 'verify_ssl' is set to False (creates a lot of noise in the logs)
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 # noinspection PyBroadException
 def response_to_object(response_text):
@@ -446,6 +448,10 @@ class BaseConnector(object):
     def _get_session(self):
         if not self._session:
             self._session = requests.Session()
+
+            # required at this level for ignore self signed CAs: OW-42746
+            self._session.verify = self.get_verification()
+
             protocol = self.settings.get('ssl_protocol', "")
             user_pem_file = self.settings.get('user_pem_file')
             if user_pem_file:
@@ -540,6 +546,7 @@ class BaseConnector(object):
         Returns the value of verification.
         :return: True (Path_to_cacert in binary) / False
         """
+        # TODO Update to allow the passing of a certificate path or a boolean.
         return self.settings.get('verify_ssl', True) in TrueValues
 
     def get_headers(self):

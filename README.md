@@ -10,16 +10,13 @@ Oomnitza’s local connector, built using Python, is a single application that p
                                                        
 The local connector can pull data from the following sources:
 
-* Google Chrome devices [https://developers.google.com/admin-sdk/directory/](https://developers.google.com/admin-sdk/directory/)
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
 * Jasper [http://www.jasper.com](http://www.jasper.com/)
-* KACE Systems Management Appliance [https://www.quest.com/kace/](https://www.quest.com/kace/) 
 * LDAP e.g., [http://www.openldap.org](http://www.openldap.org/), [Active Directory](https://www.microsoft.com)
 * MobileIron [http://www.mobileiron.com](http://www.mobileiron.com/)
 * Netbox [https://netbox.readthedocs.io/en/stable/](https://netbox.readthedocs.io/en/stable/)
 * Open-AudIT [https://www.open-audit.org/](https://www.open-audit.org/)
 * SCCM [http://www.microsoft.com](http://www.microsoft.com/en-us/server-cloud/products/system-center-2012-r2-configuration-manager/)
-* SimpleMDM [https://simplemdm.com/](https://simplemdm.com/)
 * Tanium [https://www.tanium.com/](https://www.tanium.com/)
 * vCenter [https://www.vmware.com](https://www.vmware.com)
 * WorkspaceOne [https://www.workspaceone.com](https://www.workspaceone.com)
@@ -258,6 +255,21 @@ If you intend to run the local connector solely to connect to systems that are b
 
 For more information, see [Setting the connector to run in managed mode](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md#setting-the-connector-to-run-in-managed-mode). 
 
+### Modify the Docker Image.
+
+If you need to modify the underlying code for testing purposes and need to rebuild the image you can run
+
+`docker build -t oomnitza/oomnitza-connector:latest .`
+
+This will rebuild the image with the same name and tag so you can trial your changes
+
+**WARNING**
+
+This command will replace the current image with the new built one.
+If you want to keep changes separated, change the tag after the colon symbol to `beta` i.e. `docker build -t oomnitza/oomnitza-connector:beta .`
+
+You will need to change this in the docker-compose.yml file to match the tag.
+
 #### Run the local connector
 
 To run the local connector, issue the following command:
@@ -270,7 +282,7 @@ The docker container will run in detached mode. That is, as a background process
 
 ### Add service examples
 
-If you need to run extended integrations, you can add an additional service to the Docker Compose configuration file,  `docker-compose.yml`.
+If you need to run extended integrations, you can add a service to the Docker Compose configuration file,  `docker-compose.yml`.
 
 #### LDAP service
 
@@ -462,10 +474,13 @@ An example generated `config.ini` follows.
 
     [workspaceone_devicesoftware]
     enable = False
-    subdomain = tech-dev
+    url = https://tech-dev.workspace.com
     client_id = ***
     client_secret = ***
     region = na
+    apps_scope = all
+    ignore_apple = False
+    default_versioning = False
 
     [munki_report]
     enable = False
@@ -849,28 +864,6 @@ Examples:
     https://my-connector-server.com/it/does/not/matter/casper.MDM
     https://my-connector-server.com/it/does/not/matter/casper.1
 
-**Note:** Now only the Casper (JAMF Pro) Webhooks are supported out of the box by the connector server.
-First you have to enable webhooks with JSON payloads (http://docs.jamf.com/9.96/casper-suite/administrator-guide/Webhooks.html)
-Out of the box the following webhooks are supported:
- 
-* ComputerAdded
-* ComputerCheckIn
-* ComputerInventoryCompleted
-* ComputerPolicyFinished
-* ComputerPushCapabilityChanged
-* MobileDeviceCheckIn
-* MobileDeviceCommandCompleted
-* MobileDeviceEnrolled
-* MobileDevicePushSent
-* MobileDeviceUnEnrolled
-
-As soon as the connector server is receiving the message from the Casper (JAMF Pro) it is initiating the request to fetch the details of the asset triggered that webhook request and sync it with Oomnitza. 
-This allows efficiently and fast keep the Oomnitza in the up-to-date state.
-
-Also please keep in mind that the webhooks from the Casper (JAMF Pro) **do not add any authorization information** in the requests to the connector server. 
-Because of that server cannot verify incoming requests in any way, so if you want somehow forbid access to the connector's server interface configured to listen to Casper (JAMF Pro) webhooks, 
-you have to use something else, like firewalls with configured allowed IPs, etc.
-
 ## Running the connector client
 The connector is meant to be run from the command line and as such as multiple command line options:
 
@@ -1144,25 +1137,6 @@ The above example will introduce a new mappable attribute "hardware.kernel_name"
 
 The above example will introduce a new mappable attribute "hardware.machine_name" for mac_os_x and windows nodes only.
 
-#### Google Chrome Devices
-
-The following steps need to be taken to allow automated retrieval from Google Admin API:
-
- 1) [Enable API access for your G Suite domain](https://support.google.com/a/answer/60757)
- 2) Create a new project in [Google Developers Console](https://console.developers.google.com/) and enable the Admin SDK.
- 3) Create a service account in this project and delegate a domain-wide authority to it.  For more details, please refer to [Using OAuth 2.0 for Server to Server Applications](https://developers.google.com/identity/protocols/OAuth2ServiceAccount) and follow the instructions.
-The Oomnitza connector requires read-only API scope enable to successfully operate _`https://www.googleapis.com/auth/admin.directory.device.chromeos.readonly`_
-
-The `[chromebooks]` section contains the following attributes:
-
-`service_account_impersonate`: the email of the real G Suite administrator to be impersonated by the service account.
-
-`service_account_json_key`: the content of the JSON key file generated for service account  **as one line**. This key is generated when you create the service account and also you can create additional keys later.
-
-##### Default Field Mappings
-
-    No default mappings. All mappings need to be defined in the config file.
-
 #### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.
 
@@ -1176,24 +1150,6 @@ The `[chromebooks]` section contains the following attributes:
 
 ##### Default Field Mappings
     No default mappings
-
-
-#### KACE SMA Configuration
-
-`url`: The URL for the KACE SMA system.
-
-`username`: the KACE SMA username to use
-
-`password`: the KACE SMA password to use
-
-`organization_name`: Organization name used to authorize. Default is "Default"
-
-`api_version`: KACE SMA API version numeric identifier. Default is "8"
-
-
-##### Default Field Mappings
-    No default mappings
-
 
 #### LDAP Users Configuration
 
@@ -1376,25 +1332,6 @@ for the currently logged in user will be used when making the connection to the 
 ##### Default Field Mappings
     No default mappings
 
-#### SimpleMDM Configuration
-`secret_access_key`: The API keys used to authenticate. You can retrieve your API key by signing into your SimpleMDM account, visiting “Settings” and then selecting the “API” tab.
-
-`device_groups`: IDs of device groups to process as the set of integer values separated with comma. Example: `1,2,3`. 
-If empty all the device groups will be processed.
-
-`device_types`: Device types to process. Can be `computers`, `mobiledevices` or `computers,mobiledevices` (default)
-
-`custom_attributes`: Flag used to inform the connector to fetch the custom attributes of devices. These attributes then will be accessible in the manually configured mapping via the `custom_attribute` prefix.
-Example, for the custom attribute named "TEST ATTRIBUTE" the mapping will be
-    
-    mapping.BARCODE = {"source": "custom_attributes.TEST_ATTRIBUTE}
-The default value for this flag is "0" - to not fetch the custom attributes
-
-
-##### Default Field Mappings
-    No default mappings
-
-
 #### Tanium Configuration
 `url`: The URL for the Tanium instance
 
@@ -1439,7 +1376,20 @@ If these not available attributes will be mapped on UI, null values will be push
 
 `region`: The WorkspaceOne region. ie. na, apac, emer or uat
 
-`subdomain`:  The subdomain of the url including
+`url`:  The url of the WorkspaceOne including https:// and top level domain (.com, .ie, etc)
+
+`apps_scope`:  The Scope of the WorkspaceOne API calls. Default to **all**
+
+    Acceptable values are: managed, device or all
+        managed: Only sync managed apps from Workspace one.
+        installed: Only sync device apps from Workspace one.
+        all: Sync both managed and device apps from Workspace one.
+
+`ignore_apple`:  Ignore Apple software that starts with com.apple.* Defaulted to False<br>
+(False = do not ignore)
+
+`default_versioning`:  If Software is found with no version, we default the version to _0.0_. Default to False<br>
+(False = do not sync software with no version)
 
 
 ##### Default Field Mappings

@@ -1,8 +1,7 @@
 *.log
 *.py[cod]
 *.sqlite
-.idea/
 src/*
+.idea/
 save_data/*
-config.ini
-config.ini.bak
+config.ini*
