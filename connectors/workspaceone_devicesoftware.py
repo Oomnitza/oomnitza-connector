@@ -121,11 +121,11 @@ class Connector(AssetsConnector):
             if status_code == 200:  # WorkspaceOne returns a 204 when there is no more content.
                 app_on_devices = response.json().get('devices', [])
                 for device in app_on_devices:
-                    device_id = device.get('device_id')
-                    if device_id in self.devices_per_app_map:
-                        self.devices_per_app_map[device_id].append(app_id)
+                    device_uuid = device.get('device_uuid')
+                    if device_uuid in self.devices_per_app_map:
+                        self.devices_per_app_map[device_uuid].append(app_id)
                     else:
-                        self.devices_per_app_map[device_id] = [app_id]
+                        self.devices_per_app_map[device_uuid] = [app_id]
 
     def _check_response_status(self, response_status: int, msg: str = "") -> bool:
         if response_status == 204:  # WorkspaceOne returns a 204 when there is no more content.
@@ -135,18 +135,18 @@ class Connector(AssetsConnector):
             return False
         return True
 
-    def get_installed_apps(self, url, device_id):
+    def get_installed_apps(self, url, device_uuid):
         iteration = 0
         installed_apps = []
 
         while True:
-            formatted_url = self.apps_per_device_url.format(url=url, deviceUuid=device_id, page=iteration)
+            formatted_url = self.apps_per_device_url.format(url=url, deviceUuid=device_uuid, page=iteration)
             response = self.get(formatted_url)
             status_code = response.status_code
 
             if not self._check_response_status(status_code,
-                                               msg=f"Failed to fetch Unmanaged Apps on Device '{device_id}', with {status_code} reason: '{response.reason}'"):
-                self.logger.info(f"Finished Fetching Installed Software for {device_id}.")
+                                               msg=f"Failed to fetch Unmanaged Apps on Device '{device_uuid}', with {status_code} reason: '{response.reason}'"):
+                self.logger.info(f"Finished Fetching Installed Software for {device_uuid}.")
                 break
 
             unmanaged_software = response.json().get('app_items', [])
@@ -188,13 +188,14 @@ class Connector(AssetsConnector):
                 self.logger.warning(f"Devices list call was empty. Exiting")
 
             for device in devices:
-                device_id = ""
-                if type(device.get('Id')) == dict:
-                    device_id = device.get('Id').get('Value')
+                if type(device.get('Uuid')) == dict:
+                    device_uuid = device.get('Uuid').get('Value')
+                else:
+                    device_uuid = device.get('Uuid')
 
                 device[self.applications_key] = [
                     self.apps_cache_dict.get(app_id)
-                    for app_id in self.devices_per_app_map.get(device_id, '')
+                    for app_id in self.devices_per_app_map.get(device_uuid, '')
                     if self.apps_cache_dict and app_id
                 ]
 
@@ -226,15 +227,16 @@ class Connector(AssetsConnector):
 
     def yield_devices_with_all_software(self, url):
         for device in self.yield_devices_with_managed_software(url):
-            device_id = ''
-            if type(device.get('Id')) == dict:
-                device_id = device.get('Id').get('Value')
+            if type(device.get('Uuid')) == dict:
+                device_uuid = device.get('Id').get('Value')
+            else:
+                device_uuid = device.get('Uuid')
 
-            if not device_id:
+            if not device_uuid:
                 self.logger.info(f"Finished Fetching Unmanaged Software.")
                 continue
 
-            device[self.applications_key].extend(self.get_installed_apps(url, device_id))
+            device[self.applications_key].extend(self.get_installed_apps(url, device_uuid))
 
             yield device
 

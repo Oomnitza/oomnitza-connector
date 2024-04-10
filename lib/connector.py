@@ -681,8 +681,9 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
-        save_data = self.settings.get("__save_data__", False) in TrueValues
         is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_test_run = self.settings['__testmode__'] or is_test_run
+        save_data = self.settings.get("__save_data__", False) in TrueValues
         is_custom = self.settings.get('is_custom', False) in TrueValues
 
         if is_custom and is_test_run:
@@ -767,8 +768,9 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
-        save_data = self.settings.get("__save_data__", False) in TrueValues
         is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_test_run = self.settings['__testmode__'] or is_test_run
+        save_data = self.settings.get("__save_data__", False) in TrueValues
         is_custom = self.settings.get('is_custom', False) in TrueValues
 
         if is_custom and is_test_run:

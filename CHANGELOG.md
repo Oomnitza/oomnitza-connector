@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.3]
+
+### Fixed
+
+- WorkspaceOne Device Software Connector: Updated Api call to use the correct device uuid instead of id.
+- Connector respecting `--testmode` flag and only processing 10 records.
+
 ## [2.4.2]
 
 ### Updated
