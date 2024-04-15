@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.4]
+
+### Fixed
+
+- WorkspaceOne Device Software Connector: Updated installed apps api to exit on empty `app_items` list. All other apis finish on a 204 response.
+
 ## [2.4.3]
 
 ### Fixed

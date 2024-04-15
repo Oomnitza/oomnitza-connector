@@ -1,4 +1,5 @@
 import base64
+import json
 
 import arrow
 from lib.connector import AssetsConnector
@@ -75,6 +76,7 @@ class Connector(AssetsConnector):
     def populate_apps_cache(self, url):
         # First step, grab all the software/apps from workspace one.
         iteration = 0
+        self.logger.info("Generating the Managed Applications cache.")
         while True:
             formatted_url = self.managed_apps_list_url.format(url=url, page=iteration)
             response = self.get(formatted_url)
@@ -86,7 +88,7 @@ class Connector(AssetsConnector):
                 self.logger.info("Finished Fetching Software for devices.")
                 break
 
-            _apps_list = response.json().get('Application', [])
+            _apps_list = self._convert_to_json(response, formatted_url).get('Application', [])
 
             for _app in _apps_list:
                 if _app_id_value := _app.get('Uuid', ''):
@@ -109,6 +111,8 @@ class Connector(AssetsConnector):
 
     def generate_device_app_cache(self, url):
         """ Map the app id to all the devices this app is installed on. """
+        self.logger.info("Generating the device app cache.")
+
         for app_id, _ in self.apps_cache_dict.items():
             formatted_url = self.devices_per_app_url.format(url=url, app_id=app_id)
             response = self.get(formatted_url)
@@ -118,17 +122,18 @@ class Connector(AssetsConnector):
                 self.logger.info(f"Finished Fetching Devices for software {app_id}.")
                 continue
 
-            if status_code == 200:  # WorkspaceOne returns a 204 when there is no more content.
-                app_on_devices = response.json().get('devices', [])
-                for device in app_on_devices:
-                    device_uuid = device.get('device_uuid')
-                    if device_uuid in self.devices_per_app_map:
-                        self.devices_per_app_map[device_uuid].append(app_id)
-                    else:
-                        self.devices_per_app_map[device_uuid] = [app_id]
+            app_on_devices = self._convert_to_json(response, formatted_url).get('devices', [])
+            for device in app_on_devices:
+                device_uuid = device.get('device_uuid')
+                if device_uuid in self.devices_per_app_map:
+                    self.devices_per_app_map[device_uuid].append(app_id)
+                else:
+                    self.devices_per_app_map[device_uuid] = [app_id]
 
     def _check_response_status(self, response_status: int, msg: str = "") -> bool:
-        if response_status == 204:  # WorkspaceOne returns a 204 when there is no more content.
+        # WorkspaceOne returns a 204 when there is no more content.
+        # Except for this url '/api/mdm/devices/{deviceUuid}/apps/search?page={page}&pageSize=100' it returns a 200 Ok.
+        if response_status == 204:
             return False
         elif response_status != 200:
             self.logger.warning(msg)
@@ -138,6 +143,7 @@ class Connector(AssetsConnector):
     def get_installed_apps(self, url, device_uuid):
         iteration = 0
         installed_apps = []
+        self.logger.info(f"Gathering installed apps for device: {device_uuid}")
 
         while True:
             formatted_url = self.apps_per_device_url.format(url=url, deviceUuid=device_uuid, page=iteration)
@@ -145,11 +151,15 @@ class Connector(AssetsConnector):
             status_code = response.status_code
 
             if not self._check_response_status(status_code,
-                                               msg=f"Failed to fetch Unmanaged Apps on Device '{device_uuid}', with {status_code} reason: '{response.reason}'"):
-                self.logger.info(f"Finished Fetching Installed Software for {device_uuid}.")
+                                               msg=f"Failed to fetch Installed Apps on Device '{device_uuid}', with {status_code} reason: '{response.reason}'"):
+                self.logger.info(f"Finished fetching Installed Software for {device_uuid}.")
                 break
 
-            unmanaged_software = response.json().get('app_items', [])
+            unmanaged_software = self._convert_to_json(response, formatted_url).get('app_items', [])
+
+            if not unmanaged_software:
+                self.logger.info(f"No more Installed Software detected for {device_uuid}.")
+                break
 
             for app in unmanaged_software:
                 if self.ignore_apple_software:
@@ -183,7 +193,7 @@ class Connector(AssetsConnector):
                 self.logger.info(f"Finished Fetching Devices.")
                 break
 
-            devices = response.json().get('Devices', [])
+            devices = self._convert_to_json(response, formatted_url).get('Devices', [])
             if not devices:
                 self.logger.warning(f"Devices list call was empty. Exiting")
 
@@ -214,7 +224,7 @@ class Connector(AssetsConnector):
                 self.logger.info(f"Finished Fetching Devices.")
                 break
 
-            devices = response.json().get('Devices', [])
+            devices = self._convert_to_json(response, formatted_url).get('Devices', [])
             for device in devices:
                 device_id = ""
                 if type(device.get('Id')) == dict:
@@ -252,6 +262,14 @@ class Connector(AssetsConnector):
                     software['version'] = self.default_app_version
 
         return device
+
+    def _convert_to_json(self, response, url):
+        try:
+            response_json = response.json()
+            return response_json
+        except json.JSONDecodeError:
+            self.logger.warning(f"Failed to convert response to json for {url}")
+        return {}
 
     def _are_cred_inputs_ok(self) -> bool:
         if not all((self.settings.get('client_id', ''), self.settings.get('client_secret', ''),
