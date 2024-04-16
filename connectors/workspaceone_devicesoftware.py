@@ -46,8 +46,11 @@ class Connector(AssetsConnector):
         if "APPLICATIONS" not in self.field_mappings:
             self.field_mappings["APPLICATIONS"] = {"source": self.applications_key}
 
+    def _get_utcnow_timestamp(self):
+        return round(arrow.utcnow().float_timestamp)
+
     def get_headers(self):
-        if round(arrow.utcnow().float_timestamp) > self.workspace_one_expires_in:
+        if self._get_utcnow_timestamp() > self.workspace_one_expires_in:
             self.get_access_token(self.settings.get('client_id', ''),
                                   self.settings.get('client_secret', ''),
                                   self.settings.get('region', ''))
@@ -71,7 +74,11 @@ class Connector(AssetsConnector):
                                   headers=basic_auth_headers, post_as_json=False).json()
 
         self.workspace_one_access_token = json_response.get('access_token', '')
-        self.workspace_one_expires_in = round(arrow.utcnow().float_timestamp) + json_response.get('expires_in', 3600)  # expires in 1hr according to docs
+        expires_in = json_response.get('expires_in', 3600)
+
+        # expires in 1hr according to docs, reduced by 5 minutes so we don't hit the edge case of an api call on the hour mark.
+        expires_in_time = expires_in - 300 if expires_in > 600 else expires_in
+        self.workspace_one_expires_in = self._get_utcnow_timestamp() + expires_in_time
 
     def populate_apps_cache(self, url):
         # First step, grab all the software/apps from workspace one.

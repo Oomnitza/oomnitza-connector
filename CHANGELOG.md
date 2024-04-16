@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.5]
+
+### Updated
+
+- WorkspaceOne Device Software Connector: Reduced the expiry time of the access token to 55 minutes to avoid edge condition where api call was made on the hour mark and failed with 401.
+
 ## [2.4.4]
 
 ### Fixed
