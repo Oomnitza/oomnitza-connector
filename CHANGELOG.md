@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.4.6]
+
+### Updated
+
+- WorkspaceOne Device Software Connector: Incorrect id used for device software api call
+
 ## [2.4.5]
 
 ### Updated

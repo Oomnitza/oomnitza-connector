@@ -168,6 +168,10 @@ class Connector(AssetsConnector):
                 self.logger.info(f"No more Installed Software detected for {device_uuid}.")
                 break
 
+            if not unmanaged_software:
+                self.logger.info(f"No ore Installed Software detected for {device_uuid}.")
+                break
+
             for app in unmanaged_software:
                 if self.ignore_apple_software:
                     if "com.apple." in app.get('bundle_id', ''):
@@ -233,9 +237,9 @@ class Connector(AssetsConnector):
 
             devices = self._convert_to_json(response, formatted_url).get('Devices', [])
             for device in devices:
-                device_id = ""
-                if type(device.get('Id')) == dict:
-                    device_id = device.get('Id').get('Value')
+                device_id = device.get('Uuid')
+                if type(device.get('Uuid')) == dict:
+                    device_id = device.get('Uuid').get('Value')
 
                 device[self.applications_key] = self.get_installed_apps(url, device_id)
 
