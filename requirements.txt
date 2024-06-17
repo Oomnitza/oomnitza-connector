@@ -45,5 +45,5 @@ suds-py3==1.4.5.0
 tornado==6.1
 unicodecsv==0.14.1
 uritemplate==3.0.1
-urllib3==1.26.12
+urllib3==1.26.19
 xmltodict==0.13.0
