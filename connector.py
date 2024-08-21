@@ -6,14 +6,9 @@ import argparse
 import logging
 import sys
 
-# Shim-Service
-import threading
-from shim_service.shim_service import ShimService
-
 from constants import (MODE_CLIENT_INITIATED_UPLOAD, MODE_CLOUD_INITIATED_UPLOAD,
                        MODE_GENERATE_INI_TEMPLATE, MODE_VERSION)
 from lib import config, version
-from lib.sentry import SentryConfiguration, init_sentry
 from modes.client_initiated import client_initiated_upload
 from modes.cloud_initiated import cloud_initiated_upload
 from utils.relative_path import relative_app_path
@@ -42,7 +37,6 @@ def get_cmd_line_args_parser(for_server=False):
         parser.add_argument('--record-count', type=int, default=None, help="Number of records to pull and process from connection. Relevant only for the `upload` mode")
         parser.add_argument('--workers', type=int, default=2, help="Number of async IO workers used to pull & push records.")
         parser.add_argument('--ignore-cloud-maintenance', action='store_true', help="Adds special behavior for the managed connectors to ignore the cloud maintenance")
-        parser.add_argument('--skip-shim', action='store_true', help="Runs the connector with the Shim-Service")
 
     parser.add_argument('--show-mappings', action='store_true', help="Show the mappings which would be used by the connector. Relevant only for the `upload` mode")
     parser.add_argument('--testmode', action='store_true', help="Run connectors in test mode.")
@@ -68,24 +62,9 @@ def parse_command_line_args(for_server=False):
 
     return cmdline_args
 
-
-def deploy_shim_service():
-    shim_service = ShimService()
-    # Daemon thread so it dies when the connector dies.
-    shim_thread = threading.Thread(target=shim_service.start_service, args=("shim_service",), daemon=True)
-    shim_thread.name = "Shim-Service-main-tread-1"
-    shim_thread.start()
-    LOG.info(f"Shim-Service pid: {shim_thread.name}")
-
-
 if __name__ == "__main__":
 
     args = parse_command_line_args()
-
-    try:
-        init_sentry(SentryConfiguration(args.ini))
-    except IOError:
-        LOG.error("Could not open config file.")
 
     LOG.info("Connector version: %s", version.VERSION)
 
@@ -97,8 +76,6 @@ if __name__ == "__main__":
     }
 
     try:
-        if not args.skip_shim:
-            deploy_shim_service()
         mode_handlers[args.mode](args)
     except KeyboardInterrupt:
         LOG.info('Interrupted... Exiting')

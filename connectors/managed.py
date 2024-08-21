@@ -1,7 +1,8 @@
 import copy
+import importlib
 import json
 import traceback
-from typing import Optional
+from typing import Optional, Dict
 
 from lib import TrueValues
 from lib.api_caller import ConfigurableExternalAPICaller
@@ -63,6 +64,8 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
     def __init__(self, section, settings):
         self.inputs_from_cloud = settings.pop('inputs', {}) or {}
+        self.exploratory_list_behavior = settings.pop('exploratory_list_behavior', {})
+        self.pre_list_behavior = settings.pop('pre_list_behavior', {})
         self.list_behavior = settings.pop('list_behavior', {})
         self.detail_behavior = settings.pop('detail_behavior', {})
         self.software_behavior = settings.pop('software_behavior', {})
@@ -70,6 +73,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         self.RecordType = settings.pop('type')
         self.MappingName = settings.pop('name')
         self.ConnectorID = settings.pop('id')
+        self.BasicConnector = settings.pop('basic_connector', '')
         update_only = settings.pop('update_only')
         insert_only = settings.pop('insert_only')
 
@@ -196,24 +200,15 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         if iam_credentials:
             iam_call_specification = copy.deepcopy(api_call_specification)
             iam_call_specification.update(**iam_credentials)
-
-            secret = self.OomnitzaConnector.get_aws_session_secret(**iam_call_specification)
             # NOTE: There are no required mTLS Certs for AWS API. So skip it
             ssl_adapter = None
         else:
             ssl_adapter = None
 
-            credential_id = self.settings['saas_authorization'].get('credential_id')
-            if credential_id:
-                secret = self.OomnitzaConnector.get_secret_by_credential_id(credential_id, **api_call_specification)
-                if secret['certificates']:
-                    ssl_adapter = init_mtls_ssl_adapter(secret['certificates'])
-
+            if self.session_auth_behavior:
+                secret = self.generate_session_based_secret()
             else:
-                if self.session_auth_behavior:
-                    secret = self.generate_session_based_secret()
-                else:
-                    secret = self.settings['saas_authorization']
+                secret = self.settings['saas_authorization']
 
         return secret['headers'], secret['params'], ssl_adapter,\
             secret.get('url_attributes', {}), secret.get('body_attributes', {})
@@ -234,12 +229,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         api_call_specification['ssl_adapter'] = ssl_adapter
 
         response = self.perform_api_request(logger=self.logger, **api_call_specification)
-        self.logger.debug("..response: %s", response.text)
+        self.logger.debug(f"..response: {response.text}")
 
         try:
             self.save_data_locally(response.json(), self.settings['__name__'])
         except json.decoder.JSONDecodeError:
-            self.logger.exception("Unable to convert response to JSON: %s", response.text)
+            self.logger.exception(f"Unable to convert response to JSON: {response.text}")
         return response.text
 
     def render_add_if_controls(self, api_specification, pagination_controls):
@@ -249,7 +244,162 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         api_specification['params'].update(**extra_params)
         return api_specification
 
-    def get_list_of_items(self, iam_credentials: dict = None, skip_empty_response: bool = False):
+    def make_api_request(self, behavior, pagination, break_early, add_if, iam_credentials=None):
+        api_call_specification = self.build_call_specs(behavior)
+
+        # NOTE: Check if we have to add the pagination extra things
+        if pagination:
+            # check the break early condition in case we could fetch the first page and this is the only page we have
+            if bool(self.render_to_native(break_early)):
+                return [], {}, {}
+
+            if bool(self.render_to_native(add_if)):
+                self.render_add_if_controls(api_call_specification, pagination)
+
+        auth_headers, auth_params, ssl_adapter, url_attributes, body_attributes = self.attach_saas_authorization(
+            api_call_specification,
+            iam_credentials=iam_credentials
+        )
+
+        if url_attributes or body_attributes:
+            self.update_rendering_context(**url_attributes)
+            self.update_rendering_context(**body_attributes)
+            api_call_specification = self.build_call_specs(behavior)
+            api_call_specification = self.render_add_if_controls(api_call_specification, pagination)
+
+        api_call_specification['headers'].update(**auth_headers)
+        api_call_specification['params'].update(**auth_params)
+        api_call_specification['ssl_adapter'] = ssl_adapter
+
+        response = self.perform_api_request(logger=self.logger, **api_call_specification)
+        return response_to_object(response.text), response.headers, response.links
+
+    def get_exploratory_list_of_items(self, batch_size=100):
+        exploratory_list_iteration = 0
+
+        try:
+            self.update_rendering_context(
+                exploratory_list_iteration=exploratory_list_iteration,
+                exploratory_list_response={},
+                exploratory_list_response_headers={},
+                exploratory_list_response_links={}
+            )
+
+            # Pull the controls out, same controls for Exploratory-List, exploratory-List and List calls
+            pagination_dict = self.exploratory_list_behavior.get('pagination', {})
+            break_early_control = pagination_dict.get('break_early')
+            add_if_control = pagination_dict.get('add_if')
+            result_control = self.exploratory_list_behavior.get('result')
+
+            while exploratory_list_iteration < self.MAX_ITERATIONS:
+
+                if self.is_run_canceled():
+                    break
+
+                exploratory_list_response, headers, links = self.make_api_request(self.exploratory_list_behavior,
+                                                                                  pagination_dict,
+                                                                                  break_early_control,
+                                                                                  add_if_control)
+
+                results = None
+                if exploratory_list_response:
+                    self.update_rendering_context(
+                        exploratory_list_response=exploratory_list_response,
+                        exploratory_list_response_headers=headers,
+                        exploratory_list_response_links=links
+                    )
+                    results = self.render_to_native(result_control)
+
+                if not results:
+                    # Note: We don't ever want to skip this check as this it the top level list call and if it's empty
+                    # there is nothing to do.
+                    if exploratory_list_iteration == 0:
+                        raise self.ManagedConnectorListGetEmptyInBeginningException()
+                    else:
+                        break
+
+                for exploratory_list_response_item in results:
+                    self.update_rendering_context(
+                        exploratory_list_response_item=exploratory_list_response_item,
+                    )
+                    for batch_results in self.get_pre_list_of_items(batch_size, skip_empty_response=True):
+                        yield batch_results
+
+                exploratory_list_iteration += 1
+                self.update_rendering_context(
+                    exploratory_list_iteration=exploratory_list_iteration
+                )
+        except self.ManagedConnectorListGetEmptyInBeginningException as exc:
+            raise exc
+        except Exception as exc:
+            self.logger.exception('Failed to fetch the exploratory_list of items')
+            if exploratory_list_iteration == 0:
+                raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+            else:
+                raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
+
+    def get_pre_list_of_items(self, batch_size=100, skip_empty_response: bool = False):
+        pre_list_iteration = 0
+
+        try:
+            self.update_rendering_context(
+                pre_list_iteration=pre_list_iteration,
+                pre_list_response={},
+                pre_list_response_headers={},
+                pre_list_response_links={}
+            )
+
+            # Pull the controls out, same controls for Exploratory-List, Pre-List and List calls
+            pagination_dict = self.pre_list_behavior.get('pagination', {})
+            break_early_control = pagination_dict.get('break_early')
+            add_if_control = pagination_dict.get('add_if')
+            result_control = self.pre_list_behavior.get('result')
+
+            while pre_list_iteration < self.MAX_ITERATIONS:
+
+                if self.is_run_canceled():
+                    break
+
+                pre_list_response, headers, links = self.make_api_request(self.pre_list_behavior, pagination_dict,
+                                                                          break_early_control, add_if_control)
+
+                self.update_rendering_context(
+                    pre_list_response=pre_list_response,
+                    pre_list_response_headers=headers,
+                    pre_list_response_links=links
+                )
+                results = self.render_to_native(result_control)
+
+                if not results:
+                    # NOTE: In this case we can have multiple empty results if exploratory_list is used so we should
+                    # continue on as other list mat not be empty.
+                    if pre_list_iteration == 0 and not skip_empty_response:
+                        raise self.ManagedConnectorListGetEmptyInBeginningException()
+                    else:
+                        break
+
+                for pre_list_response_item in results:
+                    self.update_rendering_context(
+                        pre_list_response_item=pre_list_response_item,
+                    )
+                    for batch_results in self.get_list_of_items(batch_size, skip_empty_response=True):
+                        yield batch_results
+
+                pre_list_iteration += 1
+                self.update_rendering_context(
+                    pre_list_iteration=pre_list_iteration
+                )
+
+        except self.ManagedConnectorListGetEmptyInBeginningException as exc:
+            raise exc
+        except Exception as exc:
+            self.logger.exception('Failed to fetch the pre_list of items')
+            if pre_list_iteration == 0:
+                raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+            else:
+                raise self.ManagedConnectorListGetInMiddleException(error=str(exc))
+
+    def get_list_of_items(self, batch_size, iam_credentials: dict = None, skip_empty_response: bool = False):
         iteration = 0
         try:
             self.update_rendering_context(
@@ -266,56 +416,32 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             result_control      = self.list_behavior.get('result')
 
             while iteration < self.MAX_ITERATIONS:
-                api_call_specification = self.build_call_specs(self.list_behavior)
 
-                # NOTE: Check if we have to add the pagination extra things
-                if pagination_dict:
-                    # check the break early condition in case we could fetch the first page and this is the only page we have
-                    if bool(self.render_to_native(break_early_control)):
-                        break
+                if self.is_run_canceled():
+                    break
 
-                    if bool(self.render_to_native(add_if_control)):
-                        self.render_add_if_controls(api_call_specification, pagination_dict)
+                list_response, headers, links = self.make_api_request(self.list_behavior, pagination_dict,
+                                                                      break_early_control, add_if_control,
+                                                                      iam_credentials=iam_credentials)
 
-                auth_headers, auth_params, ssl_adapter, url_attributes, body_attributes = self.attach_saas_authorization(
-                    api_call_specification,
-                    iam_credentials=iam_credentials
-                )
+                results = None
+                if list_response:
+                    self.update_rendering_context(
+                        list_response=list_response,
+                        list_response_headers=headers,
+                        list_response_links=links
+                    )
+                    results = self.render_to_native(result_control)
 
-                if url_attributes or body_attributes:
-                    self.update_rendering_context(**url_attributes)
-                    self.update_rendering_context(**body_attributes)
-                    api_call_specification = self.build_call_specs(self.list_behavior)
-                    api_call_specification = self.render_add_if_controls(api_call_specification, pagination_dict)
-
-                api_call_specification['headers'].update(**auth_headers)
-                api_call_specification['params'].update(**auth_params)
-                api_call_specification['ssl_adapter'] = ssl_adapter
-
-                response = self.perform_api_request(logger=self.logger, **api_call_specification)
-                list_response = response_to_object(response.text)
-
-                if list_response and "shim_error_message" in list_response:
-                    # If we use the shim service we don't want to see http://localhost in the webui error screen.
-                    raise HTTPError(list_response['shim_error_message'])
-
-                self.update_rendering_context(
-                    list_response=list_response,
-                    list_response_headers=response.headers,
-                    list_response_links=response.links
-                )
-                result = self.render_to_native(result_control)
-
-                if not result:
-                    # NOTE: In the case of AWS IAM, we should proceed with all the chunks ignoring empty ones
+                if not results:
+                    # NOTE: In the case of AWS IAM or pre and exploratory lists, we should proceed with all the chunks ignoring empty ones
                     if iteration == 0 and not skip_empty_response:
                         raise self.ManagedConnectorListGetEmptyInBeginningException()
                     else:
                         break
 
-                # We fetch the request amount.
-                updated_results = [self._do_details_and_software_calls(item, iam_credentials=iam_credentials) for item in result]
-                yield updated_results
+                for batch_results in self.process_records_in_batches(results, batch_size, iam_credentials=iam_credentials):
+                    yield batch_results
 
                 iteration += 1
                 self.update_rendering_context(
@@ -336,6 +462,17 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                                   f'Connector exceeded processing limit of {self.MAX_ITERATIONS} iterations')
             raise self.ManagedConnectorListMaxIterationException(error='Reached max iterations')
 
+    def process_records_in_batches(self, result, batch_size, iam_credentials=None):
+        batch = []
+        for i, item in enumerate(result):
+            updated_result = self._do_details_and_software_calls(item, iam_credentials=iam_credentials)
+            batch.append(updated_result)
+            if (i + 1) % batch_size == 0:
+                yield batch
+                batch = []
+        if batch:  # Yield the last batch if it's not empty
+            yield batch
+
     def get_oomnitza_auth_for_sync(self):
         """
         There can be two options here
@@ -351,25 +488,50 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
     def get_detail_of_item(self, list_response_item, iam_credentials: Optional[dict] = None):
         if self.detail_behavior:
+            result_control = self.detail_behavior.get('result', '')
             try:
                 self.update_rendering_context(
                     list_response_item=list_response_item,
                 )
 
                 detail_response_object = self._call_endpoint_for_sub_behavior(self.detail_behavior)
+                if result_control:
+                    self.update_rendering_context(
+                        detail_response=detail_response_object
+                    )
+                    detail_response_object = self.render_to_native(result_control)
 
-                # We should keep the list_response_item as it contains some useful information most of the time.
+                # We should keep the exploratory_list_response_item, pre_list_response_item and
+                # list_response_item as they can contain some useful information.
                 if type(detail_response_object) is dict:
                     detail_response_object['list_response_item'] = list_response_item
+                    detail_response_object['pre_list_response_item'] = self.get_arg_from_rendering_context("pre_list_response_item")
+                    detail_response_object['exploratory_list_response_item'] = self.get_arg_from_rendering_context("exploratory_list_response_item")
 
                 return detail_response_object
             except Exception as exc:
                 self.logger.exception('Failed to fetch the details of item')
                 raise self.ManagedConnectorDetailsGetException(error=str(exc))
         else:
+            # There is no details call so save the pre_list_response_item and exploratory_list_response_item to the response_item.
+            if type(list_response_item) is dict:
+                list_response_item['pre_list_response_item'] = self.get_arg_from_rendering_context("pre_list_response_item")
+                list_response_item['exploratory_list_response_item'] = self.get_arg_from_rendering_context("exploratory_list_response_item")
             return list_response_item
 
-    def get_local_inputs(self) -> dict:
+    def get_cloud_inputs(self) -> Dict:
+        secret_ids = [input_["secret_id"] for input_ in self.inputs_from_cloud.values() if input_.get("secret_id")]
+        secure_inputs = {}
+
+        inputs_from_cloud = {}
+        for key, cloud_input in self.inputs_from_cloud.items():
+            secret_id = cloud_input.get("secret_id")
+            value = secure_inputs.get(secret_id, cloud_input.get("value"))
+            inputs_from_cloud[key] = self.render_to_string(value)
+
+        return inputs_from_cloud
+
+    def get_local_inputs(self) -> Dict:
         if isinstance(self.settings.get("local_inputs"), str):
             inputs_from_local = json.loads(self.settings["local_inputs"])
         elif isinstance(self.settings.get("local_inputs"), dict):
@@ -392,13 +554,45 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         else:
             return item_details
 
-    def _load_list(self, iam_credentials: dict = None, skip_empty_response: bool = False):
-        # NOTE: There are no Details and Software Behaviours for AWS Connectors
+    def _load_list(self, batch_size, iam_credentials: dict = None, skip_empty_response: bool = False):
+        # NOTE: There are no Exploratory list, Pre List, Details and Software Behaviours for AWS Connectors
         # So special IAM adjustments are not required
+        self.logger.debug(f"Loading Managed Records with: exploratory list:{bool(self.exploratory_list_behavior)},"
+                          f"pre-list: {bool(self.pre_list_behavior)}, list: {bool(self.list_behavior)}")
+        if self.exploratory_list_behavior:
+            yield from self.get_exploratory_list_of_items(batch_size)
+        elif self.pre_list_behavior:
+            yield from self.get_pre_list_of_items(batch_size)
+        else:
+            yield from self.get_list_of_items(batch_size, iam_credentials=iam_credentials, skip_empty_response=skip_empty_response)
 
-        yield from self.get_list_of_items(iam_credentials=iam_credentials, skip_empty_response=skip_empty_response)
+    def _load_basic_connector_list(self, connector_settings: dict):
+        api_call_specification = self.build_call_specs(self.list_behavior)
+        auth_headers, _, _, _, _ = self.attach_saas_authorization(api_call_specification)
+        connector_settings['authorization_settings'] = auth_headers
+        credential_details = self.get_credential_details(self.BasicConnector)
 
-    def _load_iam_list(self):
+        try:
+            BasicConnector = self.get_basic_connector_object(self.BasicConnector)
+            connector_object = BasicConnector(section=self.BasicConnector, settings=connector_settings)
+            for data in connector_object.load_cloud_records(credential_details=credential_details):
+                yield data
+        except Exception as exc:
+            self.logger.exception(f"Failed to fetch the list of items from Basic Connector {self.BasicConnector}")
+            raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
+
+    def get_basic_connector_object(self, connector_name: str):
+        try:
+            mod = importlib.import_module(f'connectors.{connector_name}')
+            return mod.Connector
+        except ImportError:
+            self.logger.exception(f"Could not import connector for {connector_name}.")
+            raise ConfigError(f"Could not import connector for {connector_name}.")
+
+    def get_credential_details(self, connector_name: str) -> Dict:
+        return {}
+
+    def _load_iam_list(self, batch_size):
         iteration = 0
         iam_records = 0
 
@@ -408,7 +602,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
             # NOTE: AWS Credentials have a short life-time, so we can't pre-generate them
             for iam_credentials in iam.get_iam_credentials():
-                for page in self._load_list(iam_credentials=iam_credentials, skip_empty_response=True):
+                for page in self._load_list(batch_size, iam_credentials=iam_credentials, skip_empty_response=True):
                     yield page
 
                     iteration += 1
@@ -416,9 +610,10 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         except Exception as exc:
             if isinstance(exc, HTTPError) and exc.response.status_code == 403:
-                self.logger.exception('Encountered a 403 Forbidden error while fetching AWS IAM data, the Integration User must have appropriate permissions: %s', str(exc))
+                self.logger.exception(f'Encountered a 403 Forbidden error while fetching AWS IAM data, '
+                                      f'the Integration User must have appropriate permissions: {exc}')
             else:
-                self.logger.exception('Failed to fetch AWS IAM data: %s', str(exc))
+                self.logger.exception(f'Failed to fetch AWS IAM data: {exc}')
             if iteration == 0:
                 raise self.ManagedConnectorListGetInBeginningException(error=str(exc))
             else:
@@ -428,7 +623,31 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         # So to properly handle it we should analyze AWS IAM Responses. If we have any records there then we shouldn't
         # raise an exception with an empty Response during default AWS Account processing
         skip_empty_response = True if iam_records > 0 else False
-        yield from self._load_list(skip_empty_response=skip_empty_response)
+        yield from self._load_list(batch_size, skip_empty_response=skip_empty_response)
+
+    def _use_single_mode(self):
+        return self._check_iam() or self.BasicConnector
+
+    def _check_iam(self):
+
+        inputs_from_cloud = {
+            k: self.render_to_string(v.get('value'))
+            for k, v in self.inputs_from_cloud.items()
+        }
+        inputs_from_local = self.get_local_inputs()
+        self.update_rendering_context(
+            inputs={
+                **inputs_from_cloud,
+                **inputs_from_local
+            }
+        )
+
+        iam_roles = self.inputs_from_cloud.get('iam_roles', {}).get('value')
+
+        if iam_roles:
+            return True
+        else:
+            return False
 
     def _load_records(self, options):
         """
@@ -436,10 +655,9 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
 
         Then, optionally, if needed, make an extra call to fetch the details of each object using the separate call
         """
-        inputs_from_cloud = {
-            k: self.render_to_string(v.get('value'))
-            for k, v in self.inputs_from_cloud.items()
-        }
+
+        batch_size = options.get("batch_size", 100)
+        inputs_from_cloud = self.get_cloud_inputs()
         inputs_from_local = self.get_local_inputs()
         self.update_rendering_context(
             inputs={
@@ -456,9 +674,11 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
         try:
             iam_roles = self.inputs_from_cloud.get('iam_roles', {}).get('value')
             if iam_roles:
-                yield from self._load_iam_list()
+                yield from self._load_iam_list(batch_size)
+            elif self.BasicConnector:
+                yield from self._load_basic_connector_list(inputs_from_cloud)
             else:
-                yield from self._load_list()
+                yield from self._load_list(batch_size)
 
         except self.ManagedConnectorListGetInBeginningException as e:
             # this is a very beginning of the iteration, we do not have a started portion yet,

@@ -7,10 +7,10 @@ import re
 from urllib.parse import urlparse, urlencode, urljoin
 
 from lib import chef
-from lib.connector import AssetsConnector
-from utils.data import get_field_value
+from lib.connector import AssetsConnector  # pragma: no cover
+from utils.data import get_field_value  # pragma: no cover
 
-logger = logging.getLogger("connectors/chef")  # pylint:disable=invalid-name
+logger = logging.getLogger("connectors/chef")  # pylint:disable=invalid-name # pragma: no cover
 
 
 class AuditFactory(object):
@@ -31,14 +31,30 @@ class BaseAudit(object):
     such as Mac OS X and Windows will extend this class and override the necessary class methods.
     """
     AttributeExtension = {}
+    NodeMappings = {}
+    _node_type = '__default__'
 
     @classmethod
     def set_extensions(cls, extension):
         try:
             if extension:
                 cls.AttributeExtension = json.loads(extension)
+            else:
+                cls.AttributeExtension = {}
         except:
             logger.exception('error: failed to load attribute extensions')
+            cls.AttributeExtension = {}
+
+    @classmethod
+    def set_node_mappings(cls, node_mappings):
+        try:
+            if node_mappings:
+                cls.NodeMappings = json.loads(node_mappings)
+            else:
+                cls.NodeMappings = {}
+        except:
+            logger.exception('error: failed to load node mapping overwrites')
+            cls.NodeMappings = {}
 
     @classmethod
     def create(cls, node):
@@ -76,8 +92,8 @@ class BaseAudit(object):
     @classmethod
     def get_platforms_list(cls, node):
         platforms = ['__default__']
-        if cls.platform(node):
-            platforms.append(node['automatic']['platform'])
+        if platform := cls.platform(node):
+            platforms.append(platform)
         else:
             logger.warning("Unknown 'platform' for node named - %r" % cls.name(node))
         return platforms
@@ -138,22 +154,36 @@ class BaseAudit(object):
 
     @classmethod
     def model(cls, node):
-        # TODO is there a smart default we can use?
+        if value := cls._get_field_value_for_type(node, cls._node_type, 'model'):
+            return value
+
         logger.warning('no default `model` lookup for node named - %r' % cls.name(node))
         return None
 
     @classmethod
     def serial_number(cls, node):
-        # TODO is there a smart default we can use?
+        # Let the user override the field value if available otherwise log warning and return None.
+        if value := cls._get_field_value_for_type(node, cls._node_type, 'serial_number'):
+            return value
+
         logger.warning('no default `serial_number` lookup for node named - %r' % cls.name(node))
         return None
+
+    @classmethod
+    def _get_field_value_for_type(cls, node, node_type, field):
+        if cls.NodeMappings and node_type in cls.NodeMappings and field in cls.NodeMappings[node_type]:
+            return get_field_value(node, cls.NodeMappings[node_type][field])
 
 
 class MacAudit(BaseAudit):
     """Contains attribute overrides for 'mac_os_x' platform."""
 
+    _node_type = 'mac_os_x'
+
     @classmethod
     def serial_number(cls, node):
+        if value := cls._get_field_value_for_type(node, cls._node_type, 'serial_number'):
+            return value
         return get_field_value(node, 'automatic.hardware.serial_number')
 
     @classmethod
@@ -177,12 +207,17 @@ class MacAudit(BaseAudit):
 class WindowsAudit(BaseAudit):
     """Contains attribute overrides for 'windows' platform."""
 
+    _node_type = 'windows'
+
     @classmethod
     def model(cls, node):
         return get_field_value(node, 'automatic.kernel.cs_info.model')
 
     @classmethod
     def serial_number(cls, node):
+        if value := cls._get_field_value_for_type(node, cls._node_type, 'serial_number'):
+            return value
+
         return get_field_value(node, 'automatic.kernel.os_info.serial_number')
 
     @classmethod
@@ -270,6 +305,7 @@ class Connector(AssetsConnector):
         'client': {'order': 2, 'example': 'user'},
         'key_file': {'order': 3, 'example': '/path/to/user.pem'},
         'attribute_extension': {'order': 5, 'default': ''},
+        'node_mappings': {'order': 4, 'default': '', 'example': {'basic': {'serial_number': 'system.0.Serial Number'}}},
     }
     DefaultConverters = {
         # "{source field}": "{converter to be applied by default}",
@@ -284,6 +320,7 @@ class Connector(AssetsConnector):
 
         # enable attribute extensions
         BaseAudit.set_extensions(self.settings['attribute_extension'])
+        BaseAudit.set_node_mappings(self.settings['node_mappings'])
 
     def get_auth_headers(self, url, http_method: str = 'GET', body: str = None):
         parsed_url = urlparse(url)
@@ -311,7 +348,11 @@ class Connector(AssetsConnector):
         :return: Array of dictionaries, empty if error with api
         """
         try:
-            return [self.build_audit(node) for node in self.chef_nodes()]
+            _process_nodes = []
+            for node in self.chef_nodes():
+                if audit_node := self.build_audit(node):
+                    _process_nodes.append(audit_node)
+            return _process_nodes
         except Exception:
             self.logger.exception("error: unable to perform query")
             return []

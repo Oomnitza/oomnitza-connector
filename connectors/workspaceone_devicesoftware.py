@@ -168,10 +168,6 @@ class Connector(AssetsConnector):
                 self.logger.info(f"No more Installed Software detected for {device_uuid}.")
                 break
 
-            if not unmanaged_software:
-                self.logger.info(f"No ore Installed Software detected for {device_uuid}.")
-                break
-
             for app in unmanaged_software:
                 if self.ignore_apple_software:
                     if "com.apple." in app.get('bundle_id', ''):

@@ -396,7 +396,7 @@ def setup_logging(args):
             cfg_json = json.load(config)
             try:
                 logging.config.dictConfig(cfg_json)
-                LOG.info("Loaded logging configuration from file [%s] [%s]", config_file, cfg_json)            
+                LOG.debug("Loaded logging configuration from file [%s] [%s]", config_file, cfg_json)
             except Exception as exc:
                 LOG.error("Unable to configure logging using configuration [%s]", cfg_json)
 

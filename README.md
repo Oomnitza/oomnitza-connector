@@ -100,6 +100,7 @@ ___
   - [Running the connector server](#running-the-connector-server)
   - [Running the connector client](#running-the-connector-client)
     - [Setting the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode)
+	    - [Configuration details for managed mode](#configuration-details-for-managed-mode)
       - [SaaS authorization item](#saas-authorization-item)
       - [Oomnitza authorization item](#oomnitza-authorization-item)
       - [Local inputs item](#local-inputs-item)
@@ -109,7 +110,6 @@ ___
       - [CSV Assets Configuration](#csv-assets-configuration)
       - [CSV Users Configuration](#csv-users-configuration)
       - [Chef Configuration](#chef-configuration)
-      - [Google Chrome Devices](#google-chrome-devices)
       - [Jasper Configuration](#jasper-configuration)
       - [KACE SMA Configuration](#kace-sma-configuration)
       - [LDAP Users Configuration](#ldap-users-configuration)
@@ -118,7 +118,6 @@ ___
       - [Netbox Configuration](#netbox-configuration)
       - [Open-AudIT Configuration](#open-audit-configuration)
       - [SCCM Configuration](#sccm-configuration)
-      - [SimpleMDM Configuration](#simplemdm-configuration)
       - [Tanium Configuration](#tanium-configuration)
       - [vCenter Configuration](#vcenter-configuration)
       - [WorkspaceOne Configuration](#workspaceone-configuration)
@@ -352,12 +351,8 @@ An example generated `config.ini` follows.
     url = https://example.com/organizations/org
     client = user
     key_file = /path/to/user.pem
-    attribute_extension = 
-    
-    [chromebooks]
-    enable = False
-    service_account_impersonate = username@example.com
-    service_account_json_key = {}
+    attribute_extension = {}
+    node_mappings = {}
     
     [csv_assets]
     enable = False
@@ -449,13 +444,6 @@ An example generated `config.ini` follows.
     password = change-me
     authentication = SQL Server
     driver = 
-    
-    [simplemdm]
-    enable = False
-    secret_access_key = ***
-    device_groups = 
-    device_types = computers,mobiledevices
-    custom_attributes = 0
     
     [tanium]
     enable = False
@@ -562,7 +550,7 @@ Has to be used **_only_** if there is enabled two factor authentication in your 
 
 ## Storage for Connector secrets
 
-To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
+To prevent secrets sprawl and disclosure the Oomnitza Connector uses secret backends to securely store credentials, usernames, API tokens, and passwords.
 
 There are three options:
 
@@ -570,19 +558,19 @@ There are three options:
 - external Vault Key Management System by Hashicorp (the Vault KMS);
 - external CyberArk Secrets Management
 
-KeyRing (KeyChain) is a secure encrypted database and the easiest to configure.
+KeyRing (KeyChain) is a secure, encrypted database and the easiest to configure.
 
-The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
+The [Vault KMS](https://www.vaultproject.io/intro/index.html) and [CyberArk](https://www.cyberark.com/products/privileged-account-security-solution/application-access-manager/) provide an
  additional layer of security. In this case, all secrets will be stored in the external encrypted system
 
 ### Common recommendations
 
 Before adding secrets for Connector, first, follow the instructions and setup the Oomnitza Connector.
-Use a technical role with restricted permissions to run the Connector.
+Use a technical role with restricted permissions to run the Connector.
 
 ### Deployment and receiving secrets
 
-To add secrets use the command line utility which enables an easy way to
+To add secrets use the command line utility which enables an easy way to
    place secrets to the system keyring service.
 
 ```sh
@@ -597,7 +585,7 @@ optional arguments:
   --value VALUE         Secret value. Will be requested.
 ```
 
-To prevent password disclosure you will be asked to provide your secret value
+To prevent password disclosure you will be asked to provide your secret value
 in the console.
 
 You can add a few secrets to one type of Connector using the different `"key"`
@@ -605,18 +593,18 @@ You can add a few secrets to one type of Connector using the different `"key"`
 Note the `CONNECTOR` name used in the argument `--connector` must be the same as the name of the section
 used to describe the connector, or the same as the `vault_alias` set in the section within configuration file. For example, for the command
 
-    python strongbox.py --connector=zendesk.abc --key=api_token --value=
+    python strongbox.py --connector=<connector_name>.abc --key=api_token --value=
     
-we expect the section `[zendesk.abc]` exists in the configuration
+we expect the section `[<connector_name>.abc]` exists in the configuration where `<connector_name>` could be tanium, vcenter, etc.
 
-    [zendesk.abc]
+    [<connector_name>.abc]
     enable = True
     ...
     
 or the `vault_alias` was set within the section
 
-    [zendesk]
-    vault_alias = zendesk.abc
+    [<connector_name>]
+    vault_alias = <connector_name>.abc
     enable = True
     ...
 
@@ -632,7 +620,7 @@ Ubuntu Linux: [SecretStorage](https://github.com/mitya57/secretstorage) (require
 
 Windows: Windows Credential Manager (by default).
 
-OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
+OS X: KeyChain. The encryption is AES 128 in GCM (Galois/Counter Mode).
 
 _OS X Note: the `keyring==8.7` tested on Mac OS X 10.12.6._
 
@@ -658,63 +646,63 @@ Your secret: your-secret
 
 To use the Vault KMS:
 
-1. Install, initialize and unseal the Vault KMS (use documentation).
+1. Install, initialize and unseal the Vault KMS (use documentation).
 
-2. Mount Key/Value Secret Backend.
+2. Mount Key/Value Secret Backend.
 
-3. Write secrets to Key/Value Secret Backend. For example:
+3. Write secrets to Key/Value Secret Backend. For example:
 
 ```sh
-$ vault write secret/zendesk \
+$ vault write secret/<connector_name> \
     system_name=oomnitza_user \
     api_token=123456789ABCD$$$
-Success! Data written to: secret/zendesk
+Success! Data written to: secret/<connector_name>
 ```
 4. Create a json/hcl file with policy:
 
-This section grants all access on __"*secret/zendesk**"__. 
+This section grants all access on __"*secret/<connector_name>**"__. 
 Further restrictions can be applied to this broad policy.
 
 ```hcl
-path "secret/zendesk/*" {
+path "secret/<connector_name>/*" {
   capabilities = ["read", "list"]
 }
 ```
 
-5. To add this policy to the Vault KMS system policies list use the following
+5. To add this policy to the Vault KMS system policies list use the following
    command or API:
 
 ```sh
-vault write sys/policy/zendesk-read policy=@/root/vault/zendesk-read.hcl
+vault write sys/policy/<connector_name>-read policy=@/root/vault/<connector_name>-read.hcl
 ```
 
 6. To create a token with assigned policy:
 
 ```sh
-vault token-create -policy=zendesk-read -policy=zendesk-read -policy=logs
+vault token-create -policy=<connector_name>-read -policy=<connector_name>-read -policy=logs
 Token: 6c1247-413f-4816-5f=a72-2ertc1d2165e
 ```
 
-7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
+7. To use Hashicorp Vault as a secret backend set "vault_backend = vault" instead of "keyring".
 
 ```ini
-[zendesk]
+[<connector_name>]
 enable = true
 url = https://example.com
 vault_backend = vault
 vault_keys = api_token username password
 ```
 
-8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
+8. To connect to the Hashicorp Vault the `vault_url` and `vault_token` should
    be added to system keyring via vault cli.
 
 Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
 
 ```sh
-python strongbox.py --connector=zendesk --key=vault_url --value=
-Your secret: https://vault.adress.com/v1/secret/zendesk
+python strongbox.py --connector=<connector_name> --key=vault_url --value=
+Your secret: https://vault.adress.com/v1/secret/<connector_name>
 
-python strongbox.py --connector=zendesk --key=vault_token --value=
+python strongbox.py --connector=<connector_name> --key=vault_token --value=
 Your secret: 6c1247-413f-4816-5f=a72-2ertc1d2165e
 ```
 
@@ -759,7 +747,7 @@ In order to use CyberArk as secret storage:
     section)
 
     ```
-    docker-compose exec conjur conjurctl account create zendesk
+    docker-compose exec conjur conjurctl account create <connector_name>
     # API key for admin: <cyberark_api_key>
     ```
 
@@ -772,7 +760,7 @@ In order to use CyberArk as secret storage:
 - Login into your account
 
     ```
-    conjur init -u conjur -a zendesk
+    conjur init -u conjur -a <connector_name>
     conjur authn login -u admin
     ```
 
@@ -780,7 +768,7 @@ In order to use CyberArk as secret storage:
   granular permissions](https://docs.conjur.org/Latest/en/Content/Operations/Policy/PolicyGuideConcepts%20and%20Best%20Practices%20_%20Conjur%20Developer%20Docs.html)
 
     ```
-    $ cat /root/policy/zendesk-policy.yml
+    $ cat /root/policy/<connector_name>-policy.yml
 
     ---
     - !variable api_token
@@ -791,7 +779,7 @@ In order to use CyberArk as secret storage:
     via command line or api)
 
     ```
-    conjur policy load root /root/policy/zendesk-policy.yml
+    conjur policy load root /root/policy/<connector_name>-policy.yml
     ```
 
 ##### Managing secrets via CyberArk
@@ -805,23 +793,23 @@ In order to use CyberArk as secret storage:
 
 ##### Connector configuration
 
-- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
+- To connect to the CyberArk secret storage - the `vault_url` and `vault_token` should
   be added to system keyring via cli.
 
 Use `strongbox.py` cli to add `vault_url` and `vault_token` to system keyring
 
 ```sh
-python strongbox.py --connector=zendesk --key=vault_url --value=
+python strongbox.py --connector=<connector_name> --key=vault_url --value=
 Your secret: https://cyberark-secret-storage-sever.example.com
 
-python strongbox.py --connector=zendesk --key=vault_token --value=
+python strongbox.py --connector=<connector_name> --key=vault_token --value=
 Your secret: <cyberark_api_key>
 ```
 
 - Update connector configuration to use CyberArk secret storage
 
 ```ini
-[zendesk]
+[<connector_name>]
 enable = true
 url = https://example.com
 vault_backend = cyberark
@@ -872,7 +860,6 @@ The connector is meant to be run from the command line and as such as multiple c
                         [--show-mappings] [--testmode] [--save-data] [--ini INI]
                         [--logging-config LOGGING_CONFIG]
                         [--ignore-cloud-maintenance]
-                        [--skip-shim]
                         [{managed,upload,generate-ini,version}]
                         [connectors [connectors ...]]
     
@@ -891,7 +878,6 @@ The connector is meant to be run from the command line and as such as multiple c
       --ignore-cloud-maintenance
                             Adds special behavior for the managed connectors to
                             ignore the cloud maintenance
-      --skip-shim           Skip and don't run the Shim-Service. Shim-Service runs by default.
       --show-mappings       Show the mappings which would be used by the
                             connector. Relevant only for the `upload` mode
       --testmode            Run connectors in test mode.
@@ -940,23 +926,24 @@ In `managed` mode, the scheduling, mapping, and other parameters are configured 
  - You want to store credentials locally rather than storing the credentials in the Oomnitza Cloud.
  - You want to access systems behind firewalls or in local data centers that are not accessible from the Oomnitza Cloud.
 
-In the `configuration.ini` file, you must create a new section for each of the extended integrations that you want to use. 
+**Important Note:** For managed integrations, it is essential to separate your basic integrations from your managed integrations. Use separate configuration files like `basic_config.ini` for basic integrations and `managed_config.ini` for managed integrations to avoid integration issues.
 
-The name of the section comprises the combination of the following two strings separated by a period and enclosed in square brackets: 
+#### Configuration details for managed mode
+
+In the configuration file, you must create a section for each of the managed integrations that you want to use. 
+
+The name of each section comprises the combination of the following two strings separated by a period and enclosed in square brackets: 
  - `managed`
  - Integration **ID**
 
 Example: `[managed.268]`
 
 **Note**
-
-On the **Configuration>Integrations** page, click an integration tile. Look for the value for the **ID** parameter in the **URL**. 
-
-For example, the format of the **URL** is `https://<instance_name>.oomnitza.com/settings/connectors?id=268&type=users&view=integrations`.
+You can obtain your Integration ID on the **Configuration>Integrations** page. Open the integration and look for the value for the **ID** parameter in the **URL**. For example, the format of the **URL** is `https://<instance_name>.oomnitza.com/settings/connectors?id=268&type=users&view=integrations`.
 
 When you create a `managed` section, you must provide the credentials that are used when the integration is run. Because of security restrictions, you cannot use the credentials that are stored for the connectors in the Oomnitza Cloud instance. You can only use `basic` and `token based authorizations` that you pass in the header or params section of the API. The local connector does not support `OAuth 2` or `AWS based authentication`.  If you require `OAuth 2` or `AWS based authentication`, you could use the cloud connector  and enable certain routes using Mutual Transport Layer Security (mTLS) to enhance the security of the API calls. 
 
-To configure a managed connector, the managed section can contain the following items:
+To configure credentials for a managed connector, the managed section can contain the following items:
  
  - saas_authorization
  - oomnitza_authorization
@@ -1106,6 +1093,8 @@ The identifier section of the `config.ini` file should contain a mapping to a un
 
 `attribute_extension`: [optional] dictionary of additional node attributes to extract
 
+`node_mappings`: [optional] dictionary of node mapping to overrides
+
 ##### List of currently supported Chef attributes
     'hardware.name'
     'hardware.ip_address'
@@ -1136,6 +1125,15 @@ The above example will introduce a new mappable attribute "hardware.kernel_name"
 }`
 
 The above example will introduce a new mappable attribute "hardware.machine_name" for mac_os_x and windows nodes only.
+
+##### Node Mappings
+The connector `config.ini` allows Chef overwriting of node lookups.
+
+Example: `node_mappings = {"windows": {"serial_number": "normal.subsystem.hardware.serial_number"}}`
+
+In the above example, we are overwriting where to search for `serial_number` in a Windows node.
+
+The same can be done for Mac with `mac_os_x` and as default with `__default__`
 
 #### Jasper Configuration
 `wsdl_path`: The full URL to the Terminal.wsdl. Defaults to: http://api.jasperwireless.com/ws/schema/Terminal.wsdl.

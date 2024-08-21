@@ -3,7 +3,7 @@ import json
 import arrow
 from lib.connector import AssetsConnector, response_to_object
 from requests.exceptions import RequestException
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 
 logger = logging.getLogger("connectors/dell_asset_order_status")
 
@@ -20,7 +20,8 @@ class Connector(AssetsConnector):
         'is_po_numbers': {'order': 4, 'example': 'False', 'default': ""},
         'is_order_no_country_code': {'order': 4, 'example': 'False', 'default': ""},
         'values': {'order': 5, 'example': ['PO123', 'PO432'], 'default': []},
-        'country_code': {'order': 6, 'example': ['US', 'EU', 'IN'], 'default': []}
+        'country_code': {'order': 6, 'example': ['US', 'EU', 'IN'], 'default': []},
+        'authorization_settings': {'order': 7, 'default': {}}
     }
 
     def __init__(self, section, settings):
@@ -35,16 +36,23 @@ class Connector(AssetsConnector):
         self.is_order_no_country_code = self.settings.get('is_order_no_country_code', '') in ['True', True]
         self.country_code = self.settings.get('country_code', [])
         self.values = self.settings.get('values', [])
+        self.authorization_settings = self.settings.get('authorization_settings', {})
 
     def get_headers(self):
-        if self.settings.get('access_token'):
-            self.access_token = self.settings.get('access_token')
-        elif round(arrow.utcnow().float_timestamp) > self.dell_expires_in:
-            self.get_access_token(self.client_id, self.client_secret)
-
-        return {'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {self.access_token}'}
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Accepts-version': '3.0'
+        }
+        if self.client_id and self.client_secret:
+            if not self.access_token or round(arrow.utcnow().float_timestamp) > self.dell_expires_in:
+                self.get_access_token(self.client_id, self.client_secret)
+                headers['Authorization'] = f'Bearer {self.access_token}'
+        elif self.authorization_settings.get('Authorization'):
+            headers['Authorization'] = self.authorization_settings['Authorization']
+        else:
+            self.logger.warning("Missing Client ID, Client Secret and/or Authorization. Can not continue")
+        return headers
 
     def get_access_token(self, client_key: str, client_secret: str):
         base_url = "https://apigtwb2c.us.dell.com/auth/oauth/v2/token"
@@ -144,21 +152,18 @@ class Connector(AssetsConnector):
         try:
             dell_payload = self.get_orders()
         except RequestException as req_err:
-            self.logger.warning(f"Failed to fetch order information: {req_err.response.status_code} "
-                                f"{req_err.response.text}")
+            self.logger.warning(f"Failed to fetch order information: {req_err} ")
             return
         for ready_order_info in self.create_dell_response_dict(dell_payload):
             yield ready_order_info
 
-    def load_shim_records(self, _settings) -> Tuple[List[Dict], bool]:
-        break_early = True
-        devices = []
-        self.settings['access_token'] = _settings.get('Authorization').split()[-1]
-        try:
-            dell_payload = self.get_orders()
-        except RequestException as req_err:
-            self.logger.warning(f"Failed to fetch order information: {req_err.response.status_code}"
-                                f"{req_err.response.text}")
-            return devices, break_early
-        devices = self.create_dell_response_dict(dell_payload)
-        return devices, break_early
+    def load_cloud_records(self, credential_details):
+        if credential_details:
+            inputs = credential_details.get('extra', {}).get('configuration', {}).get('inputs', {})
+            self.client_id = inputs.get('client_key')
+            self.client_secret = inputs.get('client_secret')
+
+        dell_payload = self.get_orders()
+
+        for ready_order_info in self.create_dell_response_dict(dell_payload):
+            yield ready_order_info

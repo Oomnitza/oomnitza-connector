@@ -306,3 +306,8 @@ class Connector(BaseConnector):
             'params': response_json.get('params', {}),
             'certificates': response_json.get('certificates', {}),
         }
+
+    def get_portion_info(self, correlation_id: str) -> dict:
+        return self.get(
+            f'{self.settings["url"]}/api/v3/bulk/{correlation_id}'
+        ).json()

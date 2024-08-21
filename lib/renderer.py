@@ -172,6 +172,9 @@ class Renderer:
         for arg in args:
             self.rendering_context.pop(arg, None)
 
+    def get_arg_from_rendering_context(self, keyword):
+        return self.rendering_context.get(keyword, None)
+
     def render_to_string(self, template: Any) -> str:
         """
         Render the value to the string

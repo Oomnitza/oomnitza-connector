@@ -1,5 +1,12 @@
 from lib.connector import AssetsConnector
 
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################
+
 
 class Connector(AssetsConnector):
     """
@@ -23,6 +30,7 @@ class Connector(AssetsConnector):
             yield record
 
     def _load_records(self, options):
+        self.logger.warning(f"{self.MappingName} has been DEPRECATED, this will be removed in the next release!!")
 
         next_url = self.settings['url'].rstrip('/') + '/api/dcim/devices/'
         while next_url:
@@ -31,3 +39,10 @@ class Connector(AssetsConnector):
                 yield record
 
             next_url = response['next']
+
+###########################################################################
+###                                                                     ###
+###   This File is Deprecated and will be removed in the next release   ###
+###   Please do not use this file for fetching data.                    ###
+###                                                                     ###
+###########################################################################

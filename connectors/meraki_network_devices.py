@@ -16,6 +16,7 @@ class Connector(AssetsConnector):
     Settings = {
         'meraki_api_key': {'order': 1, 'example': '', 'default': ""},
         'org_id': {'order': 2, 'example': '******', 'default': ""},
+        'authorization_settings': {'order': 3, 'default': {}}
     }
 
     def __init__(self, section, settings):
@@ -26,9 +27,16 @@ class Connector(AssetsConnector):
         self.get_network_devices_api = 'https://api.meraki.com/api/v1/networks/{id}/devices'
         self.get_inventory_devices_api = 'https://api.meraki.com/api/v1/organizations/{org_id}/inventoryDevices?' \
                                          'perPage=100&startingAfter={serial_number}'
+        self.authorization_settings = self.settings.get('authorization_settings')
 
     def get_headers(self):
-        api_token = self.settings[self.api_key] if self.settings.get(self.api_key) else self.settings['meraki_api_key']
+        api_token = None
+        if self.authorization_settings.get(self.api_key):
+            api_token = self.authorization_settings.get(self.api_key)
+        elif self.settings['meraki_api_key']:
+            api_token = self.settings['meraki_api_key']
+        else:
+            self.logger.warning("Missing API Key and/or Authorization. Can not continue")
         return {self.api_key: api_token}
 
     def get_chunked_network_devices(self, network_id):
@@ -87,31 +95,19 @@ class Connector(AssetsConnector):
         else:
             self.logger.warning("No Org_id supplied. Finished running.")
 
-    def load_shim_records(self, _settings):
-        org_id                 = _settings.get('org_id')
-        starting_after         = _settings.get('starting_after', '')
-        network_ids            = _settings.get('network_ids', [])
-        is_inventory_collected = _settings.get('is_inventory_collected', False)
-        self.settings[self.api_key] = _settings.get(self.api_key)
-        chunked_devices = []
+    def load_cloud_records(self, credential_details):
+        self.logger.warning(
+            f"{__name__.split('.')[1].upper()} has been DEPRECATED, this will be removed in the next major release!!")
 
-        if not is_inventory_collected:
-            self.logger.info(f"{self.__class__.__name__}: Syncing the Inventory devices settings")
-            chunked_devices, starting_after = self.get_chunked_inventory_devices(org_id, starting_after)
-            is_inventory_collected = not chunked_devices
+        org_id = self.settings.get('org_id', '')
 
-        if is_inventory_collected:
-            if not network_ids:
-                self.logger.info(f"{self.__class__.__name__}: Fetching all Org Networks")
-                network_ids = self.get_all_network_ids(org_id)
-
-            self.logger.info(f"{self.__class__.__name__}: Syncing the Network devices")
-            while not chunked_devices and network_ids:
-                current_network_id = network_ids[0]
-                chunked_devices = self.get_chunked_network_devices(current_network_id)
-                network_ids.remove(current_network_id)
-
-        return chunked_devices, starting_after, network_ids, is_inventory_collected
+        if org_id:
+            for organization_network_device in self.yield_devices_from_network(org_id):
+                yield organization_network_device
+            for organization_inventory_device in self.yield_inventory_device(org_id):
+                yield organization_inventory_device
+        else:
+            self.logger.warning("No Org_id supplied. Finished running.")
 
 ###########################################################################
 ###                                                                     ###

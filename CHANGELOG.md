@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.5.0]
+
+### Deprecated
+
+- Deprecated Meraki Network Devices: Will be removed in next major release.
+- Deprecated Netbox: Will be removed in next major release.
+
+### Added
+
+- Added the ability to cancel running connectors from the webui in Local mode.
+- Added functionality for multiple list api calls.
+- Chef: Added the ability to map extra node fields from the ini (See README.md for more information)
+
+### Fixed 
+
+- Fixed some wording around log lines.
+- Fixed Meraki Network Devices token issue with new Oomnitza release.
+- Fixed MobileIron token issue with new Oomnitza release.
+
+### Updated
+
+- Update the requirements.txt to reflect the removal of old, unused connectors and their packages.
+- Update the README.md to reflect current released connectors and information.
+- Dell Asset Order Status: Updated to use Version 3
+- MobileIron updated to streamline fetching assets. Removed redundant code.
+- Updated checks for AWS Connector to reduce complexity of code.
+
+### Removed
+
+- Google Chrome Devices: This can be created from the Oomnitza webui in local mode and run via a managed mode on-prem.
+- SimpleMDM Configuration: This can be created from the Oomnitza webui in local mode and run via a managed mode on-prem.
+- Removed old connector files that can no longer be run and tracked from the webui, removed for maintainability reasons as well.
+  - Airwatch, AzureUsers, BambooHR, Chromebooks, MerakiSM, Okta, OneLogin, Workday and Zendesk
+- Removed the *Shim-Service* due to performance issues and no longer being required.
+
 ## [2.4.6]
 
 ### Updated
