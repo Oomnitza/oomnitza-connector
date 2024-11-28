@@ -1,4 +1,5 @@
 import pprint
+import os
 
 from constants import FATAL_ERROR_FLAG
 from lib.connector import AuthenticationError, BaseConnector
@@ -7,6 +8,7 @@ from lib.version import VERSION
 from requests import RequestException
 
 CSRF_HEADER = "X-CSRF-Token"
+CONNECTOR_SOURCE = "X-Connector-Source"
 
 
 class Connector(BaseConnector):
@@ -55,6 +57,8 @@ class Connector(BaseConnector):
             headers = {}
         if self._csrf_token:
             headers.update({CSRF_HEADER: self._csrf_token})
+        if source := os.getenv("OOMNITZA_CONNECTOR_SOURCE"):
+            headers.update({CONNECTOR_SOURCE: source})
         return headers
 
     def authenticate(self):

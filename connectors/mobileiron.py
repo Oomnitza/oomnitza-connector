@@ -1,14 +1,15 @@
 import math
 import time
-from distutils.util import strtobool
 from enum import Enum
+from typing import Dict, List, Tuple
 
 from gevent.pool import Pool
-from lib.connector import AssetsConnector
 from requests import HTTPError
 from requests.auth import _basic_auth_str
 from requests.exceptions import RetryError
-from typing import List, Dict, Tuple, Any
+
+from lib.connector import AssetsConnector
+from utils.distutils import strtobool
 
 Version = Enum('Version', ['v1', 'v2'])  # TODO: set proper cases
 
@@ -330,6 +331,7 @@ class Connector(AssetsConnector):
             output_data.append(output_dict)
         return output_data
 
+    # TODO check if this is required? I only see usage in a test.
     def get_partition_ids(self, partitions: List[Dict[str, str]]) -> List[str]:
         partition_ids = []
         for partition in self.fetch_all_partitions():

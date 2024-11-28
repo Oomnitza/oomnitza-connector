@@ -5,7 +5,7 @@ from contextlib import contextmanager
 import arrow
 
 from connectors.managed import Connector as ManagedConnector
-from lib import TrueValues
+from constants import TRUE_VALUES
 from lib.error import ConfigError
 
 
@@ -76,7 +76,7 @@ class Connector(ManagedConnector):
             except FileExistsError:
                 raise ConfigError('The specified folder path already occupied by the file with the same name')
 
-        self.overwrite_reports = settings.pop('overwrite_reports', False) in TrueValues
+        self.overwrite_reports = settings.pop('overwrite_reports', False) in TRUE_VALUES
         self.data_sources = settings.pop('data_sources', [])
         super().__init__(section, settings)
 

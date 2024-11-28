@@ -2,7 +2,8 @@ import base64
 import logging
 
 import arrow
-from lib.connector import AssetsConnector, response_to_object
+from lib.connector import AssetsConnector
+from utils.helper_utils import response_to_object
 from typing import Dict, List, Any
 
 logger = logging.getLogger("connectors/insight")

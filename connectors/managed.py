@@ -4,10 +4,11 @@ import json
 import traceback
 from typing import Optional, Dict
 
-from lib import TrueValues
+from constants import TRUE_VALUES
 from lib.api_caller import ConfigurableExternalAPICaller
 from lib.aws_iam import AWSIAM
-from lib.connector import BaseConnector, response_to_object
+from lib.connector import BaseConnector
+from utils.helper_utils import response_to_object
 from lib.error import ConfigError
 from lib.httpadapters import init_mtls_ssl_adapter, SSLAdapter
 
@@ -197,18 +198,12 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             - there is credential_id string to be used in case of cloud connector setup
             - there is a JSON containing the ready-to-use headers and params in case of on-premise connector setup
         """
-        if iam_credentials:
-            iam_call_specification = copy.deepcopy(api_call_specification)
-            iam_call_specification.update(**iam_credentials)
-            # NOTE: There are no required mTLS Certs for AWS API. So skip it
-            ssl_adapter = None
-        else:
-            ssl_adapter = None
+        ssl_adapter = None
 
-            if self.session_auth_behavior:
-                secret = self.generate_session_based_secret()
-            else:
-                secret = self.settings['saas_authorization']
+        if self.session_auth_behavior:
+            secret = self.generate_session_based_secret()
+        else:
+            secret = self.settings['saas_authorization']
 
         return secret['headers'], secret['params'], ssl_adapter,\
             secret.get('url_attributes', {}), secret.get('body_attributes', {})
@@ -520,7 +515,6 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             return list_response_item
 
     def get_cloud_inputs(self) -> Dict:
-        secret_ids = [input_["secret_id"] for input_ in self.inputs_from_cloud.values() if input_.get("secret_id")]
         secure_inputs = {}
 
         inputs_from_cloud = {}
@@ -689,7 +683,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                 error=traceback.format_exc(),
                 multi_str_input_value=self.get_multi_str_input_value(),
                 is_fatal=True,
-                test_run=self.settings.get('test_run', False) in TrueValues
+                test_run=self.settings.get('test_run', False) in TRUE_VALUES
             )
             raise
         except self.ManagedConnectorListGetInMiddleException as e:

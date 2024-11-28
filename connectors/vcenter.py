@@ -1,5 +1,5 @@
 import requests
-from lib import TrueValues
+from constants import TRUE_VALUES
 from lib.connector import AssetsConnector
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -44,7 +44,7 @@ class Connector(AssetsConnector):
         return resp.json()['value'] if self._is_legacy_api() else resp.json()
 
     def _is_legacy_api(self):
-        return self.settings.get('use_legacy_apis', 'True') in TrueValues
+        return self.settings.get('use_legacy_apis', 'True') in TRUE_VALUES
 
     def _build_url(self, path):
         return f"{self.settings['url']}{path}"

@@ -1,0 +1,154 @@
+[oomnitza]
+enable = True
+url = ${OOMNITZA_URL}
+api_token = ${OOMNITZA_API_TOKEN}
+
+IS_DEVELOPMENT=${IS_DEVELOPMENT}
+SUBDOMAIN=${SUBDOMAIN}
+
+;[managed.${MANAGED_ID}]
+;enable = ${MANAGED_ENABLED}
+;saas_authorization = ${MANAGED_SAAS_AUTHORIZATION}
+;oomnitza_authorization = ${MANAGED_OOMNITZA_AUTHORIZATION}
+;local_inputs = ${MANAGED_LOCAL_INPUTS}
+;test_run = ${MANAGED_TEST_RUN}
+;is_custom = ${MANAGED_IS_CUSTOM}
+
+[chef]
+enable = ${CHEF_ENABLED}
+url = ${CHEF_URL}
+client = ${CHEF_CLIENT}
+key_file = ${CHEF_KEY_FILE}
+attribute_extension = ${CHEF_ATTRIBUTE_EXTENSION}
+
+[csv_assets]
+enable = ${CSV_ASSETS_ENABLED}
+filename = ${CSV_ASSETS_FILENAME}
+directory = ${CSV_ASSETS_DIRECTORY}
+sync_field = ${CSV_ASSETS_SYNC_FIELD}
+
+[csv_users]
+enable = ${CSV_USERS_ENABLED}
+filename = ${CSV_USERS_FILENAME}
+directory = ${CSV_USERS_DIRECTORY}
+default_role = ${CSV_USERS_DEFAULT_ROLE}
+default_position = ${CSV_USERS_DEFAULT_POSITION}
+sync_field = ${CSV_USERS_SYNC_FIELD}
+
+[jasper]
+enable = ${JASPER_ENABLED}
+wsdl_path = ${JASPER_WSDL_PATH}
+username = ${JASPER_USERNAME}
+password = ${JASPER_PASSWORD}
+api_token = ${JASPER_API_TOKEN}
+storage = ${JASPER_STORAGE}
+
+[ldap]
+enable = ${LDAP_ENABLED}
+url = ${LDAP_URL}
+username = ${LDAP_USERNAME}
+password = ${LDAP_PASSWORD}
+base_dn = ${LDAP_BASE_DN}
+group_dn = ${LDAP_GROUP_DN}
+protocol_version = ${LDAP_PROTOCOL_VERSION}
+filter = ${LDAP_FILTER}
+default_role = ${LDAP_DEFAULT_ROLE}
+default_position = ${LDAP_DEFAULT_POSITION}
+page_criterium = ${LDAP_PAGE_CRITERIUM}
+groups_dn = ${LDAP_GROUPS_DN}
+group_members_attr = ${LDAP_GROUP_MEMBERS_ATTR}
+group_member_filter = ${LDAP_GROUP_MEMBER_FILTER}
+
+[ldap_assets]
+enable = ${LDAP_ASSETS_ENABLED}
+url = ${LDAP_ASSETS_URL}
+username = ${LDAP_ASSETS_USERNAME}
+password = ${LDAP_ASSETS_PASSWORD}
+base_dn = ${LDAP_ASSETS_BASE_DN}
+group_dn = ${LDAP_ASSETS_GROUP_DN}
+protocol_version = ${LDAP_ASSETS_PROTOCOL_VERSION}
+filter = ${LDAP_ASSETS_FILTER}
+page_criterium = ${LDAP_ASSETS_PAGE_CRITERIUM}
+groups_dn = ${LDAP_ASSETS_GROUPS_DN}
+group_members_attr = ${LDAP_ASSETS_GROUP_MEMBERS_ATTR}
+group_member_filter = ${LDAP_ASSETS_GROUP_MEMBER_FILTER}
+sync_field = ${LDAP_ASSETS_SYNC_FIELD}
+
+[mobileiron]
+enable = ${MOBILEIRON_ENABLED}
+url = ${MOBILEIRON_URL}
+username = ${MOBILEIRON_USERNAME}
+password = ${MOBILEIRON_PASSWORD}
+partitions = ${MOBILEIRON_PARTITIONS}
+api_version = ${MOBILEIRON_API_VERSION}
+include_checkin_devices_only = ${MOBILEIRON_INCLUDE_CHECKIN_DEVICES_ONLY}
+last_checkin_date_threshold = ${MOBILEIRON_LAST_CHECKIN_DATE_THRESHOLD}
+
+[netbox]
+enable = ${NETBOX_ENABLED}
+url = ${NETBOX_URL}
+auth_token = ${NETBOX_AUTH_TOKEN}
+
+[open_audit]
+enable = ${OPEN_AUDIT_ENABLED}
+url = ${OPEN_AUDIT_URL}
+username = ${OPEN_AUDIT_USERNAME}
+password = ${OPEN_AUDIT_PASSWORD}
+
+[sccm]
+enable = ${SCCM_ENABLED}
+server = ${SCCM_SERVER}
+database = ${SCCM_DATABASE}
+username = ${SCCM_USERNAME}
+password = ${SCCM_PASSWORD}
+authentication = ${SCCM_AUTHENTICATION}
+driver = ${SCCM_DRIVER}
+
+[tanium]
+enable = ${TANIUM_ENABLED}
+url = ${TANIUM_URL}
+username = ${TANIUM_USERNAME}
+password = ${TANIUM_PASSWORD}
+session_token = ${TANIUM_SESSION_TOKEN}
+domain = ${TANIUM_DOMAIN}
+view = ${TANIUM_VIEW}
+
+[vcenter]
+enable = ${VCENTER_ENABLED}
+url = ${VCENTER_URL}
+username = ${VCENTER_USERNAME}
+password = ${VCENTER_PASSWORD}
+use_legacy_apis = ${VCENTER_USE_LEGACY_APIS}
+
+[workspaceone_devicesoftware]
+enable = ${WORKSPACEONE_DEVICESOFTWARE_ENABLED}
+client_id = ${WORKSPACEONE_DEVICESOFTWARE_CLIENT_ID}
+client_secret = ${WORKSPACEONE_DEVICESOFTWARE_CLIENT_SECRET}
+subdomain = ${WORKSPACEONE_DEVICESOFTWARE_SUBDOMAIN}
+region = ${WORKSPACEONE_DEVICESOFTWARE_REGION}
+
+[munki_report]
+enable = ${MUNKI_ENABLED}
+url = ${MUNKI_URL}
+username = ${MUNKI_USERNAME}
+password = ${MUNKI_PASSWORD}
+db_columns = ${MUNKI_DB_COLUMNS}
+
+[insight]
+enable = ${INSIGHT_ENABLED}
+client_id = ${INSIGHT_CLIENT_ID}
+client_key = ${INSIGHT_CLIENT_KEY}
+client_secret = ${INSIGHT_CLIENT_SECRET}
+order_creation_date_from = ${INSIGHT_ORDER_CREATION_DATE_FROM}
+order_creation_date_to = ${INSIGHT_ORDER_CREATION_DATE_TO}
+tracking_data = ${INSIGHT_TRACKING_DATA}
+
+[dell_asset_order_status]
+enable = ${DELL_ASSET_ORDER_STATUS_ENABLED}
+client_id = ${DELL_ASSET_ORDER_STATUS_CLIENT_ID}
+client_secret = ${DELL_ASSET_ORDER_STATUS_CLIENT_SECRET}
+is_dp_id = ${DELL_ASSET_ORDER_STATUS_IS_DP_ID}
+is_po_numbers = ${DELL_ASSET_ORDER_STATUS_IS_PO_NUMBERS}
+is_order_no_country_code = ${DELL_ASSET_ORDER_STATUS_IS_ORDER_NO_COUNTRY_CODE}
+values = ${DELL_ASSET_ORDER_STATUS_VALUES}
+country_code = ${DELL_ASSET_ORDER_STATUS_COUNTRY_CODE}
