@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.5.1]
+
+### Fixed
+
+- Fixed url creation issue on Windows machine.
+
 ## [2.5.0]
 
 ### Deprecated

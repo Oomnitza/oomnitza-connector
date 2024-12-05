@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-import os.path
 import re
 
 from urllib.parse import urlparse, urlencode, urljoin
@@ -336,7 +335,7 @@ class Connector(AssetsConnector):
         return headers
 
     def search(self, resource, **params):
-        base_url = urljoin(self.settings['url'], os.path.join('search', resource))
+        base_url = urljoin(self.settings['url'], f"search/{resource}")
         url = f"{base_url}?{urlencode(params)}"
         response = self.get(url, headers=self.get_auth_headers(url))
         return response.json()['rows']
