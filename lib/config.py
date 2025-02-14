@@ -6,6 +6,7 @@ import os
 import pprint
 import shutil
 import sys
+from constants import ENABLED_CONNECTORS
 from configparser import ParsingError, MissingSectionHeaderError, DEFAULTSECT, NoSectionError, ConfigParser
 from copy import deepcopy
 from logging.handlers import RotatingFileHandler
@@ -323,12 +324,11 @@ def get_default_ini():
     Calls example_ini_settings() on each found connector.
     :return: the contents of the INI file.
     """
-    from connectors import EnabledConnectors
 
     sections = {}
     prefix = 'connectors.'
 
-    for modname in [prefix+name for name in EnabledConnectors]:
+    for modname in [prefix+name for name in ENABLED_CONNECTORS]:
         # Don't process these as they are internal
         if modname in ['connectors.base'] or modname.startswith('connectors.test'):
             continue
@@ -348,7 +348,7 @@ def get_default_ini():
         except Exception as exp:
             sections[name] = [('enable', 'False'), ("# Exception: {0}".format(str(exp)), None)]
 
-    return format_sections_for_ini(sections, EnabledConnectors)
+    return format_sections_for_ini(sections, ENABLED_CONNECTORS)
 
 
 def format_sections_for_ini(sections, enabled_connectors):

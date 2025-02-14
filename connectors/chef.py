@@ -328,7 +328,7 @@ class Connector(AssetsConnector):
             http_method=http_method,
             path=parsed_url.path,
             body=body,
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=datetime.datetime.now(datetime.UTC),
             user_id=self.settings['client'],
         )
         headers['x-chef-version'] = '0.10.8'

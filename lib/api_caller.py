@@ -20,8 +20,8 @@ class ExternalAPICaller:
         ssl_adapter: SSLAdapter = None,
     ) -> Response:
 
-        # preset the specific user agent
-        headers['User-Agent'] = 'Oomnitza Connector'
+        # Set default User-Agent if wasn't overridden (+validated) in the webui
+        headers.setdefault("User-Agent", "Oomnitza Connector")
 
         if body and isinstance(body, str):
             body = body.encode()
@@ -62,8 +62,8 @@ class ExternalAPICaller:
 class ConfigurableExternalAPICaller(ExternalAPICaller, Renderer):
 
     def build_call_specs(
-        self, 
-        http_specs: dict, 
+        self,
+        http_specs: dict,
         raise_error: bool = True
     ) -> dict:
 
@@ -80,4 +80,3 @@ class ConfigurableExternalAPICaller(ExternalAPICaller, Renderer):
         call_spec['headers'] = {_['key']: self.render_to_string(_['value']) for _ in http_specs['headers']}
         call_spec['params'] = {_['key']: self.render_to_string(_['value']) for _ in http_specs['params']}
         return call_spec
-

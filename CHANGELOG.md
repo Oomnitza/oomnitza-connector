@@ -1,5 +1,32 @@
 # Changelog
 
+## [2024.11.1]
+
+### Announcement
+The Connector's versioning number has been change from digits to a YYYY.MM.Release candidate.
+This will allow Oomnitza to easily track when a version was released.
+
+The Connector python version has been upgraded from Python 3.8 to Python 3.12
+Consult the README.md for more information.
+Older version of the connector may still work with older version of Python, but these are no longer supported by Oomnitza
+For the latest changes and security patches we recommend moving to this Release or greater.
+
+### Added
+
+- Cisco DNA: Added Cisco DNA to pull in network devices
+- Docker entrypoint.sh script to simplify the docker commands
+
+### Fixed
+
+- Removed params from urls in log messages
+
+### Updated
+
+- Update the requirements.txt to reflect the change to Python 3.12
+- Update Constants and helper functions to dedicated files for easier reuse.
+  - Updated code files that require helper functions.
+- Updated Dockerfile and docker-compose.yml to use simplified commands.
+
 ## [2.5.1]
 
 ### Fixed
@@ -19,7 +46,7 @@
 - Added functionality for multiple list api calls.
 - Chef: Added the ability to map extra node fields from the ini (See README.md for more information)
 
-### Fixed 
+### Fixed
 
 - Fixed some wording around log lines.
 - Fixed Meraki Network Devices token issue with new Oomnitza release.

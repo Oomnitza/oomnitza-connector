@@ -7,7 +7,7 @@ import ldapurl
 from ldap.controls.libldap import SimplePagedResultsControl
 from ldap.controls.sss import SSSRequestControl
 
-from lib import TrueValues
+from constants import TRUE_VALUES
 from lib.connector import AuthenticationError
 from lib.error import ConfigError
 
@@ -177,8 +177,8 @@ class LdapConnection(object):
             ldap.set_option(ldap.OPT_X_TLS_CACERTDIR, cacert_dir)
 
         # check for tls
-        # if self.settings['enable_tls'] in self.TrueValues and self.settings['protocol_version'] == '3':
-        if self.settings.get('verify_ssl', True) in TrueValues:
+        # if self.settings['enable_tls'] in TRUE_VALUES and self.settings['protocol_version'] == '3':
+        if self.settings.get('verify_ssl', True) in TRUE_VALUES:
             ldap.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_DEMAND)
         else:
             LOG.warning("verify_ssl = '%s' so SSL certificate validation has been disabled.", self.settings.get('verify_ssl', True))
@@ -204,7 +204,7 @@ class LdapConnection(object):
             raise AuthenticationError("Cannot connect to the LDAP server with given credentials: " + exp.args[0]['info'])
 
     def load_data(self, options):
-        save_data = self.settings.get("__save_data__", False) in TrueValues
+        save_data = self.settings.get("__save_data__", False) in TRUE_VALUES
         if save_data:
             options['full_record'] = True
 

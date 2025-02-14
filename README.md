@@ -1,13 +1,15 @@
-#### * Python2 Deprecation Notice:
-Since version **2.1.0** the connector is migrated to the python3.8 codebase. 
+#### * Python3.8 Deprecation Notice:
+Since version **2024.11.1** the connector no longer supports Python versions less than 3.12.
 
-The further maintenance, support and development of the python2 based version is NOT planned.
+The further maintenance, support and development of the versions of Python prior to 3.12 is NOT planned.
 
-Please make sure you have converted ALL custom converters and filters to py3 syntax before upgrading the connector to the 2.1.0 or above.
+Please make sure you have converted ALL custom converters and filters to Python 3.12 syntax before upgrading the connector to version 2024.11.1 or above.
+This may require you to create a new virtual environment with the Python 3.12, if so ensure all local changes are saved before upgrading.
+The Docker image should have the newest environment once pulled from dockerhub. Check Docker section below for any changes in setup.
 
 # Local connector
-Oomnitza’s local connector, built using Python, is a single application that pulls data from multiple vendor applications and pushes data into your Oomnitza instance. 
-                                                       
+Oomnitza’s local connector, built using Python 3.12, is a single application that pulls data from multiple vendor applications and pushes data into your Oomnitza instance. 
+
 The local connector can pull data from the following sources:
 
 * Chef [https://www.chef.io/chef/](https://www.chef.io/chef/)
@@ -28,7 +30,7 @@ The local connector can pull data from the following sources:
 ## Before you begin
 
 The local connector can be used to create two types of integrations:
--   [Basic integrations](#basic-integrations)    
+-   [Basic integrations](#basic-integrations)
 -   [Extended integrations](#extended-integrations)
 
 ## Basic integrations
@@ -156,8 +158,8 @@ Depending on the number of integrations and volume of data,
 the Connector can be configured to use additional workers.
 
 ## Runtime Environment Setup
-You will need to install Python 3.8 as well as the packages which the connector
- relies upon. Some of the python packages may require build tools to be installed.
+You will need to install Python 3.12 as well as the packages which the connector
+relies upon. Some of the python packages may require build tools to be installed.
 
 Please visit the sections below related to the build tools before installing the additional modules.
 
@@ -231,26 +233,14 @@ Click a link to download Docker Desktop:
 
 To start the local connector using Docker Compose, you must complete these steps:
  1. Save the template for the connector configuration file, `docker-compose.yml`, in the directory, for example **myconfig**, that you created.
- 2. Open the `docker-compose.yml` file and replace `/path/on/local/machine` in the volumes section with the path on your local machine.
+ 2. Open the `docker-compose.yml` file and modify based on target integrations to run. There are examples for running ldap and csv_assets as a starting point.
+ 3. Copy `example.env` to `.env` and populate the necessary values
 
-    **Windows**: Replace `/path/on/local/machine` with `C:\oomnitza\connector\myconfig`.
-    
-    **Linux**: Replace `/path/on/local/machine` with `/home/myconfig`.
-
- 3. Open a command line in the directory that you created, for example myconfig, and issue the following command:
-
-    
-    docker-compose up generate-ini
-
-**Result**
-
-The generated configuration file (`config.ini`) is copied to the directory on your local machine.
-
-#### Modify the config.ini file
+#### Modify the .env file
  
-To set up the local connector for your basic or extended integration, and to connect the local connector to your Oomnitza instance, you must modify the `config.ini` file. The `config.ini` file tells the local connector which Oomnitza Cloud instance to connect to and which basic or extended integration the local connector should serve up to the Oomnitza Cloud instance.
+To set up the local connector for your basic or extended integration, and to connect the local connector to your Oomnitza instance, you must modify the `.env` file you created. The `.env` file tells the local connector which Oomnitza Cloud instance to connect to and which basic or extended integration the local connector should serve up to the Oomnitza Cloud instance.
 
-If you intend to run the local connector solely to connect to systems that are behind a firewall, you only need to maintain the [oomnitza section] and one or more of the managed sections in the `config.ini` file.
+If you intend to run the local connector solely to connect to systems that are behind a firewall, you only need to maintain the [oomnitza] section and one or more of the managed sections in the `.env` file.
 
 For more information, see [Setting the connector to run in managed mode](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md#setting-the-connector-to-run-in-managed-mode). 
 
@@ -262,18 +252,34 @@ If you need to modify the underlying code for testing purposes and need to rebui
 
 This will rebuild the image with the same name and tag so you can trial your changes
 
-**WARNING**
+> **WARNING**: _This command will replace the current image with the new built one._
 
-This command will replace the current image with the new built one.
-If you want to keep changes separated, change the tag after the colon symbol to `beta` i.e. `docker build -t oomnitza/oomnitza-connector:beta .`
+If you want to keep changes separated, change the tag after the colon symbol to `beta` i.e. 
+
+`docker build -t oomnitza/oomnitza-connector:beta .`
 
 You will need to change this in the docker-compose.yml file to match the tag.
+And will need to change all commands below from `latest` to `beta`
 
 #### Run the local connector
 
-To run the local connector, issue the following command:
+To run the local connector with Docker
+
+    docker run --env-file .env oomnitza/oomnitza-connector:latest
+
+    docker run --env-file .env oomnitza/oomnitza-connector:latest upload ldap
+
+To run the local connector with Docker and a custom INI file (avoiding ENV vars):
+
+    docker run -v $(pwd)/config.ini:/app/config.ini:ro oomnitza/oomnitza-connector:latest upload ldap
+
+To run the local connector with Docker Compose, issue the following command:
 
     docker-compose up oomnitza-connector -d
+
+To run different connectors (listed in the docker-compose.yml) i.e ldap for instance:
+
+    docker-compose up oomnitza-connector-ldap -d
 
 **Result**
 
@@ -289,9 +295,11 @@ For LDAP, you add:
 
     oomnitza-connector-ldap:
       image: oomnitza/oomnitza-connector:latest
-      command: python connector.py --ini ../config/config.ini upload ldap
-      volumes:
-        - /path/on/local/machine:/home/appuser/config/
+      env_file:
+        - .env
+      command: ["upload", "ldap"]
+      # volumes:
+      #   - /path/on/local/machine:/home/appuser/config/
 
 #### CSV Assets service
 
@@ -299,21 +307,21 @@ For CSV assets, you add:
 
     oomnitza-connector-csv-assets:
       image: oomnitza/oomnitza-connector:latest
-      command: python connector.py --ini ../config/config.ini upload csv_assets --testmode
+      env_file:
+        - .env
+      command: ["upload", "csv_assets", "--testmode"]
       volumes:
-        - /path/on/local/machine:/home/appuser/config/
-        - /another/path/on/local/machine:/home/appuser/exp/
+         - /another/path/on/local/machine:/home/appuser/exp/
+      #   - /path/on/local/machine:/home/appuser/config/
 
 The CSV file that contains the asset records should be stored in a directory on the local machine, the path in the container should be defined in the configuration file. For example, /home/appuser/exp/<file_name>.csv.
 
 Example
 
-    [csv_assets]
-    enable = True
-    sync_field = BARCODE
-    filename = /home/appuser/exp/assets.csv
-    directory = 
-    mapping.BARCODE = {"source": "Barcode"}
+    CSV_ASSETS_ENABLED=True
+    CSV_ASSETS_FILENAME=/home/appuser/exp/assets.csv
+    CSV_ASSETS_DIRECTORY=
+    CSV_ASSETS_SYNC_FIELD=BARCODE
  
 #### Important
 
@@ -1463,7 +1471,7 @@ It is possible to create a completely custom complex converter that will be used
     
     mapping.MY_AWESOME_FIELD =  {"source": "name", "converter": "my_custom_converter"}
  
- next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 3.8 function,
+ next you have to define new `[converters]` section in the config with the `my_custom_converter:`. Under this converter name you have to define a valid Python 3.12 function,
  that has to return some value - this value is a result of the converter. In the converter function a "record" object is available, it is the whole record extracted from external system as Python [dict](https://docs.python.org/2/library/stdtypes.html#dict) object.
  Example:
 

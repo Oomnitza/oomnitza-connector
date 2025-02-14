@@ -1,8 +1,3 @@
-
-# import logging
-# logger = logging.getLogger("converters/casper_ext_attr")
-
-
 def converter(field, record, value, params):
     """
     Loads a value from Casper's Extension Attributes.
@@ -10,7 +5,6 @@ def converter(field, record, value, params):
     :param value: field value
     :return:
     """
-#    logger.warn("converter(%r, %r, %r, %r)", field, record, value, params)
 
     attributes = record.get('extension_attributes', [])
     target = params.get('attr', None)

@@ -1,39 +1,43 @@
-FROM python:3.8-buster
+FROM python:3.12.7-slim
 
-ENV PYTHONUNBUFFERED 1
-ENV PYTHONDONTWRITEBYTECODE 1
+ARG APP_DIR=/app
+ARG APP_PORT=8000
+ARG PYTHON_UNBUFFERED=1
+ARG PYTHONDONTWRITEBYTECODE=1
+ARG USERNAME=oomuser
+ARG USER_UID=1001
+ARG USER_GID=$USER_UID
 
-ARG APP_USER=appuser
+ENV APP_PORT=$APP_PORT
+ENV PYTHONUNBUFFERED=$PYTHON_UNBUFFERED
+ENV PYTHONDONTWRITEBYTECODE=$PYTHONDONTWRITEBYTECODE
 
-RUN groupadd -r ${APP_USER} -g 1000 && \
-    useradd --no-log-init --create-home -u 1000 -r -g ${APP_USER} ${APP_USER}
+WORKDIR $APP_DIR
 
-ARG APP_DIR=/home/${APP_USER}/oomnitza-connector/
-ARG CONFIG_DIR=/home/${APP_USER}/config/
-ARG EXP_DIR=/home/${APP_USER}/exp/
+RUN apt update && \
+    apt install -y build-essential unixodbc unixodbc-dev git openssh-client \
+    libsasl2-dev python3-dev libldap2-dev libssl-dev gettext-base \
+    && touch /app/config.ini \
+    && groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -d $APP_DIR --system $USERNAME \
+    && chown $USERNAME:$USERNAME /app/config.ini \
+    && chmod 755 /app/config.ini \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN echo $APP_DIR && mkdir ${APP_DIR} && mkdir ${CONFIG_DIR} && mkdir ${EXP_DIR} && chown ${APP_USER}:${APP_USER} ${APP_DIR} ${CONFIG_DIR} ${EXP_DIR}
+RUN mkdir -p /root/.ssh && \
+    ssh-keyscan bitbucket.org >> /root/.ssh/known_hosts
 
-COPY ./requirements.txt ${APP_DIR}
+COPY requirements.txt $APP_DIR
 
-RUN apt-get -q update && \
-    apt-get -qy install libsasl2-dev \
-                        python-dev \
-                        libldap2-dev \
-                        libssl-dev \
-                        build-essential \
-                        unixodbc \
-                        unixodbc-dev && \
-    rm -rf /var/lib/apt/lists/*
+RUN --mount=type=ssh --mount=type=cache,target=/root/.cache \
+    pip install -r requirements.txt
 
-RUN set -ex &&\
-    pip install --upgrade pip && \
-    pip install --no-cache-dir -r ${APP_DIR}requirements.txt
+COPY --chown=$USERNAME:$USERNAME --chmod=755 docker/entrypoint.sh /docker/entrypoint.sh
+COPY --chown=$USERNAME:$USERNAME --chmod=755 docker/config.ini.envsubst /docker/config.ini.envsubst
+COPY --chown=$USERNAME:$USERNAME --chmod=755 . $APP_DIR
 
-COPY --chown=${APP_USER}:${APP_USER} . ${APP_DIR}
+USER $USERNAME
+EXPOSE $APP_PORT
 
-USER ${APP_USER}:${APP_USER}
-
-WORKDIR ${APP_DIR}
-
-RUN python connector.py generate-ini
+ENTRYPOINT ["/docker/entrypoint.sh"]
+CMD ["managed"]

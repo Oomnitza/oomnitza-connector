@@ -1,18 +1,20 @@
 import copy
-import errno
 import json
-import xmltodict
 import logging
 import os
 import os.path
+from datetime import date, datetime
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from uuid import uuid4
+
 import gevent
 import requests
-
-from constants import FATAL_ERROR_FLAG, ConfigFieldType
-from datetime import date, datetime
-from distutils.util import strtobool
 from gevent.pool import Pool
-from lib import TrueValues
+from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException
+from urllib3.exceptions import InsecureRequestWarning
+
+from constants import FATAL_ERROR_FLAG, TRUE_VALUES, ConfigFieldType
 from lib.converters import Converter
 from lib.error import AuthenticationError, ConfigError
 from lib.filter import DynamicException
@@ -21,31 +23,14 @@ from lib.logger import ContextLoggingAdapter
 from lib.renderer import _RawValue
 from lib.strongbox import Strongbox, StrongboxBackend
 from lib.version import VERSION
-from requests.exceptions import RequestException
-from requests.adapters import HTTPAdapter
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from utils.data import get_field_value
-from urllib3.exceptions import InsecureRequestWarning
-from uuid import uuid4
+from utils.distutils import strtobool
 
 SAVED_DATA_PATH = "./save_data"
 
 
 # Suppress Warning when 'verify_ssl' is set to False (creates a lot of noise in the logs)
 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-
-# noinspection PyBroadException
-def response_to_object(response_text):
-    """
-    Try to represent the response as the native object from the JSON- or XML-based response
-    """
-    try:
-        return json.loads(response_text)
-    except:
-        try:
-            return xmltodict.parse(response_text)
-        except:
-            return response_text
 
 
 def run_connector(connector_cfg, options):
@@ -124,6 +109,8 @@ def escape_illegal_keys(incoming_record: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class BaseConnector(object):
+
+    # region Managed Connector Exceptions
     class ManagedConnectorProcessingException(Exception):
         """
         Special exception used to be raised in certain cases hen in the middle of the portion processing
@@ -191,6 +178,7 @@ class BaseConnector(object):
         has iterated for MAX_ITERATIONS (1000 iterations) and would spin forever otherwise.
         """
         message_template = 'Connector exceeded processing limit. The error is: {error}'
+    # endregion
 
     ConnectorID = None
     Settings = {}
@@ -414,7 +402,7 @@ class BaseConnector(object):
                     }
 
         else:
-            if self.settings.get('use_server_map', True) in TrueValues:
+            if self.settings.get('use_server_map', True) in TRUE_VALUES:
                 server_mappings = self.get_mapping_from_oomnitza()
 
                 for source, fields in list(server_mappings.items()):
@@ -482,9 +470,9 @@ class BaseConnector(object):
 
         if self.is_oomnitza_connector():
             # Reduce logging verbosity
-            self.logger.debug("Issuing GET %s", url)
+            self.logger.debug(f"Issuing GET {url.split('?')[0]}")
         else:
-            self.logger.info("Issuing GET %s", url)
+            self.logger.info(f"Issuing GET {url.split('?')[0]}")
 
         response = session.get(url, headers=headers, auth=auth,
                                verify=self.get_verification())
@@ -525,9 +513,9 @@ class BaseConnector(object):
 
         if self.is_oomnitza_connector():
             # Reduce logging verbosity
-            self.logger.debug("Issuing POST %s", url)
+            self.logger.debug(f"Issuing POST {url.split('?')[0]}")
         else:
-            self.logger.info("Issuing POST %s", url)
+            self.logger.info(f"Issuing POST {url.split('?')[0]}")
 
         response = session.post(url, data=data, headers=headers, auth=auth,
                                 verify=self.get_verification())
@@ -547,7 +535,7 @@ class BaseConnector(object):
         :return: True (Path_to_cacert in binary) / False
         """
         # TODO Update to allow the passing of a certificate path or a boolean.
-        return self.settings.get('verify_ssl', True) in TrueValues
+        return self.settings.get('verify_ssl', True) in TRUE_VALUES
 
     def get_headers(self):
         """
@@ -698,10 +686,10 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
-        is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_test_run = self.settings.get('test_run', False) in TRUE_VALUES
         is_test_run = self.settings['__testmode__'] or is_test_run
-        save_data = self.settings.get("__save_data__", False) in TrueValues
-        is_custom = self.settings.get('is_custom', False) in TrueValues
+        save_data = self.settings.get("__save_data__", False) in TRUE_VALUES
+        is_custom = self.settings.get('is_custom', False) in TRUE_VALUES
 
         if is_custom and is_test_run:
             self.save_test_response_to_file()
@@ -805,10 +793,10 @@ class BaseConnector(object):
 
         limit_records = float(options.get('record_count', 'inf'))
 
-        is_test_run = self.settings.get('test_run', False) in TrueValues
+        is_test_run = self.settings.get('test_run', False) in TRUE_VALUES
         is_test_run = self.settings['__testmode__'] or is_test_run
-        save_data = self.settings.get("__save_data__", False) in TrueValues
-        is_custom = self.settings.get('is_custom', False) in TrueValues
+        save_data = self.settings.get("__save_data__", False) in TRUE_VALUES
+        is_custom = self.settings.get('is_custom', False) in TRUE_VALUES
 
         if is_custom and is_test_run:
             self.save_test_response_to_file()
@@ -906,7 +894,7 @@ class BaseConnector(object):
             "insert_only": insert_only,
             "update_only": update_only,
             "error": error,
-            "test_run": self.settings.get('test_run', False) in TrueValues,
+            "test_run": self.settings.get('test_run', False) in TRUE_VALUES,
             "multi_str_input_value": self.get_multi_str_input_value()
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
@@ -1071,7 +1059,7 @@ class BaseConnector(object):
             if f_type:
                 incoming_value = f_type(incoming_value)
 
-            if specs.get('required', False) in TrueValues and not incoming_value:
+            if specs.get('required', False) in TRUE_VALUES and not incoming_value:
                 missing_fields.add(field)
 
             outgoing_record[field] = incoming_value

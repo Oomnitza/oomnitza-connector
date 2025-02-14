@@ -1,4 +1,5 @@
-from lib.connector import AssetsConnector, response_to_object
+from lib.connector import AssetsConnector
+from utils.helper_utils import response_to_object
 from utils.data import json_validator
 
 

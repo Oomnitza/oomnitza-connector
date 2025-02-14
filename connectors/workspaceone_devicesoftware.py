@@ -3,7 +3,7 @@ import json
 
 import arrow
 from lib.connector import AssetsConnector
-from lib import TrueValues
+from constants import TRUE_VALUES
 
 
 class Connector(AssetsConnector):
@@ -304,8 +304,8 @@ class Connector(AssetsConnector):
         self.generate_device_app_cache(url)
 
     def _load_records(self, options):
-        self.ignore_apple_software = self.settings.get('ignore_apple', False) in TrueValues
-        self.apply_default_version = self.settings.get('default_versioning', False) in TrueValues
+        self.ignore_apple_software = self.settings.get('ignore_apple', False) in TRUE_VALUES
+        self.apply_default_version = self.settings.get('default_versioning', False) in TRUE_VALUES
         apps_scope = self.settings.get('apps_scope', '').lower()
         url = self.settings.get('url', '').strip('/')
 

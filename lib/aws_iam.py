@@ -2,7 +2,7 @@ import json
 import uuid
 from typing import List, Iterator
 from urllib.parse import unquote
-from lib.connector import response_to_object
+from utils.helper_utils import response_to_object
 
 
 class AWSIAM:
@@ -200,14 +200,14 @@ class AWSIAM:
                     <Arn>arn:aws:sts::159485965151:assumed-role/CrossAccountEC2ReadOnly/AssumeRoleSession1</Arn>
                 </AssumedRoleUser>
                 <Credentials>
-                    <AccessKeyId>ASIASKIQ2WNPW2YXSZ5E</AccessKeyId>
-                    <SecretAccessKey>Kaul5Z2SeXl5rZnSEHc0BHGliZysXiNlLejrYqRo</SecretAccessKey>
-                    <SessionToken>FwoGZXIvYXdzEA8aDLrz6JP6KMH1qHuchiK2ATtq7D56CPBoSy5bQ3VX6uRwVJaNtPWLxX8pDZaf0Gq0iPAZ8zty/8MCruw+N0DVslcTCKENvfr3+ikOvs03ziGAK0nCuJVKy+RGhLitgWW2ahX1Ch7aP9HRD8sNLhgAVhXp372HLw7B98KTCr87AAoZBy7APZKE/+TQhnvFr2ziqYL+hj/nzCH0PbltVnpq6OqVGT1F3Viu3q4vzrBAti4tp3m3W421IYLFb/jTAlKEQaoMbQC7KLfJ35oGMi0E7Y32Axe2FlB/1l5LEeWdpON7rooSe8O6mgAcOd2YQvVsWhgzWcaRAEH3B1E=</SessionToken>
+                    <AccessKeyId>ASIAS************SZ5E</AccessKeyId>
+                    <SecretAccessKey>Kaul5Z2SeXl************liZysXiNlLejrYqRo</SecretAccessKey>
+                    <SessionToken>FwoGZXIvYXdzEA8aDLrz6J************************************************jTAlKEQaoMbQC7KLfWcaRAEH3B1E=</SessionToken>
                     <Expiration>2022-10-25T14:29:27Z</Expiration>
                 </Credentials>
             </AssumeRoleResult>
             <ResponseMetadata>
-                <RequestId>afeb812c-c756-419f-a850-77f0879da838</RequestId>
+                <RequestId>afeb812c-************-77f0879da838</RequestId>
             </ResponseMetadata>
         </AssumeRoleResponse>
         """
