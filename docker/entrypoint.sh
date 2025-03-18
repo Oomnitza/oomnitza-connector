@@ -39,8 +39,11 @@ if [ "$ROLE" != "managed" ] && [ "$ROLE" != "upload" ]; then
     display_help
 fi
 
-# Use envsubst to replace variables in the template
-envsubst < /docker/config.ini.envsubst > /app/config.ini
+# Only use the envsubst when we don't pass an ini
+if [ "$2" != "ini_only" ] && [ "$3" != "ini_only" ]; then
+    # Use envsubst to replace variables in the template
+    envsubst < /docker/config.ini.envsubst > /app/config.ini
+fi
 
 # Execute the application command based on the role
 cd /app

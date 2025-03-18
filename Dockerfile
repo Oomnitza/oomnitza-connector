@@ -35,6 +35,7 @@ RUN --mount=type=ssh --mount=type=cache,target=/root/.cache \
 COPY --chown=$USERNAME:$USERNAME --chmod=755 docker/entrypoint.sh /docker/entrypoint.sh
 COPY --chown=$USERNAME:$USERNAME --chmod=755 docker/config.ini.envsubst /docker/config.ini.envsubst
 COPY --chown=$USERNAME:$USERNAME --chmod=755 . $APP_DIR
+RUN chown -R $USERNAME:$USERNAME $APP_DIR
 
 USER $USERNAME
 EXPOSE $APP_PORT

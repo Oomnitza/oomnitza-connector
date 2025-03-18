@@ -33,6 +33,8 @@ def client_initiated_upload(cmdline_args):
         options['record_count'] = cmdline_args.record_count
 
     for name in cmdline_args.connectors:
+        if name == 'ini_only':
+            continue
         LOG.info("Running connector: %s", name)
         if name not in connectors:
             LOG.error("Connector '%s' is not enabled.", name)

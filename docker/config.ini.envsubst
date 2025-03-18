@@ -3,16 +3,13 @@ enable = True
 url = ${OOMNITZA_URL}
 api_token = ${OOMNITZA_API_TOKEN}
 
-IS_DEVELOPMENT=${IS_DEVELOPMENT}
-SUBDOMAIN=${SUBDOMAIN}
-
-;[managed.${MANAGED_ID}]
-;enable = ${MANAGED_ENABLED}
-;saas_authorization = ${MANAGED_SAAS_AUTHORIZATION}
-;oomnitza_authorization = ${MANAGED_OOMNITZA_AUTHORIZATION}
-;local_inputs = ${MANAGED_LOCAL_INPUTS}
-;test_run = ${MANAGED_TEST_RUN}
-;is_custom = ${MANAGED_IS_CUSTOM}
+[managed.${MANAGED_ID}]
+enable = ${MANAGED_ENABLED}
+saas_authorization = ${MANAGED_SAAS_AUTHORIZATION}
+oomnitza_authorization = ${MANAGED_OOMNITZA_AUTHORIZATION}
+local_inputs = ${MANAGED_LOCAL_INPUTS}
+test_run = ${MANAGED_TEST_RUN}
+is_custom = ${MANAGED_IS_CUSTOM}
 
 [chef]
 enable = ${CHEF_ENABLED}

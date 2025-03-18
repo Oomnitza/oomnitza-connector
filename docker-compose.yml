@@ -8,7 +8,13 @@ services:
     command: ["managed"]
     # volumes:
     #   - /path/config.ini:/app/config.ini
-
+  oomnitza-connector-managed-ini:
+    image: oomnitza/oomnitza-connector:latest
+    #env_file:
+    #  - .env
+    command: ["managed", "ini_only"]
+    volumes:
+      - /path/config.ini:/app/config.ini
   oomnitza-connector-ldap:
     image: oomnitza/oomnitza-connector:latest
     env_file:
@@ -17,11 +23,10 @@ services:
     # volumes:
     #   - /path/config.ini:/app/config.ini
 
-  oomnitza-connector-csv-assets:
+  oomnitza-connector-ldap-ini:
     image: oomnitza/oomnitza-connector:latest
-    env_file:
-      - .env
-    command: ["upload", "csv_assets", "--testmode"]
-    # volumes:
-    #   - /path/config.ini:/app/config.ini
-    #   - /another/path/on/local/machine:/home/appuser/exp/
+    #env_file:
+    #  - .env
+    command: ["upload", "ldap", "ini_only"]
+    volumes:
+      - /path/config.ini:/app/config.ini

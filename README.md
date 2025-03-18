@@ -82,11 +82,15 @@ ___
     - [Download and install Docker Desktop](#download-and-install-docker-desktop)
     - [Run the local connector with Docker Compose](#run-the-local-connector-with-docker-compose)
       - [Initial configuration](#initial-configuration) 
-      - [Modify the config.ini file](#modify-the-configini-file)
-      - [Run the local connector](#run-the-local-connector)
+      - [Modify the .env file](#modify-the-env-file)
+    - [Modify the Docker Image](#modify-the-docker-image)
+      - [Run the Local Connector](#run-the-local-connector)
+      - [Additional Service Examples](#addtional-service-examples)
     - [Add service examples](#add-service-examples)
       - [LDAP service](#ldap-service)
       - [CSV Assets service](#csv-assets-service)
+        - [LDAP Service](#ldap-service)
+        - [CSV Assets Service](#csv-assets-service)
   - [Connector Configs](#connector-configs)
     - [Common optional settings](#common-optional-settings)
     - [Oomnitza Configuration](#oomnitza-configuration)
@@ -101,7 +105,7 @@ ___
         - [Connector configuration](#connector-configuration)
   - [Running the connector server](#running-the-connector-server)
   - [Running the connector client](#running-the-connector-client)
-    - [Setting the connector to run in managed mode](#setting-the-connector-to-run-in-managed-mode)
+    - [Setting the Connector to Run in Managed Mode](#setting-the-connector-to-run-in-managed-mode)
 	    - [Configuration details for managed mode](#configuration-details-for-managed-mode)
       - [SaaS authorization item](#saas-authorization-item)
       - [Oomnitza authorization item](#oomnitza-authorization-item)
@@ -232,25 +236,61 @@ Click a link to download Docker Desktop:
 #### Initial configuration
 
 To start the local connector using Docker Compose, you must complete these steps:
- 1. Save the template for the connector configuration file, `docker-compose.yml`, in the directory, for example **myconfig**, that you created.
- 2. Open the `docker-compose.yml` file and modify based on target integrations to run. There are examples for running ldap and csv_assets as a starting point.
- 3. Copy `example.env` to `.env` and populate the necessary values
+1. Have docker installed and running.
+2. Download the Oomnitza Connector from Github
+3. Either setup a `config.ini` or a `.env` file with the required config, examples can be seen below in [Connector Configs](#connector-configs) section 
+   1. Copy `example.env` to `.env` and populate the necessary values
+   2. OR copy the necessary configs from Connector Configs to a `config.ini`
+4. Open the `docker-compose.yml` file and modify based on target integrations to run. See [Run the Local Connector](#run-the-local-connector) below
+   1. There are examples for running ldap, csv_assets and managed as a starting point.
+   2. There is an example of running a managed integration with a `config.ini` as this requires a special flag. `ini_only`
+      1. See [Run the Local Connector](#run-the-local-connector) for more information.
+5. If you need to make changes to the code or other files see [Modify the Docker Image](#modify-the-docker-image) section below.
+
 
 #### Modify the .env file
  
-To set up the local connector for your basic or extended integration, and to connect the local connector to your Oomnitza instance, you must modify the `.env` file you created. The `.env` file tells the local connector which Oomnitza Cloud instance to connect to and which basic or extended integration the local connector should serve up to the Oomnitza Cloud instance.
+To set up the local connector for your basic or extended integration, and to connect the local connector to your Oomnitza instance, you can create a `.env` file. The `.env` file tells the local connector which Oomnitza Cloud instance to connect to and which basic or extended integration the local connector should serve up to the Oomnitza Cloud instance.
 
 If you intend to run the local connector solely to connect to systems that are behind a firewall, you only need to maintain the [oomnitza] section and one or more of the managed sections in the `.env` file.
+The example below of the oomnitza section (top 3 lines) and the Managed integrations (not all fields are required)
+`OOMNITZA_CONNECTOR_SOURCE` should be left as `default`
+```dotenv
+OOMNITZA_URL=https://<instance>.oomnitza.com
+OOMNITZA_API_TOKEN=XXX
+OOMNITZA_CONNECTOR_SOURCE=default
 
-For more information, see [Setting the connector to run in managed mode](https://github.com/Oomnitza/oomnitza-connector/blob/master/README.md#setting-the-connector-to-run-in-managed-mode). 
+MANAGED_ENABLED=False
+MANAGED_ID=XXX
+MANAGED_SAAS_AUTHORIZATION={"params": {"api-token": "saas-api-token"}, "headers": {"Authorization": "Bearer Example"}}
+MANAGED_OOMNITZA_AUTHORIZATION=oomnitza-api-token
+MANAGED_LOCAL_INPUTS={"username": "username@example.com", "password": "ThePassword"}
+MANAGED_TEST_RUN=false
+MANAGED_IS_CUSTOM=false
+```
+
+For setup of a basic integration, like Chef, you can configure the following in the `.env`
+```dotenv
+OOMNITZA_URL=https://<instance>.oomnitza.com
+OOMNITZA_API_TOKEN=XXX
+OOMNITZA_CONNECTOR_SOURCE=default
+
+CHEF_ENABLED=False
+CHEF_URL=https://example.com/organizations/org
+CHEF_CLIENT=user
+CHEF_KEY_FILE=/path/to/user.pem
+CHEF_ATTRIBUTE_EXTENSION=
+```
+
+For more information, see [Setting the Connector to Run in Managed Mode](#setting-the-connector-to-run-in-managed-mode)
 
 ### Modify the Docker Image.
 
-If you need to modify the underlying code for testing purposes and need to rebuild the image you can run
+If you need to modify the underlying code/docker image for testing purposes and need to rebuild the image you can run
 
 `docker build -t oomnitza/oomnitza-connector:latest .`
 
-This will rebuild the image with the same name and tag so you can trial your changes
+This will rebuild the image with the same name and tag so you can trial your changes (the trailing dot is important)
 
 > **WARNING**: _This command will replace the current image with the new built one._
 
@@ -261,38 +301,77 @@ If you want to keep changes separated, change the tag after the colon symbol to 
 You will need to change this in the docker-compose.yml file to match the tag.
 And will need to change all commands below from `latest` to `beta`
 
-#### Run the local connector
+#### Run the Local Connector
 
-To run the local connector with Docker
+Check the `docker-compose.yml` file to see the different ways to configure the On-Prem connector.
+Below is an example of the setup required for Managed mode and for ldap local assets (Upload mode) using either `.env` or `config.ini`.
+```yml
+version: "3"
+
+services:
+  oomnitza-connector:
+    image: oomnitza/oomnitza-connector:latest
+    env_file:
+      - .env
+    command: ["managed"]
+    # volumes:
+    #   - /path/config.ini:/app/config.ini
+  oomnitza-connector-managed-ini:
+    image: oomnitza/oomnitza-connector:latest
+    #env_file:
+    #  - .env
+    command: ["managed", "ini_only"]
+    volumes:
+      - /path/config.ini:/app/config.ini
+  oomnitza-connector-ldap:
+    image: oomnitza/oomnitza-connector:latest
+    env_file:
+      - .env
+    command: ["upload", "ldap"]
+    # volumes:
+    #   - /path/config.ini:/app/config.ini
+
+  oomnitza-connector-ldap-ini:
+    image: oomnitza/oomnitza-connector:latest
+    #env_file:
+    #  - .env
+    command: ["upload", "ldap", "ini_only"]
+    volumes:
+      - /path/config.ini:/app/config.ini
+```
+
+Next we need to decide if we want to use a `config.ini` file or the `.env` file setup.<br>
+If you're using the `config.ini` file setup, you'll need to comment out `env_file:`, then, uncomment the `volume` section<br> of the docker-compose.yml file
+and adjust the `/path/config.ini` before the colon with the system path to your local config.ini
+
+To run the local connector with Docker:
 
     docker run --env-file .env oomnitza/oomnitza-connector:latest
-
     docker run --env-file .env oomnitza/oomnitza-connector:latest upload ldap
-
-To run the local connector with Docker and a custom INI file (avoiding ENV vars):
-
-    docker run -v $(pwd)/config.ini:/app/config.ini:ro oomnitza/oomnitza-connector:latest upload ldap
 
 To run the local connector with Docker Compose, issue the following command:
 
     docker-compose up oomnitza-connector -d
 
-To run different connectors (listed in the docker-compose.yml) i.e ldap for instance:
+This will run the docker image in docker desktop.
+
+To run different connectors (listed in the docker-compose.yml) i.e. ldap or managed-ini for example:
 
     docker-compose up oomnitza-connector-ldap -d
+    docker-compose up oomnitza-connector-managed-ini -d
 
 **Result**
 
-The docker container will run in detached mode. That is, as a background process.
+The docker container will run in detached mode. That is, as a background process. It can be viewed in Docker Desktop.
 
-### Add service examples
+### Additional Service Examples
 
 If you need to run extended integrations, you can add a service to the Docker Compose configuration file,  `docker-compose.yml`.
 
-#### LDAP service
+#### LDAP Service
 
 For LDAP, you add:
-
+```yml
     oomnitza-connector-ldap:
       image: oomnitza/oomnitza-connector:latest
       env_file:
@@ -300,28 +379,29 @@ For LDAP, you add:
       command: ["upload", "ldap"]
       # volumes:
       #   - /path/on/local/machine:/home/appuser/config/
-
-#### CSV Assets service
+```
+#### CSV Assets Service
 
 For CSV assets, you add:
-
+```yml
     oomnitza-connector-csv-assets:
       image: oomnitza/oomnitza-connector:latest
       env_file:
         - .env
       command: ["upload", "csv_assets", "--testmode"]
-      volumes:
-         - /another/path/on/local/machine:/home/appuser/exp/
+      #volumes:
+      #   - /another/path/on/local/machine:/home/appuser/exp/
       #   - /path/on/local/machine:/home/appuser/config/
-
+```
 The CSV file that contains the asset records should be stored in a directory on the local machine, the path in the container should be defined in the configuration file. For example, /home/appuser/exp/<file_name>.csv.
 
 Example
-
-    CSV_ASSETS_ENABLED=True
-    CSV_ASSETS_FILENAME=/home/appuser/exp/assets.csv
-    CSV_ASSETS_DIRECTORY=
-    CSV_ASSETS_SYNC_FIELD=BARCODE
+```dotenv
+CSV_ASSETS_ENABLED=True
+CSV_ASSETS_FILENAME=/home/appuser/exp/assets.csv
+CSV_ASSETS_DIRECTORY=
+CSV_ASSETS_SYNC_FIELD=BARCODE
+```
  
 #### Important
 
@@ -529,7 +609,7 @@ For fields which require processing before being brought into Oomnitza must be d
 We typically recommend username or email for users and serial_number for assets.
 Will be loaded from Oomnitza mapping if not set. To create multiple sync field, split it by comma,
 for example `sync_field = USER,EMAIL`.
-The exceptions for this rule are the LDAP assets & CSV files because there is no way to
+The exceptions to this rule are the LDAP assets & CSV files because there is no way to
 set the mapping in Oomnitza for these data sources at the current moment.
 
 `insert_only`: set this to True to only create records in Oomnitza. Records for existing objects will not be updated.
@@ -926,15 +1006,20 @@ only the `[oomnitza]` section to be configured within the .ini file to operate
 `--ignore-cloud-maintenance` is used to specify the connector in the managed mode to ignore the cloud maintenance. If enabled the main loop will not be interrupted during the maintenance and the
  connector will continue to work 
 
-### Setting the connector to run in managed mode
+### Setting the Connector to Run in Managed Mode
 
-You configure the local connector to run in `managed` mode when you want the local connector to deliver the asset and the user data for extended integrations. That is, you don’t want to use the cloud connector to manage the delivery of data.
+You configure the local connector to run in `managed` mode when you want the local connector to deliver the asset and/or user data for extended integrations. That is, you don’t want to use the cloud connector to manage the delivery of data.
 
 In `managed` mode, the scheduling, mapping, and other parameters are configured in the Oomnitza cloud and the local connector points to them and maintains the credentials. The reasons for running the local connector in `managed` mode are as follows:
  - You want to store credentials locally rather than storing the credentials in the Oomnitza Cloud.
  - You want to access systems behind firewalls or in local data centers that are not accessible from the Oomnitza Cloud.
 
+If you are using docker setup you will need to adjust the docker-compose.yml to use either an `env` file or a `config.ini` file
+
 **Important Note:** For managed integrations, it is essential to separate your basic integrations from your managed integrations. Use separate configuration files like `basic_config.ini` for basic integrations and `managed_config.ini` for managed integrations to avoid integration issues.
+
+**Important Note:** This is also important if you are using `.env` files, having a `managed.env` and a `basic.env` to keep configurations separate will help avoid issues.
+
 
 #### Configuration details for managed mode
 

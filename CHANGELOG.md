@@ -1,5 +1,19 @@
 # Changelog
 
+## [2025.03.1]
+
+### Fixed
+
+- Fixed some issues with docker setup around config.ini files.
+- Fixed a write permission in the docker container for the docker user.
+
+### Updated
+
+- Update the .env file to and entrypoint scripts to ensure we can use either `config.ini` or `.env` files.
+  - `ini_only` is used to run docker with a config.ini file instead of the new .env flow.
+- Updated the README.md to reflect the correct state of the docker setup for on-prem integrations.
+- Additional examples of services added to the docker-compose.yml
+
 ## [2024.11.1]
 
 ### Announcement
