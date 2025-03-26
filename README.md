@@ -344,6 +344,15 @@ Next we need to decide if we want to use a `config.ini` file or the `.env` file 
 If you're using the `config.ini` file setup, you'll need to comment out `env_file:`, then, uncomment the `volume` section<br> of the docker-compose.yml file
 and adjust the `/path/config.ini` before the colon with the system path to your local config.ini
 
+For the `command` section we need to specify what mode we want to run in. A few examples below of the different options.
+- If we want to run a managed integration on-prem we need to specify `command: ["managed"]`
+- If we want to run a managed integration on-prem with the ini only we change to `command: ["managed", "ini_only"]`
+- If we are running a basic integrations like VCenter we can do the following:
+  - `command: ["upload", "vcenter"]` to run the integration as normal
+  - `command: ["upload", "vcenter", "--testmode"]` to run the basic integration in test mode
+  - `command: ["upload", "vcenter", "ini_only"]` to run the basic integration with a config.ini (this is subject to change in the future to make it easier to use)
+    - `ini_only`, `--testmode` and other flags are mutually exclusive.
+
 To run the local connector with Docker:
 
     docker run --env-file .env oomnitza/oomnitza-connector:latest

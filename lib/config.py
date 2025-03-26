@@ -242,7 +242,8 @@ def parse_config_for_client_initiated(args):
             if section == 'converters':
                 for name, filter_str in config.items('converters'):
                     DynamicConverter(name, filter_str)
-            elif section == 'oomnitza' or config.has_option(section, 'enable') and config.getboolean(section, 'enable'):
+            elif (section == 'oomnitza' or config.has_option(section, 'enable') and
+                  config.get(section, 'enable') and config.getboolean(section, 'enable')):
                 if not connectors and section != 'oomnitza':
                     raise ConfigError("Error: [oomnitza] must be the first section in the ini file.")
 

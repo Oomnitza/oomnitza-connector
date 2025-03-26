@@ -1,5 +1,11 @@
 # Changelog
 
+## [2025.03.2]
+
+### Fixed
+
+- Fixed issue where config parsing was failing on empty `enable` values.
+
 ## [2025.03.1]
 
 ### Fixed
