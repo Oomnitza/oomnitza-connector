@@ -1,5 +1,14 @@
 # Changelog
 
+## [2025.04.1]
+
+### Updated
+
+- Adding GET and POST to the HttpAdapters allowed list
+- Adding 429 Http error code to the HttpAdapters Retry list
+
+# Changelog
+
 ## [2025.03.2]
 
 ### Fixed

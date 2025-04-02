@@ -14,8 +14,8 @@ from constants import MTLSType
 retries = Retry(
     total=10,
     backoff_factor=0.5,
-    allowed_methods=False,
-    status_forcelist=[500, 502, 503, 504]
+    allowed_methods=["GET", "POST"],  # Connector should not make/retry on other methods
+    status_forcelist=[500, 502, 503, 504, 429]
 )
 
 
