@@ -36,9 +36,9 @@ The local connector can be used to create two types of integrations:
 ## Basic integrations
 
 Basic integrations run on our local connector and can presently pull data from the sources listed above. To create a basic integration, you complete these actions:
--   Download the code for the basic integration from GitHub    
--   Update the configuration file    
--   Push the configuration file to your Oomnitza instance    
+-   Download the code for the basic integration from GitHub
+-   Update the configuration file
+-   Push the configuration file to your Oomnitza instance
 -   Map the vendor application’s fields to Oomnitza
 
 ## Extended integrations
@@ -129,7 +129,7 @@ ___
       - [WorkspaceOne Configuration](#workspaceone-configuration)
       - [Munki Report Configuration](#munkireport-configuration)
       - [Insight Configuration](#insight-configuration)
-      - [Dell Configuration](#dell-configuration)     
+      - [Dell Configuration](#dell-configuration)
   - [Advanced usage](#advanced-usage)
     - [Logging](#logging)
     - [Custom Converters](#custom-converters)
@@ -576,11 +576,14 @@ An example generated `config.ini` follows.
 
     [insight]
     enable = False
+    url = https://example.oomanitza.com
+    region = NA
     client_id = 123456
     client_key = 123456789
     client_secret = *******
     order_creation_date_from = YYYY-MM-DD
     order_creation_date_to = YYYY-MM-DD
+    look_back_perido = 20
     tracking_data = X
     
     [dell_asset_order_status]
@@ -1522,6 +1525,10 @@ If these not available attributes will be mapped on UI, null values will be push
 
 This configuration provides the ability to retrieve the status of orders. You can filter by date range and tracking data. 
 
+`url`: The Insight URL, including https:// and .com or .net, etc. and a port if required.
+
+`region`: The Insight Region, defaulted to NA.
+
 `client_id`: The Insight Client ID.
 
 `client_key`: The Insight Client Key.
@@ -1531,6 +1538,8 @@ This configuration provides the ability to retrieve the status of orders. You ca
 `order_creation_date_from`: Specify the order creation from date in the format YYYY-MM-DD
 
 `order_creation_date_to`:  Specify the order creation to date in the format YYYY-MM-DD
+
+`look_back_period`:  Specify the number of days to look back for data, defaulted to 20 days, if `order_creation_date_from` is supplied this will be ignored.
 
 `tracking_data`:  Include any tracking data for the order (Defaults to "X" if no specific tracking data is available)
 

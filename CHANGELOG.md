@@ -1,13 +1,22 @@
 # Changelog
 
+## [2026.03.1]
+
+### Updated
+
+- Update Insight Basic Integration to use the New Url and Region requirements set by Insight
+- Added a `look_back_period` option to look back X days from `now()` - can not be used with `order_creation_date_from` or `order_creation_date_to`
+- Fixed an issue with mappings.
+- Fixed an intermittent issue with tracking information not present.
+- Fixed an issue where some serial numbers were not returned if multiple exist in the nested response.
+- Fixed an issue with generating a new `config.ini`
+
 ## [2025.04.1]
 
 ### Updated
 
 - Adding GET and POST to the HttpAdapters allowed list
 - Adding 429 Http error code to the HttpAdapters Retry list
-
-# Changelog
 
 ## [2025.03.2]
 

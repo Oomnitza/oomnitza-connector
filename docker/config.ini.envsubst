@@ -133,10 +133,13 @@ db_columns = ${MUNKI_DB_COLUMNS}
 
 [insight]
 enable = ${INSIGHT_ENABLED}
+url = ${INSIGHT_URL}
+region = ${INSIGHT_REGION}
 client_id = ${INSIGHT_CLIENT_ID}
 client_key = ${INSIGHT_CLIENT_KEY}
 client_secret = ${INSIGHT_CLIENT_SECRET}
 order_creation_date_from = ${INSIGHT_ORDER_CREATION_DATE_FROM}
+look_back_period = ${INSIGHT_LOOK_BACK_PERIOD}
 order_creation_date_to = ${INSIGHT_ORDER_CREATION_DATE_TO}
 tracking_data = ${INSIGHT_TRACKING_DATA}
 

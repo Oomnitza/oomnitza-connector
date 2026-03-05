@@ -360,6 +360,9 @@ def format_sections_for_ini(sections, enabled_connectors):
         connector_label = config.get('label', connector)
         parts.append('[{0}]'.format(connector_label))
 
+        if connector == 'sccm':
+            continue
+
         for key, value in sections[connector]:
             if not isinstance(value, str):
                 value = json.dumps(value)
