@@ -670,7 +670,7 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
             if iam_roles:
                 yield from self._load_iam_list(batch_size)
             elif self.BasicConnector:
-                yield from self._load_basic_connector_list(inputs_from_cloud)
+                yield from self._load_basic_connector_list({**inputs_from_cloud, **inputs_from_local})
             else:
                 yield from self._load_list(batch_size)
 

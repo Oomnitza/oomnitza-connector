@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.05.1]
+
+### Added
+
+- Added the `fortimanager` basic connector.
+
 ## [2026.03.1]
 
 ### Updated

@@ -1561,6 +1561,11 @@ This configuration provides the ability to retrieve Dell order status informatio
 
 `country_code`:  If you choose to input Order Numbers, include an ISO two-digit country code using the format ["GB", "FR", "IN"]. For a list of approved country codes, see [Dell Order Status Pull_API](https://developer.dell.com/apis/9208/versions/2/apiV2.json) 
 
+#### FortiManager Configuration
+
+This configuration provides the ability to retrieve Device information from FortiManager. This configuration is only available in `managed` mode
+<br>This configuration can not be run in upload mode (data will get pulled and pushed to Oomnitza, but it will be ignored by the Oomnitza system).
+
 ## Advanced usage
 
 ### Logging

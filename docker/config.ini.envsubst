@@ -152,3 +152,6 @@ is_po_numbers = ${DELL_ASSET_ORDER_STATUS_IS_PO_NUMBERS}
 is_order_no_country_code = ${DELL_ASSET_ORDER_STATUS_IS_ORDER_NO_COUNTRY_CODE}
 values = ${DELL_ASSET_ORDER_STATUS_VALUES}
 country_code = ${DELL_ASSET_ORDER_STATUS_COUNTRY_CODE}
+
+[fortimanager]
+enabled = False
