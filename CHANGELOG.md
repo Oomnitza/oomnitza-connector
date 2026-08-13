@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.08.1]
+
+### Updated
+
+- Updated vCenter for managed mode.
+
 ## [2026.05.1]
 
 ### Added
