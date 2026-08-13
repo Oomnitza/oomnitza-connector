@@ -201,6 +201,7 @@ class Connector(AssetsConnector):
                         vm_detail['ip_address'] = None
 
                     yield vm_detail
+
     def load_cloud_records(self, credential_details):
 
         if not self.settings.get("url"):
