@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.09.1]
+
+### Updated
+
+- Updated date_format converter to use float_timestamp to avoid deprecated warning in future version
+
 ## [2026.08.1]
 
 ### Updated
