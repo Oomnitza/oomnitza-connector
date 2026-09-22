@@ -102,6 +102,14 @@ class Connector(ManagedConnector):
         """
         return
 
+    def finalize_processed_run(self):
+        """
+        `send_to_oomnitza` is overridden to write a file rather than to push a payload. The final "run completed"
+        payload sent by the base class does not apply here.
+        :return:
+        """
+        return
+
     def get_field_mappings(self, *args):
         """
         Explicitly override the mapping retrieval method to DO NOTHING because this connector does not have mapping / mapping concept is not applicable here

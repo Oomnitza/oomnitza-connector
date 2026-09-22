@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.09.2]
+
+### Updated
+
+- Connector sends a final empty payload, with a completed tag, when a run/Integration has finished.
+
 ## [2026.09.1]
 
 ### Updated

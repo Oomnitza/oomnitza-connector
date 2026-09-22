@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import os.path
+import traceback
 from datetime import date, datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
@@ -631,6 +632,13 @@ class BaseConnector(object):
     def finalize_processed_portion(self):
         self.OomnitzaConnector.finalize_portion(self.portion)
 
+    def finalize_processed_run(self):
+        """
+        Close out the whole run against Oomnitza.
+        """
+        self.finalize_processed_portion()
+        self.send_to_oomnitza({}, has_completed_full_run=True, increment=0)
+
     def create_connection_pool(self):
         pool_size = self.settings['__workers__']
         if pool_size == 0:
@@ -765,8 +773,8 @@ class BaseConnector(object):
             if connection_pool:
                 gevent.joinall(tasks, timeout=30)
 
-            # At the end explicitly finalize the portion
-            self.finalize_processed_portion()
+            # At the end explicitly finalize the run
+            self.finalize_processed_run()
 
             if not (self.is_media_export and not self.processed_records_counter):
                 msg = (
@@ -776,6 +784,9 @@ class BaseConnector(object):
                 self.logger.info(msg)
 
         except RequestException as exp:
+            # the source went away mid-run: report it against the portion and close the run out
+            self.send_to_oomnitza({}, error=traceback.format_exc(), is_fatal=True, increment=0)
+            self.finalize_processed_run()
             raise ConfigError("Error loading records from %s: %s" % (self.MappingName, str(exp)))
 
     def send_good_end_data_in_bulk(self):
@@ -855,8 +866,8 @@ class BaseConnector(object):
             if connection_pool:
                 gevent.joinall(tasks, timeout=30)
 
-            # at the end explicitly finalize the portion
-            self.finalize_processed_portion()
+            # at the end explicitly finalize the run
+            self.finalize_processed_run()
 
             if not (self.is_media_export and not self.processed_records_counter):
                 msg = (
@@ -866,6 +877,9 @@ class BaseConnector(object):
                 self.logger.info(msg)
 
         except RequestException as exp:
+            # the source went away mid-run: report it against the portion and close the run out
+            self.send_to_oomnitza({}, error=traceback.format_exc(), is_fatal=True, increment=0)
+            self.finalize_processed_run()
             raise ConfigError("Error loading records from %s: %s" % (self.MappingName, str(exp)))
 
     def _validate_insert_update_only(self, insert_only, update_only):
@@ -881,7 +895,7 @@ class BaseConnector(object):
             if input_value.get('type') == ConfigFieldType.MULTI_STR:
                 return input_value.get('value')
 
-    def _collect_payload(self, records, error, is_fatal=False):
+    def _collect_payload(self, records, error, is_fatal=False, has_completed_full_run=False):
         insert_only = bool(strtobool(self.settings.get('insert_only', '0')))
         update_only = bool(strtobool(self.settings.get('update_only', '0')))
         self._validate_insert_update_only(insert_only, update_only)
@@ -895,7 +909,8 @@ class BaseConnector(object):
             "update_only": update_only,
             "error": error,
             "test_run": self.settings.get('test_run', False) in TRUE_VALUES,
-            "multi_str_input_value": self.get_multi_str_input_value()
+            "multi_str_input_value": self.get_multi_str_input_value(),
+            "has_completed_full_run": has_completed_full_run,
         }
         # if we have the exact ID of the `service` entity at the DSS side - use it within the payload,
         # otherwise use the name set as the `MappingName`; back compatibility with the `upload` mode for the non-managed connectors
@@ -939,7 +954,7 @@ class BaseConnector(object):
             result = None  # No upload if buffer size < batch_size
         return result
 
-    def send_to_oomnitza(self, data, error=None, is_fatal=False, increment=1):
+    def send_to_oomnitza(self, data, error=None, is_fatal=False, increment=1, has_completed_full_run=False):
         """
         Determine which method on the Oomnitza connector to call based on type of data.
 
@@ -947,9 +962,10 @@ class BaseConnector(object):
         :param error: optional error message as the clear mark we must not process this item, but immediately accept this and store as the error
         :param is_fatal: a flag indicating the type of error and that the connector has stopped
         :param increment: the default increment for counting, if a list is supplied the count of that list should be supplied.
+        :param has_completed_full_run: True for the final payload of a run, which carries no records
         :return: the results of the Oomnitza method call
         """
-        payload = self._collect_payload(data, error, is_fatal)
+        payload = self._collect_payload(data, error, is_fatal, has_completed_full_run)
 
         if self.settings.get("__save_data__"):
             try:
