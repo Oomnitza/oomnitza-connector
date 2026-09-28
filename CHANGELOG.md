@@ -1,5 +1,11 @@
 # Changelog
 
+## [2026.09.3]
+
+### Fixed
+
+- Integrations who details api call get plain-text or empty response breaking portions in UI.
+
 ## [2026.09.2]
 
 ### Updated

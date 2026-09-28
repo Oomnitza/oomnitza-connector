@@ -496,12 +496,19 @@ class Connector(ConfigurableExternalAPICaller, BaseConnector):
                     )
                     detail_response_object = self.render_to_native(result_control)
 
+                if not isinstance(detail_response_object, dict):
+                    # We crash if detail_response_object is not a dict, so we should just fail early
+                    raise ValueError(
+                        f"Details api call returned object type '{type(detail_response_object).__name__}'. "
+                        f"Object is not processable, expected dict."
+                        + (" Check details 'result' setting of integration" if result_control else "")
+                    )
+
                 # We should keep the exploratory_list_response_item, pre_list_response_item and
                 # list_response_item as they can contain some useful information.
-                if type(detail_response_object) is dict:
-                    detail_response_object['list_response_item'] = list_response_item
-                    detail_response_object['pre_list_response_item'] = self.get_arg_from_rendering_context("pre_list_response_item")
-                    detail_response_object['exploratory_list_response_item'] = self.get_arg_from_rendering_context("exploratory_list_response_item")
+                detail_response_object['list_response_item'] = list_response_item
+                detail_response_object['pre_list_response_item'] = self.get_arg_from_rendering_context("pre_list_response_item")
+                detail_response_object['exploratory_list_response_item'] = self.get_arg_from_rendering_context("exploratory_list_response_item")
 
                 return detail_response_object
             except Exception as exc:
